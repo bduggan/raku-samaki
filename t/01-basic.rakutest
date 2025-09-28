@@ -1,0 +1,18 @@
+#!raku
+
+use Test;
+
+plan 10;
+
+use-ok 'Samaki';
+use-ok 'Samaki::Cell';
+use-ok 'Samaki::Conf';
+use-ok 'Samaki::Events';
+use-ok 'Samaki::Page';
+
+use-ok 'Samaki::Plugin';
+use-ok 'Samaki::Plugin::Duck';
+use-ok 'Samaki::Plugin::LLM';
+use-ok 'Samaki::Plugin::Text';
+
+use-ok 'Samaki::Plugins';

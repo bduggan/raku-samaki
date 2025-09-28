@@ -1,0 +1,36 @@
+name: MacOS
+on:
+  push:
+    branches: ['*']
+    tags-ignore: ['*']
+  pull_request:
+
+jobs:
+  raku:
+    strategy:
+      matrix:
+        raku-version: ['latest']
+        duckdb-version: ['1.1.1']
+    runs-on: macos-latest
+    
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install DuckDB library
+        run: |
+          wget https://github.com/duckdb/duckdb/releases/download/v${{ matrix.duckdb-version }}/libduckdb-osx-universal.zip
+          unzip libduckdb-osx-universal.zip
+          sudo mkdir -p /usr/local/lib
+          sudo cp libduckdb.dylib /usr/local/lib/
+      - name: Install DuckDB binary
+        run: |
+          curl https://install.duckdb.org | sh
+          echo "$HOME/.duckdb/cli/latest" >> $GITHUB_PATH
+      - uses: Raku/setup-raku@v1
+        with:
+          raku-version: ${{ matrix.raku-version }}
+      - name: Install problematic deps
+        run: zef install --/test File::Find
+      - name: Install dependencies
+        run: zef install --deps-only .
+      - name: Run tests
+        run: zef test -v .

@@ -1,0 +1,7 @@
+— duck
+select 'hello'
+
+┌── duck
+│ timeout: 10
+select 'world'
+

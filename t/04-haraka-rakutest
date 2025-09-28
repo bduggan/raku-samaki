@@ -1,0 +1,41 @@
+use Test;
+use lib '.';
+use Samaki;
+use Samaki::Page;
+
+plan 5;
+
+%*ENV<SAMAKI_CONF>:delete;
+
+my $tmp = $*TMPDIR.child("samaki-test-$*PID");
+mkdir $tmp;
+my $tmp-conf = $tmp.child('samaki-test.conf');
+
+$tmp-conf.spurt: q:to/CONF/;
+%*samaki-conf =
+  plugins => [
+    / duck /   => 'Samaki::Plugin::Duck',
+    / llm  /   => 'Samaki::Plugin::LLM',
+    / text /   => 'Samaki::Plugin::Text',
+    / bash /   => 'Samaki::Plugin::Bash',
+    / html/    => 'Samaki::Plugin::HTML',
+  ],
+  plugouts => [
+    / csv  /   => 'Samaki::Plugout::Duckview',
+    / csv  /   => 'Samaki::Plugout::DataTable',
+    / html /   => 'Samaki::Plugout::HTML',
+    / .*   /   => 'Samaki::Plugout::Raw',
+  ]
+;
+CONF
+my $conf = Samaki::Conf.new: file => $tmp-conf;
+
+my $samaki = Samaki.new(wkdir => $tmp, conf => $conf);
+ok $samaki, 'made a samaki object';
+diag "testing in $tmp";
+ok $samaki.plugins, 'loaded plugins';
+is $samaki.plugins.rules.elems, 5, "loaded plugins";
+is $samaki.plugouts.rules.elems, 4, 'loaded plugouts';
+is $samaki.plugins.get('duck').name, 'duckdb', 'got a plugin';
+
+done-testing;

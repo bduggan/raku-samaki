@@ -1,0 +1,64 @@
+#!raku
+
+use Test;
+
+%*ENV<SAMAKI_CONF>:delete;
+
+use Samaki::Page;
+
+my $content = q:to/SAMAKI/;
+-- text
+
+Welcome to samaki!  This is a sample samaki page.
+
+Press j and k to move the green selector line up and down.
+
+Press return on a line with 'run' to run that cell.
+
+Press e to edit this page.
+
+More examples are on the [tutorial] page.
+
+-- duck
+
+select 'hello' as world;
+
+-- bash
+
+echo hello
+sleep 1
+echo world
+SAMAKI
+
+my $file = $*CWD.child('resources').child('samaki-conf-default.raku');
+
+my $conf = Samaki::Conf.new: :$file;
+my $plugins = Samaki::Plugins.new;
+$plugins.configure($conf);
+
+my $page = Samaki::Page.new(
+  name => 'test',
+  wkdir => $*CWD
+);
+
+ok $page.load($content, :$plugins), 'loaded page';
+nok $page.errors, 'no errors';
+is $page.cells.elems, 3, 'has three cells';
+is $page.cells[0].cell-type, 'text', 'first cell is text';
+is $page.cells[1].cell-type, 'duck', 'second cell is duck';
+is $page.cells[2].cell-type, 'bash', 'third cell is bash';
+
+is $content.lines[ $page.cells[0].start-line ], '-- text', 'first cell starts at correct line';
+is $content.lines[ $page.cells[1].start-line ], '-- duck', 'second cell starts at correct line';
+is $content.lines[ $page.cells[2].start-line ], '-- bash', 'third cell starts at correct line';
+
+is $page.cells[0].last-line + 1, $page.cells[1].start-line, 'first cell ends before second cell starts';
+
+is +$page.cells[0].content.lines, 11, 'first cell has correct number of lines';
+is +$page.cells[1].content.lines, 3, 'second cell has correct number of lines';
+
+is +$page.cells[0].last-line, 11, 'first cell last line is correct';
+is +$page.cells[1].last-line, 15, 'second cell last line is correct';
+
+done-testing;
+

@@ -1,0 +1,83 @@
+#!/usr/bin/env raku
+
+use Samaki;
+use Log::Async; 
+use Terminal::ANSI::OO;
+
+logger.untapped-ok = True;
+logger.send-to("samaki.log") if %*ENV<SAMAKI_DEBUG>;
+
+my $editor = $*ENV<EDITOR> //  "vim";
+
+sub edit(IO::Path $path) {
+  put t.text-reset;
+  shell <<$editor $path>>;
+  exit note "no page" unless $path.IO.e;
+}
+
+#| Browse pages
+multi MAIN($wkdir = $*CWD) {
+  if "$wkdir.samaki".IO.e {
+    return MAIN('edit', "$wkdir.samaki");
+  }
+  my $q = Samaki.new(:wkdir($wkdir.IO), :$editor);
+  $q.start-ui: 'browse';
+}
+
+#| Open a new page for editing
+multi MAIN('new', :$wkdir = $*CWD) {
+  my $q = Samaki.new(:$wkdir, :$editor);
+  my $name = prompt "Please enter a name for the new Samaki page: ";
+  my $page = "$name.samaki".IO;
+  edit $page;
+  $q.start-ui: :page($name);
+}
+
+#| Edit a page with the given name
+multi MAIN('edit', $target) {
+  my $filename; 
+  my $page-name;
+  if $target.ends-with('.samaki') {
+    $filename = $target.IO;
+    $page-name = $target.IO.basename.subst('.samaki','');
+  } else {
+    $filename = "$target.samaki".IO;
+    $page-name = $target.IO.basename;
+  }
+  my $wkdir = $filename.IO.parent;
+  edit $filename;
+  my $q = Samaki.new(:$wkdir, :$editor);
+  $q.start-ui: :page($page-name);
+}
+
+#| Edit a file
+
+multi MAIN($file where {.ends-with('.samaki')}) {
+  my $wkdir = $file.IO.parent;
+  my $q = Samaki.new: :$wkdir, :$editor;
+  my $page = $file.IO.basename.subst( /\.samaki/,'');
+  $q.start-ui: :$page;
+}
+
+#| Reset the configuration to the default
+multi MAIN('reset-conf') {
+  my $wkdir = $*TMPDIR;
+  my $q = Samaki.new(:$wkdir, :$editor);
+  my $file = $q.config-file;
+  if $file.IO.e {
+    $file.IO.unlink;
+    note "Deleted config file " ~ $file;
+  } else {
+    note "No config file to delete at " ~ $file;
+  }
+}
+
+#| Edit the configuration file
+multi MAIN('conf') {
+  my $wkdir = $*TMPDIR;
+  my $q = Samaki.new(:$wkdir, :$editor);
+  my $path = $q.config-file;
+  $path.IO.e or exit note "No config file at $path";
+  shell <<$editor $path>>;
+  note "Done editing config file at $path";
+}

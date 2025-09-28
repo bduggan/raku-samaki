@@ -1,0 +1,46 @@
+{
+  "name" : "Samaki",
+  "description" : "Raku notebooks for data exploration",
+  "authors" : [
+    "Brian Duggan"
+  ],
+  "provides" : {
+    "Samaki" : "lib/Samaki.rakumod",
+    "Samaki::Cell" : "lib/Samaki/Cell.rakumod",
+    "Samaki::Conf" : "lib/Samaki/Conf.rakumod",
+    "Samaki::Events" : "lib/Samaki/Events.rakumod",
+    "Samaki::Page" : "lib/Samaki/Page.rakumod",
+    "Samaki::Plugin" : "lib/Samaki/Plugin.rakumod",
+    "Samaki::Plugout" : "lib/Samaki/Plugout.rakumod",
+    "Samaki::Plugin::Duck" : "lib/Samaki/Plugin/Duck.rakumod",
+    "Samaki::Plugin::LLM" : "lib/Samaki/Plugin/LLM.rakumod",
+    "Samaki::Plugin::Text" : "lib/Samaki/Plugin/Text.rakumod",
+    "Samaki::Plugin::HTML" : "lib/Samaki/Plugin/HTML.rakumod",
+    "Samaki::Plugin::Bash" : "lib/Samaki/Plugin/Bash.rakumod",
+    "Samaki::Plugin::Process" : "lib/Samaki/Plugin/Process.rakumod",
+    "Samaki::Plugins" : "lib/Samaki/Plugins.rakumod",
+    "Samaki::Plugouts" : "lib/Samaki/Plugouts.rakumod",
+    "Samaki::Plugout::HTML" : "lib/Samaki/Plugout/HTML.rakumod",
+    "Samaki::Plugout::Raw" : "lib/Samaki/Plugout/Raw.rakumod",
+    "Samaki::Plugout::DataTable" : "lib/Samaki/Plugout/DataTable.rakumod",
+    "Samaki::Plugout::Duckview" : "lib/Samaki/Plugout/Duckview.rakumod",
+    "samaki" : "bin/samaki"
+  },
+  "resources" : [ "samaki-conf-default.raku" ],
+  "build-depends" : [ ],
+  "depends" : [
+    "Grammar::PrettyErrors", "LLM::DWIM", "Log::Async", "Terminal::UI", "Color", "Duckie", "Prettier::Table",
+    "Time::Duration", "Terminal::ANSI", "Duck::CSV", "Color", "Color::Scheme"
+  ],
+  "description" : "Query Independent sources of Data",
+  "tags" : [
+    "data"
+  ],
+  "license" : "MIT",
+  "raku" : "6.*",
+  "version" : "0.0.1",
+  "auth" : "zef:bduggan",
+  "api"  : "1",
+  "source-url" : "git://github.com/bduggan/raku-samaki.git"
+}
+

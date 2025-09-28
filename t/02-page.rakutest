@@ -1,0 +1,50 @@
+#!raku
+
+use Test;
+use Samaki::Page;
+
+%*ENV<SAMAKI_CONF>:delete;
+
+my $content = q:to/SAMAKI/;
+-- raku
+say "hello";
+
+-- duck
+select 1;
+
+-- text
+This is some text.
+SAMAKI
+
+my $page = Samaki::Page.new(
+  name => 'test',
+  wkdir => $*CWD
+);
+
+my $file = $*CWD.child('resources').child('samaki-conf-default.raku');
+
+my $conf = Samaki::Conf.new: :$file;
+my $plugins = Samaki::Plugins.new;
+$plugins.configure($conf);
+
+ok $page.load($content, :$plugins), 'loaded page';
+nok $page.errors, 'no errors';
+is $page.cells.elems, 3, 'has three cells';
+is $page.cells[0].cell-type, 'raku', 'first cell is raku';
+is $page.cells[1].cell-type, 'duck', 'second cell is duck';
+is $page.cells[2].cell-type, 'text', 'third cell is text';
+
+is $content.lines[ $page.cells[0].start-line ], '-- raku', 'first cell starts at correct line';
+is $content.lines[ $page.cells[1].start-line ], '-- duck', 'second cell starts at correct line';
+is $content.lines[ $page.cells[2].start-line ], '-- text', 'third cell starts at correct line';
+
+is +$page.cells[0].content.lines, 2, 'first cell has correct number of lines';
+is +$page.cells[1].content.lines, 2, 'second cell has correct number of lines';
+is +$page.cells[2].content.lines, 1, 'third cell has correct number of lines';
+
+is +$page.cells[0].last-line, 2, 'first cell ends at correct line';
+is +$page.cells[1].last-line, 5, 'second cell ends at correct line';
+is +$page.cells[2].last-line, 7, 'third cell ends at correct line';
+
+done-testing;
+

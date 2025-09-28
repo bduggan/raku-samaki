@@ -1,0 +1,445 @@
+use Terminal::ANSI::OO 't';
+use Terminal::UI;
+use Log::Async;
+use Time::Duration;
+
+use Samaki::Events;
+use Samaki::Page;
+use Samaki::Plugins;
+use Samaki::Plugouts;
+use Samaki::Conf;
+
+unit class Samaki:ver<0.0.1>:api<1>:auth<zef:bduggan> does Samaki::Events;
+
+has $.ui = Terminal::UI.new;
+my \top := my $;
+my \btm := my $;
+
+has $.log = logger;
+has @.startup-log;
+
+has $.conf;
+
+has $.wkdir is rw = $*CWD;
+has $.editor is rw;
+has Samaki::Page $.current-page is rw;
+has $.plugins = Samaki::Plugins.new;
+has $.plugouts = Samaki::Plugouts.new;
+has Str $.config-file;
+has $.conf-errors;
+my $config-location = %*ENV<SAMAKI_CONF> // (%*ENV<XDG_HOME> // $*HOME).IO.child('.samaki.conf');
+
+method data-dir {
+  $.wkdir.child( $.current-page.name );
+}
+
+submethod TWEAK {
+  unless $!wkdir.IO.d {
+    @!startup-log.push: "Creating working directory at " ~ $!wkdir;
+    mkdir $!wkdir
+  }
+  unless $!conf {
+    unless $config-location.IO.e {
+      copy %?RESOURCES{ 'samaki-conf-default.raku' }.IO.Str, $config-location;
+      @!startup-log.push: "copied fresh config file to $config-location";
+    }
+    $!config-file = $config-location.Str;
+    die "could not open config file $!config-file" unless $!config-file.IO.e;
+    @!startup-log.push: "Using config file " ~ $!config-file;
+    info "Using config file " ~ $!config-file;
+    $!conf = Samaki::Conf.new(file => $!config-file);
+  }
+
+  try {
+    $!plugins.configure($!conf);
+    @!startup-log.push: "Available plugins: ";
+    for $!plugins.list-all -> $p {
+      @!startup-log.push: [
+        t.color(%COLORS<cell-type>) => $p<regex>.raku.fmt(' %-20s '),
+        t.color(%COLORS<plugin-info>) => $p<name>.fmt('%20s : '),
+        t.color(%COLORS<plugin-info>) => $p<desc> // '(no description)',
+      ];
+    }
+    CATCH {
+      default {
+        $!conf-errors = $_;
+        @!startup-log.push: "Error configuring plugins: $_";
+        error "Error configuring plugins: $_";
+        return;
+      }
+    }
+  }
+
+  try {
+    $!plugouts.configure($!conf);
+    @!startup-log.push: "Available plugouts: ";
+    for $!plugouts.list-all -> $p {
+      @!startup-log.push: [
+        t.color(%COLORS<cell-type>) => $p<regex>.raku.fmt(' %-20s '),
+        t.color(%COLORS<plugin-info>) => $p<name>.fmt('%20s : '),
+        t.color(%COLORS<plugin-info>) => $p<desc> // '(no description)',
+      ];
+    }
+    CATCH {
+      default {
+        $!conf-errors = $_;
+        @!startup-log.push: "Error configuring plugouts: $_";
+        error "Error configuring plugouts: $_";
+      }
+    }
+  }
+}
+
+multi method start-ui(Str :$page) {
+  info "starting ui";
+  self.start-ui: page => Samaki::Page.new(name => $page, :$.wkdir);
+}
+
+multi method start-ui(Samaki::Page :$page!) {
+  $!current-page = $page;
+  $.ui.setup: :2panes;
+  (top, btm) = $.ui.panes;
+  top.auto-scroll = False;
+  btm.auto-scroll = False;
+  self.show-page: $page;
+  self.set-events;
+  if @!startup-log {
+    btm.put: $_ for @!startup-log;
+    @!startup-log = ();
+  }
+  $.ui.interact;
+  $.ui.shutdown;
+}
+
+multi method start-ui('browse') {
+   $.ui.setup: :2panes;
+    (top, btm) = $.ui.panes;
+    top.auto-scroll = False;
+    btm.auto-scroll = False;
+    self.set-events;
+    if @!startup-log {
+      btm.put: $_ for @!startup-log;
+      @!startup-log = ();
+    }
+    self.show-dir($!wkdir, :highlight-samaki);
+    $.ui.interact;
+    $.ui.shutdown;
+}
+
+multi method show-page(Str $name) {
+  self.show-page: Samaki::Page.new( :$name, :$.wkdir );
+}
+
+multi method show-page(Samaki::Page $page) {
+  top.clear;
+  btm.clear;
+  $page.show(pane => top, :$!plugins);
+  $!current-page = $page;
+}
+
+method show-dir(IO::Path $dir, :$suffix = 'samaki', :$pane = top, Bool :$header = True, Bool :$highlight-samaki) {
+  my \pane := $pane;
+  $dir = $!wkdir unless $dir;
+  pane.clear;
+  if $header {
+    pane.put: [t.yellow => "$dir"], :center;
+    pane.put: [t.white => "../"], meta => %(dir => $dir.parent, action => 'chdir'), :!scroll-ok;
+  } else {
+    pane.put: [t.yellow => $dir.basename ~ '/'];
+  }
+
+  unless $dir && $dir.d {
+    pane.put: "$dir does not exist";
+    return;
+  }
+
+  my @subdirs = $dir.dir(test => { "$dir/$_".IO.d && !"$dir/$_".IO.basename.starts-with('.') }).sort: *.accessed;
+  my %subs = @subdirs.map({.basename}).Set;
+  my %shown = Set.new;
+
+  my @pages = reverse $dir.IO.dir(test => { /'.' [ $suffix ] $$/ }).sort: *.accessed;
+  for @pages -> $d {
+    my $name = $d.basename.subst(/'.' $suffix/,'');
+    my $title = "〜 { $name } 〜";
+    my %meta =
+      target_page => Samaki::Page.new( :$name, :path($d), :$.wkdir ),
+      action => "load_page",
+      data_dir => $.wkdir.child($name),
+    ;
+    my $width = pane.width;
+    my @row = t.color(%COLORS<title>) => $title.fmt('%-40s');
+    %shown{$name} = True;
+    %meta<dir> = $dir.child($name);
+    @row.push: t.color(%COLORS<info>) => ago( (DateTime.now - $d.accessed).Int ).fmt("%{$width - 45}s");
+    pane.put: @row, :%meta, :!scroll-ok;
+  }
+
+  my @others = reverse $dir.IO.dir(test => { !/'.' [ $suffix ] $$/ && !.starts-with('.') }).sort: *.accessed;
+  for @others -> $path {
+    next if %shown{$path.basename};
+    if $path.IO.d {
+      pane.put: [ t.color(%COLORS<yellow>) => ($path.basename ~ '/').fmt('%-40s'),
+                  t.color(%COLORS<info>) => ago( (DateTime.now - $path.accessed).Int).fmt("%{$pane.width - 43}s") ],
+                  meta => %(dir => $path, action => 'chdir')
+    } else {
+      my $color = %COLORS<datafile>;
+      $color = %COLORS<inactive> if $highlight-samaki;
+      pane.put: [ t.color($color) => $path.basename.fmt('%-40s'),
+                  t.color(%COLORS<info>) => ago( (DateTime.now - $path.accessed).Int).fmt("%{$pane.width - 43}s") ],
+                  meta => %( :$path, action => "do_output", dir => $dir) :!scroll-ok;
+    }
+  }
+
+  pane.select(2);
+}
+
+method page-exists($name) {
+  info "path is " ~ Samaki::Page.new( :$name, :$.wkdir ).path;
+  Samaki::Page.new( :$name, :$.wkdir ).path.e;
+}
+
+method pages-exist {
+  $!wkdir.IO.dir(test => { /'.' [ 'samaki' ] $$/ }).elems > 0;
+}
+
+=begin pod
+
+=head1 NAME
+
+Samaki -- Stich together languages, tools and data
+
+=head1 SYNOPSIS
+
+=begin code
+
+Usage:
+  samaki -- Browse pages
+  samaki new -- Open a new page for editing
+  samaki edit <target> -- Edit a page with the given name
+  samaki reset-conf -- Reset the configuration to the default
+  samaki conf -- Edit the configuration file
+
+=end code
+
+=head1 DESCRIPTION
+
+Samaki is a system for writing queries and snippets of programs in a multiple
+languages in one file.  It's a bit like Jupyter notebooks (or R 
+or Observable notebooks), but with multiple languages in one notebook.  It
+has a plugin architecture for defining the types of cells, and for describing
+the types of output.  Outputs from cells are serialized, often as CSV
+files.  Cells can reference each others' content or output.
+
+Some use cases for samaki include
+
+    * querying data from multiple sources
+    * trying out different programming languages
+    * reining in LLMs
+
+Working examples of eg can be found in the
+L<eg|https://github.com/bduggan/raku-samaki/tree/main/eg> directory
+
+=begin code
+echo "a,b,c" > out.csv
+echo "1,2,3" >> out.csv
+echo "done!"
+
+-- duck
+select * from 'out.csv';
+
+-- python
+print("hello world")
+
+-- ruby
+puts "hello world"
+
+-- llm
+
+Tell me about the differences between saying hello
+in ruby and python in 20 words or less.
+
+-- html
+<pre>
+python says:
+  〈 cells(2).content.trim 〉
+  〈 cells(2).output-file.slurp.trim 〉
+
+ and ruby says
+   〈 cells(3).content.trim 〉
+   〈 cells(3).output-file.slurp.trim 〉
+</pre>
+
+and the LLM says
+
+<pre>
+  〈 cells(4).output-file.slurp.trim 〉
+</pre>
+
+=end code
+
+=head1 FORMAT
+
+A samaki page (or notebook) consists of two things
+
+   1. a text file, ending in .samaki
+   2. a directory containing data files.
+
+The directory name will be the same as the basename of the file, and it
+will be created if it doesn't exist.  e.g.
+
+    taxi-data.samaki
+    taxi-data/
+       cell-0.csv
+       cell-1.csv
+       ... other data files ...
+
+The samaki file is a text file divided into cells, each of which looks like this:
+
+    -- <cell type> [ : name ]?
+    | conf-key 1 : conf-value 1
+    | conf-key 2 : conf-value 2
+    [... cell content ..]
+
+That is:
+
+  1. New cells are indicated with a line starting with with two dashes and a space ("-- ")
+     by the type of cell mark the division.  (Other dashes like "─" can be used instead of
+     a double dash)
+
+  2. The type of the cell should be a single word with alphanumeric characters.
+
+  3. An optional colon and name can give a name to the cell.
+  
+  4. At the top of each cell, optional configuration options can be set as name : value pairs
+     with a leading pipe symbol (`|`)
+
+Another example: a cell named "the_answer" that runs a query and uses a duckdb file named life.duckdb
+
+    -- duck : the_answer
+    | file: life.duckdb
+
+    select 42 as life_the_universe_and_everything
+
+Cells may reference other cells by using angle brackets, as
+shown above:
+
+```
+〈 cells(0).content 〉
+``
+
+alternatively, a three less-than signs in a row can be used, like this:
+
+```
+<<< cells(0).content >>>
+```
+
+Cells can be referenced by name or by number, e.g.
+
+〈 cells('the_answer').content 〉
+
+refers to the contents of the above cell.
+
+The API for results from cells is still evolving, but at a minimum, it has the
+name of an output file, which is intended to have any output generated by the
+cell.  The behavior of output is determined by the type of cell (see plugins
+and configuration below).
+
+=head1 CONFIGURATION
+
+Samaki is configured with a set of regular expressions which are used to determine
+how to handle each cell.  The "type" of the cell above is matched against the
+regexes, and whichever one matches first will be used to parse the input
+and generate output.
+
+Samaki comes with a default configuration file and some default plugins.  The defaul
+configuratoin looks like this
+
+    # samaki-conf.raku
+    #
+    %*samaki-conf =
+      plugins => [
+        / duck /   => 'Samaki::Plugin::Duck',
+        / llm  /   => 'Samaki::Plugin::LLM',
+        / text /   => 'Samaki::Plugin::Text',
+        / bash /   => 'Samaki::Plugin::Bash',
+        / html/    => 'Samaki::Plugin::HTML',
+      ],
+      plugouts => [
+        / csv  /   => 'Samaki::Plugout::Duckview',
+        / csv  /   => 'Samaki::Plugout::DataTable',
+        / html /   => 'Samaki::Plugout::HTML',
+        / .*   /   => 'Samaki::Plugout::Raw',
+      ]
+    ;
+
+=head1 PLUGINS
+
+Plugin classes should do the `Samaki::Plugin` role, and at a minimum should
+implement the `execute` method.  (and have `name` and `description` attributes).
+The usual `RAKULIB` directories are searched for plugins, so adding local plugins
+is a matter of adding a new calss and placing it into this search path.
+
+In addition to the strings above, a class definition may be placed directly
+into the configuration file, and this definition can reference other plugins.
+
+For instance, this defines a plugin called `python` for executing python code:
+
+
+      / python / => class SamakiPython does Samaki::Plugin {
+                      has $.name = 'samaki-python';
+                      has $.description = 'run some python!';
+                      method execute(:$cell, :$mode, :$page, :$out) {
+                         my $content = $cell.get-content(:$mode, :$page);
+                         $content ==> spurt("in.py");
+                         shell "python in.py > out.py 2> errs.py";
+                         $out.put: slurp "out.py";
+                      }
+
+Alternatively, the `Process` plugin provides a convenient way to run external
+processes, and stream the results, so this will also work, and send unbuffered
+output to the bottom pane:
+
+    use Samaki::Plugin::Process;
+
+    %*samaki-conf =
+      plugins => [
+      ...
+        / python / => class SamakiPython does Samaki::Plugin::Process[
+                       name => 'python',
+                       cmd => 'python3' ] {
+           has %.add-env = PYTHONUNBUFFERED => '1';
+          },
+      ...
+
+=head1 PLUGOUTS
+
+Output files are also matched against a sequence of regexes, and these can be
+used for visualizing or showing output.
+
+These should also implement `execute` which has this signature:
+
+   method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) { ... }
+
+Plugouts are intended to either visualize or export data.  The plugout for viewing
+an HTML file is basically:
+
+  method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
+    shell <<open $path>>;
+  }
+
+
+=head1 USAGE
+
+
+For help, type `samaki -h`.
+
+Run `samaki` for the first time to see a welcome page and a demo!
+
+Have fun!
+
+=head1 AUTHOR
+
+Brian Duggan (bduggan at matatu.org)
+
+=end pod
+

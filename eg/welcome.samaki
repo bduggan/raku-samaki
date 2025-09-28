@@ -1,0 +1,17 @@
+-- text
+
+Welcome to Samaki!  This is a sample Samaki page.
+
+Press j and k to move the green selector line up and down.
+
+Press e to edit this page.
+
+Select 'run' below to run a cell.
+
+-- duck
+
+/*
+ * This is a duckdb query.
+ * Press return on the line above to run it!
+ */
+select 'hello' as world;

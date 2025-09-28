@@ -1,0 +1,16 @@
+-- duck
+| timeout: 10
+select * from 'https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2024-01.parquet' limit 200;
+
+-- duck
+select * from 'https://d37ci6vzurychx.cloudfront.net/trip-data/yellow_tripdata_2024-01.parquet' limit 2;
+
+-- duckie
+
+select * from 'https://d37ci6vzurychx.cloudfront.net/misc/taxi_zone_lookup.csv' limit 100
+
+-- duckie
+select * from 'https://d37ci6vzurychx.cloudfront.net/misc/taxi_zones.zip' limit 1
+
+-- duck
+select 1
