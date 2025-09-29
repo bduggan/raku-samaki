@@ -169,7 +169,15 @@ method show-dir(IO::Path $dir, :$suffix = 'samaki', :$pane = top, Bool :$header 
     my $width = pane.width;
     my @row = t.color(%COLORS<title>) => $title.fmt('%-40s');
     %shown{$name} = True;
-    %meta<dir> = $dir.child($name);
+    my $data-dir = $dir.child($name);
+    my $file-count = 0;
+    if $data-dir.d {
+      $file-count = $data-dir.dir.elems;
+      my $s = $file-count == 1 ?? '' !! 's';
+      @row.push: t.color(%COLORS<info>) => "($file-count file{$s})".fmt('%-15s');
+      $width -= 15;
+    }
+
     @row.push: t.color(%COLORS<info>) => ago( (DateTime.now - $d.accessed).Int ).fmt("%{$width - 45}s");
     pane.put: @row, :%meta, :!scroll-ok;
   }
