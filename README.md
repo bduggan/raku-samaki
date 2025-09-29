@@ -10,9 +10,10 @@ SYNOPSIS
 ========
 
     Usage:
-      samaki -- Browse pages
-      samaki new -- Open a new page for editing
+      samaki [<wkdir>] -- Browse pages
+      samaki [--wkdir[=Any]] new -- Open a new page for editing
       samaki edit <target> -- Edit a page with the given name
+      samaki <file> -- Edit a file
       samaki reset-conf -- Reset the configuration to the default
       samaki conf -- Edit the configuration file
 
