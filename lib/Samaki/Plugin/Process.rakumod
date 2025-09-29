@@ -19,7 +19,7 @@ method stream-output { True };
 
 method add-env { %() }
 
-has $.output-ext = 'txt';
+method output-ext { 'txt' };
 
 method do-ready($pid, $proc, $timeout = Nil) {
   self.info: "started pid $pid " ~ ($timeout ?? "with timeout $timeout seconds" !! "");

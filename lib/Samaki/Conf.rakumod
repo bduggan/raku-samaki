@@ -31,6 +31,7 @@ our %COLORS is export = (
   datafile => @palette[7],
   inactive => $grey,
   yellow => $yellow,
+  link => $yellow,
   normal => $base,
 ).map: { .key => .value.gist };
 

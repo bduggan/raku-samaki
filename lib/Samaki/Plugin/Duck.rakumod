@@ -10,6 +10,7 @@ has $.name = 'duckdb';
 has $.description = 'Execute SQL queries using the duckdb cli';
 has $.executable = 'duckdb';
 has $.version-info;
+has $.output-ext = 'csv';
 
 method setup(Samaki::Conf :$conf) {
   info "Setting up duck plugin";
