@@ -4,7 +4,7 @@
 NAME
 ====
 
-Samaki -- Stich together languages, tools and data
+Samaki -- Stitch together snippets of code and data
 
 SYNOPSIS
 ========
@@ -29,40 +29,30 @@ Some use cases for samaki include
 
 Working examples of eg can be found in the [eg](https://github.com/bduggan/raku-samaki/tree/main/eg) directory
 
-    echo "a,b,c" > out.csv
-    echo "1,2,3" >> out.csv
-    echo "done!"
+Here's one example:
 
     -- duck
-    select * from 'out.csv';
+    select 'hello' as world;
 
-    -- python
-    print("hello world")
-
-    -- ruby
-    puts "hello world"
+    -- duck
+    select 'earth' as planet;
 
     -- llm
+    Which planet from the sun is 〈 cells(1).rows[0]<planet> 〉?
 
-    Tell me about the differences between saying hello
-    in ruby and python in 20 words or less.
+To use this:
 
-    -- html
-    <pre>
-    python says:
-      〈 cells(2).content.trim 〉
-      〈 cells(2).output-file.slurp.trim 〉
+1. save it as a file, e.g. "planets.samaki"
 
-     and ruby says
-       〈 cells(3).content.trim 〉
-       〈 cells(3).output-file.slurp.trim 〉
-    </pre>
+2. run `samaki planets'
 
-    and the LLM says
+3. highlight the second cell and press enter to run the query
 
-    <pre>
-      〈 cells(4).output-file.slurp.trim 〉
-    </pre>
+4. press r to refresh the page, notice that it has changed to
+
+    "Which planet from the sun is earth?"
+
+5. highlight the third cell and press enter to run the LLM query
 
 FORMAT
 ======
@@ -204,6 +194,13 @@ For help, type `samaki -h`.
 Run `samaki` for the first time to see a welcome page and a demo!
 
 Have fun!
+
+TODO
+====
+
+A lot, especially documentation.
+
+Contributions are welcome!
 
 AUTHOR
 ======
