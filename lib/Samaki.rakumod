@@ -247,43 +247,34 @@ Some use cases for samaki include
 Working examples of eg can be found in the
 L<eg|https://github.com/bduggan/raku-samaki/tree/main/eg> directory
 
+Here's one example:
+
 =begin code
-echo "a,b,c" > out.csv
-echo "1,2,3" >> out.csv
-echo "done!"
 
 -- duck
-select * from 'out.csv';
+select 'hello' as world;
 
--- python
-print("hello world")
-
--- ruby
-puts "hello world"
+-- duck
+select 'earth' as planet;
 
 -- llm
-
-Tell me about the differences between saying hello
-in ruby and python in 20 words or less.
-
--- html
-<pre>
-python says:
-  〈 cells(2).content.trim 〉
-  〈 cells(2).output-file.slurp.trim 〉
-
- and ruby says
-   〈 cells(3).content.trim 〉
-   〈 cells(3).output-file.slurp.trim 〉
-</pre>
-
-and the LLM says
-
-<pre>
-  〈 cells(4).output-file.slurp.trim 〉
-</pre>
+Which planet from the sun is 〈 cells(1).rows[0]<planet> 〉?
 
 =end code
+
+To use this:
+
+1. save it as a file, e.g. "planets.samaki"
+
+2. run `samaki planets'
+
+3. highlight the second cell and press enter to run the query
+
+4. press r to refresh the page, notice that it has changed to
+
+    "Which planet from the sun is earth?"
+
+5. highlight the third cell and press enter to run the LLM query
 
 =head1 FORMAT
 
@@ -435,15 +426,19 @@ an HTML file is basically:
     shell <<open $path>>;
   }
 
-
 =head1 USAGE
-
 
 For help, type `samaki -h`.
 
 Run `samaki` for the first time to see a welcome page and a demo!
 
 Have fun!
+
+=head1 TODO
+
+A lot, especially documentation.
+
+Contributions are welcome!
 
 =head1 AUTHOR
 
