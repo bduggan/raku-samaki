@@ -6,8 +6,9 @@ use Samaki::Plugin::Process;
     / llm  /   => 'Samaki::Plugin::LLM',
     / text /   => 'Samaki::Plugin::Text',
     / bash /   => 'Samaki::Plugin::Bash',
-    / html/    => 'Samaki::Plugin::HTML',
-   / python / => class SamakiPython does Samaki::Plugin::Process[
+    / html /   => 'Samaki::Plugin::HTML',
+    / raku /   => 'Samaki::Plugin::Raku',
+    / python / => class SamakiPython does Samaki::Plugin::Process[
                        name => 'python',
                        cmd => 'python3' ] {
                  has %.add-env = PYTHONUNBUFFERED => '1';
