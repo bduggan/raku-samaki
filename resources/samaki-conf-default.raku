@@ -17,6 +17,7 @@ use Samaki::Plugin::Process;
     / csv  /   => 'Samaki::Plugout::Duckview',
     / csv  /   => 'Samaki::Plugout::DataTable',
     / html /   => 'Samaki::Plugout::HTML',
+    / txt  /   => 'Samaki::Plugout::Plain',
     / .*   /   => 'Samaki::Plugout::Raw',
   ]
 ;
