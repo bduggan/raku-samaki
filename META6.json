@@ -1,6 +1,6 @@
 {
-  "name" : "Samaki",
-  "description" : "Raku notebooks for data exploration",
+  "name" : "App::samaki",
+  "description" : "Stitch together snippets of code and data",
   "authors" : [
     "Brian Duggan"
   ],
@@ -32,7 +32,6 @@
     "Grammar::PrettyErrors", "LLM::DWIM", "Log::Async", "Terminal::UI", "Color", "Duckie", "Prettier::Table",
     "Time::Duration", "Terminal::ANSI", "Duck::CSV", "Color", "Color::Scheme"
   ],
-  "description" : "Query Independent sources of Data",
   "tags" : [
     "data"
   ],

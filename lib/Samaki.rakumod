@@ -206,7 +206,7 @@ method pages-exist {
 
 =head1 NAME
 
-Samaki -- Stich together languages, tools and data
+Samaki -- Stitch together snippets of code and data
 
 =head1 SYNOPSIS
 
