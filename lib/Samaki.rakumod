@@ -240,11 +240,13 @@ files.  Cells can reference each others' content or output.
 
 Some use cases for samaki include
 
-    * querying data from multiple sources
-    * trying out different programming languages
-    * reining in LLMs
+* querying data from multiple sources
 
-Working examples of eg can be found in the
+* trying out different programming languages
+
+* reining in LLMs
+
+Many examples of can be found in the
 L<eg|https://github.com/bduggan/raku-samaki/tree/main/eg> directory
 
 Here's one example:
@@ -280,8 +282,9 @@ To use this:
 
 A samaki page (or notebook) consists of two things
 
-   1. a text file, ending in .samaki
-   2. a directory containing data files.
+1. a text file, ending in .samaki
+
+2. a directory containing data files.
 
 The directory name will be the same as the basename of the file, and it
 will be created if it doesn't exist.  e.g.
@@ -301,16 +304,16 @@ The samaki file is a text file divided into cells, each of which looks like this
 
 That is:
 
-  1. New cells are indicated with a line starting with with two dashes and a space ("-- ")
-     by the type of cell mark the division.  (Other dashes like "─" can be used instead of
-     a double dash)
+1. New cells are indicated with a line starting with with two dashes and a space ("-- ")
+   by the type of cell mark the division.  (Other dashes like "─" can be used instead of
+   a double dash)
 
-  2. The type of the cell should be a single word with alphanumeric characters.
+2. The type of the cell should be a single word with alphanumeric characters.
 
-  3. An optional colon and name can give a name to the cell.
+3. An optional colon and name can give a name to the cell.
   
-  4. At the top of each cell, optional configuration options can be set as name : value pairs
-     with a leading pipe symbol (`|`)
+4. At the top of each cell, optional configuration options can be set as name : value pairs
+   with a leading pipe symbol (`|`)
 
 Another example: a cell named "the_answer" that runs a query and uses a duckdb file named life.duckdb
 
@@ -322,19 +325,15 @@ Another example: a cell named "the_answer" that runs a query and uses a duckdb f
 Cells may reference other cells by using angle brackets, as
 shown above:
 
-```
-〈 cells(0).content 〉
-``
+    〈 cells(0).content 〉
 
 alternatively, a three less-than signs in a row can be used, like this:
 
-```
-<<< cells(0).content >>>
-```
+    <<< cells(0).content >>>
 
 Cells can be referenced by name or by number, e.g.
 
-〈 cells('the_answer').content 〉
+    〈 cells('the_answer').content 〉
 
 refers to the contents of the above cell.
 
