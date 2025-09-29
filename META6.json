@@ -6,6 +6,7 @@
   ],
   "provides" : {
     "Samaki" : "lib/Samaki.rakumod",
+    "Samaki::Utils" : "lib/Samaki/Utils.rakumod",
     "Samaki::Cell" : "lib/Samaki/Cell.rakumod",
     "Samaki::Conf" : "lib/Samaki/Conf.rakumod",
     "Samaki::Events" : "lib/Samaki/Events.rakumod",
