@@ -217,7 +217,7 @@ class Samaki::Page {
       my $streamer = start {
         loop {
           my $line = $cell.output-stream.receive;
-          last unless $line;
+          last unless $line.defined;
           if $line.isa(Hash) {
             btm.put: $line<txt>, meta => $line<meta>;
           } else {

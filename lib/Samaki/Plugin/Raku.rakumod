@@ -7,3 +7,4 @@ unit class Samaki::Plugin::Raku does Samaki::Plugin::Process[
   cmd => 'raku' ];
 
 has $.description = 'Run raku in another process';
+method stream-output { True };
