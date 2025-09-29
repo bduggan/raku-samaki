@@ -232,9 +232,9 @@ Usage:
 
 =head1 DESCRIPTION
 
-Samaki is a system for writing queries and snippets of programs in a multiple
+Samaki is a system for writing queries and snippets of programs in multiple
 languages in one file.  It's a bit like Jupyter notebooks (or R 
-or Observable notebooks), but with multiple languages in one notebook.  It
+or Observable notebooks), but with multiple types of cells in one notebook.  It
 has a plugin architecture for defining the types of cells, and for describing
 the types of output.  Outputs from cells are serialized, often as CSV
 files.  Cells can reference each others' content or output.
