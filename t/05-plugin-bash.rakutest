@@ -5,7 +5,7 @@ use Samaki::Plugin::Bash;
 plan 8;
 
 # Mock cell class for testing
-class MockCell {
+class MockCell is Samaki::Cell {
     has $.content = 'echo "hello world"';
     has $.timeout = 2;
     method get-content(:$mode) { $.content }
@@ -28,7 +28,7 @@ ok $bash ~~ Samaki::Plugin::Process, 'does Samaki::Plugin::Process role';
 
 # Test execute method with simple command
 {
-    my $cell = MockCell.new;
+    my $cell = MockCell.new(page-name => 'test', cell-type => 'test', name => 'test', data-dir => $*TMPDIR, wkdir => $*TMPDIR);
     lives-ok { 
         $bash.execute(:$cell, :mode<eval>);
     }, 'execute method runs without dying';
@@ -36,7 +36,7 @@ ok $bash ~~ Samaki::Plugin::Process, 'does Samaki::Plugin::Process role';
 
 # Test timeout functionality
 {
-    my $cell = MockCell.new(content => 'sleep 5', timeout => 1);
+    my $cell = MockCell.new(content => 'sleep 5', timeout => 1, page-name => 'test', cell-type => 'test', name => 'test', data-dir => $*TMPDIR, wkdir => $*TMPDIR);
     my $start-time = now;
     lives-ok { 
         $bash.execute(:$cell, :mode<eval>);
