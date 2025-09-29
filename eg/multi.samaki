@@ -1,0 +1,16 @@
+-- duckie
+
+select 'hello' as greeting, 'world' as planet;
+
+-- duck
+
+select '<<< prev.rows[0]<greeting> >>>'  as prev_greeting
+
+-- duck
+
+select '<<< cells(0).rows[0]<greeting> >>>'  as first_greeting
+
+-- llm
+
+what is the derivative of ln
+
