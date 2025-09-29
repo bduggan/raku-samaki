@@ -3,3 +3,5 @@ tar
 log.*
 *.csv
 eg/*/
+eg/*/*.html
+eg/*/*.png
