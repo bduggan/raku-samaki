@@ -348,7 +348,9 @@ regexes, and whichever one matches first will be used to parse the input
 and generate output.
 
 Samaki comes with a default configuration file and some default plugins.  The default
-configuration looks like this
+configuration looks something like
+this (see L<here|https://github.com/bduggan/raku-samaki/tree/main/resources/>
+for the actual contents) :
 
     # samaki-conf.raku
     #

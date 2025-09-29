@@ -119,7 +119,7 @@ CONFIGURATION
 
 Samaki is configured with a set of regular expressions which are used to determine how to handle each cell. The "type" of the cell above is matched against the regexes, and whichever one matches first will be used to parse the input and generate output.
 
-Samaki comes with a default configuration file and some default plugins. The default configuration looks like this
+Samaki comes with a default configuration file and some default plugins. The default configuration looks something like this (see [here](https://github.com/bduggan/raku-samaki/tree/main/resources/) for the actual contents) :
 
     # samaki-conf.raku
     #
