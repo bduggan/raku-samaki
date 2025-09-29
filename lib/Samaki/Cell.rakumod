@@ -1,9 +1,9 @@
 #!raku
 
 use Log::Async;
+use Duck::CSV;
 
 use Samaki::Plugins;
-use Duck::CSV;
 
 class Samaki::Cell {
   has Str $.page-name is required;
@@ -130,7 +130,13 @@ class Samaki::Cell {
     indir self.cell-dir, {
       info "In directory {self.cell-dir}";
       try {
-        my $out = self.output-file.open(:w) if $.plugin.write-output;
+        my $out;
+        if $.plugin.write-output {
+          $.plugin.info: "Writing to {self.output-file}";
+          $out = self.output-file.open(:w) 
+        } else {
+          $.plugin.info: "Not writing output";
+        }
         LEAVE {
           try { $out.close } if $out;
         }

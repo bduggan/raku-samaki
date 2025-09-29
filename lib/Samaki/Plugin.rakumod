@@ -6,12 +6,14 @@ use Duckie;
 use Duckie::Result;
 use Samaki::Conf;
 use Log::Async;
+use Samaki::Cell;
+use Samaki::Page;
 
 method name { ... }
 method description { ... }
 
 method wrap { 'none' }
-method stream-output { False }
+method stream-output { True }
 
 method setup(Samaki::Conf :$conf) { }
 
@@ -52,7 +54,7 @@ method line-format(Str $line) {
   $line;
 }
  
-method execute(:$cell) {
+method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out) {
   ... 
 }
 

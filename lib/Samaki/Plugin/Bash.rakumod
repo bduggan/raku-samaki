@@ -14,7 +14,7 @@ unit class Samaki::Plugin::Bash does Samaki::Plugin::Process;
 has $.name = 'bash';
 has $.description = 'Run bash with streaming output';
 
-method execute(:$cell, :$mode, :$page) {
+method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out) {
   info "executing bash cell";
   my $cwd = $*CWD;
   my $proc = Proc::Async.new: 'bash', :out, :err, :w;

@@ -6,6 +6,7 @@ unit class Samaki::Plugin::LLM does Samaki::Plugin;
 
 has $.name = 'llm-dwim';
 has $.description = 'Execute text using LLM::DWIM';
+has $.output-ext = 'txt';
 
 has $.wrap = 'word';
 

@@ -1,7 +1,6 @@
 unit class Samaki::Plugins;
 use Samaki::Conf;
 use Log::Async;
-use Samaki::Plugin;
 
 has @.rules;
 

@@ -3,8 +3,9 @@ use Terminal::UI;
 use Log::Async;
 use Time::Duration;
 
-use Samaki::Events;
+use Samaki::Cell;
 use Samaki::Page;
+use Samaki::Events;
 use Samaki::Plugins;
 use Samaki::Plugouts;
 use Samaki::Conf;
