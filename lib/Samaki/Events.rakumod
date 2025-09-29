@@ -96,6 +96,8 @@ method set-events {
            $.plugouts.dispatch($path, pane => btm, :$data-dir, :$name,
            |%( %meta<plugout_name> ?? %( plugout_name => %meta<plugout_name>) !! %() )
          );
+        } else {
+          warning "missing path in meta, skipping plugout"
         }
       }
 

@@ -1,14 +1,25 @@
 unit module Samaki::Utils;
+use Log::Async;
 
-sub shell-open($file) is export {
+sub shell-open(IO::Path $rel) is export {
+  my $file = $rel.resolve.absolute;
+  info "calling open $file, in $*CWD";
+  my $proc;
   given $*DISTRO {
     when /macos/ {
-      shell "open '$file' 2>/dev/null";
+      $proc = shell <<open $file>>, :err, :out;
     }
     default {
-      shell "xdg-open '$file' 2>/dev/null";
+      $proc = shell <<xdg-open $file>>, :err, :out;
     }
   }
+  if $proc.err.slurp -> $err {
+     warning "$_" for $err.lines;
+  }
+  if $proc.out.slurp -> $out {
+    info "$_" for $out.lines;
+  }
+  $proc.exitcode;
 }
 
 sub html-escape($html) is export {

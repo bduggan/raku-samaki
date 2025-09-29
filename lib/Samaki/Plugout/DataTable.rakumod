@@ -10,9 +10,9 @@ has $.description = 'Make an HTML table with the data and open a browser';
 has $.clear-before = False;
 
 method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
+  info "executing dataTable with $path";
   my $html-file = $data-dir.child("$name.html");
   my @rows = read-csv("$path");
-  info @rows.raku;
 
   my $fh = open :w, $html-file;
   $fh.print: q:to/HTML/;
@@ -235,5 +235,6 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
 
   $fh.close;
 
-  shell-open: $html-file;
+  info "opening $html-file";
+  shell-open $html-file;
 }

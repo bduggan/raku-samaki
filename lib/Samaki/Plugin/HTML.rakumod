@@ -12,5 +12,5 @@ method output-ext { 'html' }
 
 method execute(:$cell, :$mode, :$page) {
   $cell.get-content(:$mode, :$page) ==> spurt $cell.output-file;
-  shell-open($cell.output-file);
+  shell-open $cell.output-file;
 }
