@@ -1,3 +1,11 @@
+0.0.2 2025-09-30
+
+   - Lots of docs and typos
+   - links for llm output and process outputs
+   - run duck in data-dir
+   - improve signatures
+   - stream-output by default
+
 0.0.1 2025-09-28
    Initial release
 
