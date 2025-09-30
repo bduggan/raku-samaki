@@ -158,11 +158,11 @@ method show-dir(IO::Path $dir, :$suffix = 'samaki', :$pane = top, Bool :$header 
     return;
   }
 
-  my @subdirs = $dir.dir(test => { "$dir/$_".IO.d && !"$dir/$_".IO.basename.starts-with('.') }).sort: *.accessed;
+  my @subdirs = reverse $dir.dir(test => { "$dir/$_".IO.d && !"$dir/$_".IO.basename.starts-with('.') }).sort: *.accessed;
   my %subs = @subdirs.map({.basename}).Set;
   my %shown = Set.new;
 
-  my @pages = reverse $dir.IO.dir(test => { /'.' [ $suffix ] $$/ }).sort: *.accessed;
+  my @pages = reverse $dir.IO.dir(test => { /'.' [ $suffix ] $$/ }).sort: *.basename;
   for @pages -> $d {
     my $name = $d.basename.subst(/'.' $suffix/,'');
     my $title = "〜 { $name } 〜";
@@ -187,7 +187,7 @@ method show-dir(IO::Path $dir, :$suffix = 'samaki', :$pane = top, Bool :$header 
     pane.put: @row, :%meta, :!scroll-ok;
   }
 
-  my @others = reverse $dir.IO.dir(test => { !/'.' [ $suffix ] $$/ && !.starts-with('.') }).sort: *.accessed;
+  my @others = $dir.IO.dir(test => { !/'.' [ $suffix ] $$/ && !.starts-with('.') }).sort: *.basename;
   for @others -> $path {
     next if %shown{$path.basename};
     if $path.IO.d {
