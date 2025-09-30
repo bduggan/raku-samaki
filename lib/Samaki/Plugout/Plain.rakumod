@@ -16,7 +16,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   $fh.put: qq:to/HTML/;
   <!DOCTYPE html>
   <html>
-  <pre>
+  <pre style="white-space: pre-wrap; word-wrap: break-word;">
   { html-escape($content) }
   </pre>
   </html>

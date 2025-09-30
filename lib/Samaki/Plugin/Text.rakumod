@@ -8,9 +8,11 @@ unit class Samaki::Plugin::Text does Samaki::Plugin;
 has $.name = 'text';
 has $.description = 'Text cell, with optional links to other pages';
 
+method output-ext { 'txt' }
+
 method execute(:$cell, :$mode, :$page) {
- info "text cell, nothing to do";
- $!output = "no output from a text cell";
+  $cell.output-file.spurt: $cell.get-content(:$mode, :$page);
+  self.info: "Wrote text to " ~ $cell.output-file;
 }
 
 my regex page { <[a..zA..Z0..9]>+ }

@@ -19,7 +19,7 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
   my $cwd = $*CWD;
   my $proc = Proc::Async.new: 'bash', :out, :err, :w;
   my $input = $cell.get-content(:$mode, :$page);
-  my $timeout = $cell.get-conf('timeout') // 10;
+  my $timeout = $cell.get-conf('timeout') // 300;
   my $pid;
 
   try react {

@@ -39,7 +39,6 @@ class Samaki::Cell {
   }
 
   method select-action {
-    return Nil if $.cell-type eq 'text';
     return 'run';
   }
 
@@ -113,7 +112,8 @@ class Samaki::Cell {
   }
 
   method output-file {
-    self.cell-dir.child( self.name ~ "." ~ $.output-ext);
+    my $ext = self.get-conf('ext') // $.output-ext;
+    self.cell-dir.child( self.name ~ "." ~ $ext);
   }
 
   method data {
