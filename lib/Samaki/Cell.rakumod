@@ -2,7 +2,8 @@
 
 use Log::Async;
 use Duck::CSV;
-
+use Terminal::ANSI::OO 't';
+use Samaki::Conf;
 use Samaki::Plugins;
 
 class Samaki::Cell {
@@ -132,7 +133,9 @@ class Samaki::Cell {
       try {
         my $out;
         if $.plugin.write-output {
-          $.plugin.info: "Writing to {self.output-file}";
+          $.plugin.stream:
+            txt => [ t.color(%COLORS<normal>) => 'writing to ', t.color(%COLORS<button>) => "[{ self.output-file }]" ],
+            meta => %( action => 'do_output', :path(self.output-file) );
           $out = self.output-file.open(:w) 
         } else {
           $.plugin.info: "Not writing output";

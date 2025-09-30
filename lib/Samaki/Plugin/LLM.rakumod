@@ -1,6 +1,8 @@
 use Samaki::Plugin;
 use Log::Async;
 use LLM::DWIM;
+use Samaki::Conf;
+use Terminal::ANSI::OO 't';
 
 unit class Samaki::Plugin::LLM does Samaki::Plugin;
 
@@ -22,5 +24,6 @@ method execute(:$cell, :$mode, :$page, :$out) {
    $out.put($res) if $out;
  }
 
+ self.info: 'done';
  $h.restore;
 }
