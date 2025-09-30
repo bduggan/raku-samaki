@@ -219,9 +219,9 @@ class Samaki::Page {
           my $line = $cell.output-stream.receive;
           last unless $line.defined;
           if $line.isa(Hash) {
-            btm.put: $line<txt>, meta => $line<meta>;
+            btm.put: $line<txt>, meta => $line<meta>, wrap => $cell.wrap // 'none';
           } else {
-            btm.put: $line;
+            btm.put: $line, wrap => $cell.wrap // 'none';
           }
         }
       }
