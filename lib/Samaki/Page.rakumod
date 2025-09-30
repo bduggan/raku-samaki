@@ -195,8 +195,6 @@ class Samaki::Page {
       @!cells.tail.load-plugin: :$plugins;
     }
     my $l = @!cells.tail.start-line;
-    #note 'start line is ' ~ @!cells.tail.start-line;
-    #note 'content at that line is ' ~ $!content.lines[ $l ];
     return True;
   }
 

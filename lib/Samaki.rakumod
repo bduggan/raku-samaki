@@ -18,6 +18,7 @@ my \btm := my $;
 
 has $.log = logger;
 has @.startup-log;
+has @.verbose-startup-log;
 
 has $.conf;
 
@@ -46,16 +47,16 @@ submethod TWEAK {
     }
     $!config-file = $config-location.Str;
     die "could not open config file $!config-file" unless $!config-file.IO.e;
-    @!startup-log.push: "Using config file " ~ $!config-file;
+    @!verbose-startup-log.push: "Using config file " ~ $!config-file;
     info "Using config file " ~ $!config-file;
     $!conf = Samaki::Conf.new(file => $!config-file);
   }
 
   try {
     $!plugins.configure($!conf);
-    @!startup-log.push: "Available plugins: ";
+    @!verbose-startup-log.push: "Available plugins: ";
     for $!plugins.list-all -> $p {
-      @!startup-log.push: [
+      @!verbose-startup-log.push: [
         t.color(%COLORS<cell-type>) => $p<regex>.raku.fmt(' %-20s '),
         t.color(%COLORS<plugin-info>) => $p<name>.fmt('%20s : '),
         t.color(%COLORS<plugin-info>) => $p<desc> // '(no description)',
@@ -73,9 +74,9 @@ submethod TWEAK {
 
   try {
     $!plugouts.configure($!conf);
-    @!startup-log.push: "Available plugouts: ";
+    @!verbose-startup-log.push: "Available plugouts: ";
     for $!plugouts.list-all -> $p {
-      @!startup-log.push: [
+      @!verbose-startup-log.push: [
         t.color(%COLORS<cell-type>) => $p<regex>.raku.fmt(' %-20s '),
         t.color(%COLORS<plugin-info>) => $p<name>.fmt('%20s : '),
         t.color(%COLORS<plugin-info>) => $p<desc> // '(no description)',
@@ -108,6 +109,7 @@ multi method start-ui(Samaki::Page :$page!) {
     btm.put: $_ for @!startup-log;
     @!startup-log = ();
   }
+  self.show-dir(self.data-dir, pane => btm, header => False);
   $.ui.interact;
   $.ui.shutdown;
 }
@@ -118,9 +120,11 @@ multi method start-ui('browse') {
     top.auto-scroll = False;
     btm.auto-scroll = False;
     self.set-events;
-    if @!startup-log {
+    if @!startup-log || @!verbose-startup-log {
       btm.put: $_ for @!startup-log;
+      btm.put: $_ for @!verbose-startup-log;
       @!startup-log = ();
+      @!verbose-startup-log = ();
     }
     self.show-dir($!wkdir, :highlight-samaki);
     $.ui.interact;
@@ -146,7 +150,7 @@ method show-dir(IO::Path $dir, :$suffix = 'samaki', :$pane = top, Bool :$header 
     pane.put: [t.yellow => "$dir"], :center;
     pane.put: [t.white => "../"], meta => %(dir => $dir.parent, action => 'chdir'), :!scroll-ok;
   } else {
-    pane.put: [t.yellow => $dir.basename ~ '/'];
+    pane.put: [t.yellow => $dir.basename ~ '/'], :center;
   }
 
   unless $dir && $dir.d {
