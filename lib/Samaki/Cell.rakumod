@@ -1,10 +1,9 @@
 #!raku
 
-use Samaki::Conf;
 use Terminal::ANSI::OO 't';
 use Log::Async;
 use Duck::CSV;
-use Terminal::ANSI::OO 't';
+
 use Samaki::Conf;
 use Samaki::Plugins;
 
