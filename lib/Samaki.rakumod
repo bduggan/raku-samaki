@@ -142,6 +142,15 @@ multi method show-page(Samaki::Page $page) {
   $!current-page = $page;
 }
 
+sub human-size($bytes) {
+  return sprintf("%7d b", $bytes) if $bytes < 1024;
+  my @units = <b kb mb gb tb pb eb zb yb>;
+  my $exp = Int( log($bytes) / log(1024) );
+  $exp = @units.elems - 1 if $exp >= @units.elems;
+  my $size = $bytes / (1024 ** $exp);
+  return sprintf("%5.1f %s", $size, @units[$exp]);
+}
+
 method show-dir(IO::Path $dir, :$suffix = 'samaki', :$pane = top, Bool :$header = True, Bool :$highlight-samaki) {
   my \pane := $pane;
   $dir = $!wkdir unless $dir;
@@ -198,7 +207,8 @@ method show-dir(IO::Path $dir, :$suffix = 'samaki', :$pane = top, Bool :$header 
       my $color = %COLORS<datafile>;
       $color = %COLORS<inactive> if $highlight-samaki;
       pane.put: [ t.color($color) => $path.basename.fmt('%-40s'),
-                  t.color(%COLORS<info>) => ago( (DateTime.now - $path.accessed).Int).fmt("%{$pane.width - 43}s") ],
+                  t.color(%COLORS<info>) => human-size($path.IO.s).fmt('%15s'),
+                  t.color(%COLORS<info>) => ago( (DateTime.now - $path.accessed).Int).fmt("%{$pane.width - 43 - 15}s") ],
                   meta => %( :$path, action => "do_output", dir => $dir) :!scroll-ok;
     }
   }
