@@ -30,6 +30,7 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
       info "got line $_";
       sleep 0.01;
       $.output-stream.send: $_;
+      $out.put($_);
     }
     whenever $proc.start( :$cwd ) {
       self.do-done($_);
@@ -51,6 +52,7 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
       done;
     }
   }
+  $out.close;
   self.error("Execution failed: $_") with $!;
   if kill($pid, 0) == 0 {
     self.info: "Process $pid is still running, sending SIGKILL";
