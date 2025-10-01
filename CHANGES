@@ -1,3 +1,14 @@
+0.0.4 2025-10-01
+   - geojson example
+   - file sizes and sorting
+   - bash plugin: default 300s timeout
+   - add "run" for text
+   - start with dir for pages
+   - use wrap for output
+   - support more delimeters
+   - better ext support
+   - better streaming support
+
 0.0.3 2025-09-30
    - add raku plugin
 
