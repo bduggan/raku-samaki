@@ -67,6 +67,9 @@ submethod TWEAK {
         $!conf-errors = $_;
         @!startup-log.push: "Error configuring plugins: $_";
         error "Error configuring plugins: $_";
+        note "startup errors: " ~ @!startup-log.join("\n");
+        note "config file: " ~ $!config-file;
+        exit;
         return;
       }
     }
