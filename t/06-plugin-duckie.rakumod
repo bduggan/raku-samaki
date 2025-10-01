@@ -1,0 +1,18 @@
+#!raku
+
+use Test;
+use Samaki::Conf;
+use Samaki::Plugin::Duckie;
+
+my $cell = Samaki::Cell.new: page-name => 'test',
+   content => 'SELECT 42 AS answer',
+   cell-type => 'duckie',
+   name => 'test-duckie',
+   data-dir => $*TMPDIR,
+   wkdir => $*TMPDIR;
+my $page = Samaki::Page.new: wkdir => $*TMPDIR, name => 'test', cells => [$cell];
+my $plugin = Samaki::Plugin::Duckie.new;
+my $out = $plugin.execute(:$cell, :mode('content'), :$page);
+is $out[3]<meta><row_data>[0], 42, 'duckie query result should have answer 42';
+done-testing;
+

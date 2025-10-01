@@ -19,4 +19,5 @@ method execute(:$cell, :$mode, :$page) {
    return;
  }
  $!output = self.output-duckie($!res);
+ $!output;
 }
