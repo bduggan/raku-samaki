@@ -12,14 +12,18 @@ subset PageName of Str where { /^^ <[a..zA..Z0..9_-]>+ $$/ };
 
 class Samaki::Page {
 
-  has Str $.content;
   has IO::Path $.wkdir is required;
   has PageName $.name is required;
+  has Str $.content;
   has $.suffix = 'samaki';
   has @.cells;
   has $.mode is rw = 'eval'; # or 'raw'
   has $.current-cell is rw;
   has Str $.errors;
+
+  method data-dir {
+    $!wkdir.child(self.name);
+  }
 
   multi method get-cell(Int $index) {
     return Nil if $index < 0 || $index >= @!cells.elems;
@@ -181,7 +185,7 @@ class Samaki::Page {
         @conf.push: ( $<confkey>.Str => $<confvalue>.Str );
         @lines.shift;
       }
-      my $data-dir = $!wkdir.child(self.name);
+      my $data-dir = self.data-dir;
       @!cells.push: Samaki::Cell.new:
         :@conf,
         :$!wkdir,

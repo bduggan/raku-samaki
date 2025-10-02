@@ -25,7 +25,10 @@ method set-events {
     without $page {
       $page = Samaki::Page.new(name => "new", wkdir => self.wkdir);
     }
-    try shell <<$.editor "+$line" {$page.path}>>;
+    mkdir $page.data-dir unless $page.data-dir.d;
+    indir $page.data-dir, {
+      try shell <<$.editor "+$line" {$page.path.resolve.absolute}>>;
+    }
     if $! {
         $.ui.panes[1].put: "error starting editor: $!";
     } else {
