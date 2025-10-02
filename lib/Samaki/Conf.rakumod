@@ -33,6 +33,7 @@ our %COLORS is export = (
   yellow => $yellow,
   link => $yellow,
   normal => $base,
+  input => @palette[3],
 ).map: { .key => .value.gist };
 
 multi method load-handler(Str $handler-class) {

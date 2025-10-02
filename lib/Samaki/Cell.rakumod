@@ -116,6 +116,11 @@ class Samaki::Cell {
     self.cell-dir.child( self.name ~ "." ~ $ext);
   }
 
+  #| Should the output file be closed after execution?
+  method close-output-file {
+    True
+  }
+
   method data {
     my $file = self.output-file;
     fail "no output yet" unless $file && $file.e;
@@ -141,7 +146,7 @@ class Samaki::Cell {
           $.plugin.info: "Not writing output";
         }
         LEAVE {
-          try { $out.close } if $out;
+          try { $out.close } if self.close-output-file && $out;
         }
         $.plugin.execute: cell => self, :$mode, :$page, :$out;
         CATCH {

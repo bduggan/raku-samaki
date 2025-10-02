@@ -1,0 +1,16 @@
+-- repl
+
+say "hello";
+say DateTime.now;
+my $x = 12;
+
+-- repl
+$x++
+say $x;
+
+-- repl
+use WebService::Nominatim 'nom';
+say nom.search: "Rhode Island";
+
+-- repl
+say nom.search: "California";
