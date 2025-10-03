@@ -265,10 +265,7 @@ Some use cases for samaki include
 
 * reining in LLMs
 
-Many examples of can be found in the
-L<eg|https://github.com/bduggan/raku-samaki/tree/main/eg> directory
-
-Here's one example:
+Here's an example:
 
 =begin code
 
@@ -296,6 +293,9 @@ To use this:
     "Which planet from the sun is earth?"
 
 5. highlight the third cell and press enter to run the LLM query
+
+For more examples, check out the
+L<eg/|https://github.com/bduggan/raku-samaki/tree/main/eg> directory.
 
 =head1 FORMAT
 
