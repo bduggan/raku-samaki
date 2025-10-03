@@ -45,7 +45,7 @@ method dispatch(
   try {
    $handler.pane = $pane;
    $handler.execute(:$path, :$pane, :$data-dir, :$name);
-   $pane.select(0);
+   $pane.select(0) if $handler.clear-before;
    CATCH {
      default {
        $pane.put: "Error executing plugout handler: $_";

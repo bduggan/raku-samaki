@@ -28,15 +28,19 @@ method set-events {
     indir $dir, {
       my $shell = %*ENV<SAMAKI_SHELL> // '/bin/bash';
       put "starting $shell in $dir.  Exit the shell to return to samaki.";
-      try shell "$shell -i";
+      try {
+        my $proc = shell "$shell -i";
+        debug "shell ($shell) exited with " ~ $proc.exit-code;
+        CATCH {
+          default {
+            warning "error running shell: $_";
+          }
+        }
+      }
     }
-    if $! {
-        $.ui.panes[1].put: "error starting shell: $!";
-    } else {
-      $.ui.refresh: :hard;
-      $.ui.input.init;
-      top.select: $line;
-    }
+    $.ui.refresh: :hard;
+    $.ui.input.init;
+    top.select: $line;
   };
 
   top.on-sync: edit => -> :%meta {
