@@ -1,7 +1,7 @@
 unit module Samaki::Utils;
 use Log::Async;
 
-sub shell-open(IO::Path $rel) is export {
+sub shell-open(IO::Path(Str) $rel) is export {
   my $file = $rel.resolve.absolute;
   info "calling open $file, in $*CWD";
   my $proc;
