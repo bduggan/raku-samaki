@@ -1,0 +1,9 @@
+-- duck
+select 'hello' as world;
+
+-- duck
+select 'earth' as planet;
+
+-- llm
+Which planet from the sun is 〈 cells(1).rows[0]<planet> 〉?
+
