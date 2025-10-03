@@ -297,6 +297,10 @@ To use this:
 For more examples, check out the
 L<eg/|https://github.com/bduggan/raku-samaki/tree/main/eg> directory.
 
+<img width="1143" height="1022" alt="Image" src="https://github.com/user-attachments/assets/8f03279a-c99a-4c46-b8f5-e2f198ed083c" />
+
+<img width="1139" height="1020" alt="Image" src="https://github.com/user-attachments/assets/6581f5a9-0ec3-470c-a7f0-763488605d9a" />
+
 =head1 FORMAT
 
 A samaki page (or notebook) consists of two things
