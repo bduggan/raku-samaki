@@ -15,6 +15,29 @@ method set-events {
   my (\ui) = $.ui;
   my (\top,\btm) = $.ui.panes;
 
+  $.ui.bind: 'pane', 's' => 'run-shell';
+  top.on-sync: run-shell => -> :%meta {
+    my $line = top.current-line-index;
+    put t.text-reset;
+    put t.clear-screen;
+    put t.reset-scroll-region;
+    $.ui.input.shutdown;
+    shell "stty sane; tput cnorm";
+    my $dir = self.wkdir;
+    $dir = self.data-dir if self.current-page;
+    indir $dir, {
+      put "starting shell in $dir";
+      shell "bash -i";
+    }
+    if $! {
+        $.ui.panes[1].put: "error starting shell: $!";
+    } else {
+      $.ui.refresh: :hard;
+      $.ui.input.init;
+      top.select: $line;
+    }
+  };
+
   top.on-sync: edit => -> :%meta {
     my $line = top.current-line-index;
     put t.text-reset;
