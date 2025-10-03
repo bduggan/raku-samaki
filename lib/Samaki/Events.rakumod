@@ -26,9 +26,9 @@ method set-events {
     my $dir = self.wkdir;
     $dir = self.data-dir if self.current-page;
     indir $dir, {
-      my $shell = %*ENV<SHELL> // '/bin/bash';
-      put "starting $shell in $dir";
-      shell "$shell -i";
+      my $shell = %*ENV<SAMAKI_SHELL> // '/bin/bash';
+      put "starting $shell in $dir.  Exit the shell to return to samaki.";
+      my $proc = shell "$shell -i";
     }
     if $! {
         $.ui.panes[1].put: "error starting shell: $!";
