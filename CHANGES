@@ -1,3 +1,12 @@
+0.0.5 2025-10-03
+  - add geojson to default conf
+  - geojson plugout
+  - accept a str in shell-open
+  - docs
+  - repl plugin
+  - smoother startup
+  - colors, startup checks
+
 0.0.4 2025-10-01
    - geojson example
    - file sizes and sorting

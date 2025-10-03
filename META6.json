@@ -39,7 +39,7 @@
   ],
   "license" : "MIT",
   "raku" : "6.*",
-  "version" : "0.0.4",
+  "version" : "0.0.5",
   "auth" : "zef:bduggan",
   "api"  : "1",
   "source-url" : "git://github.com/bduggan/raku-samaki.git"
