@@ -28,7 +28,7 @@ method set-events {
     indir $dir, {
       my $shell = %*ENV<SAMAKI_SHELL> // '/bin/bash';
       put "starting $shell in $dir.  Exit the shell to return to samaki.";
-      my $proc = shell "$shell -i";
+      try shell "$shell -i";
     }
     if $! {
         $.ui.panes[1].put: "error starting shell: $!";
