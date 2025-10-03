@@ -26,8 +26,9 @@ method set-events {
     my $dir = self.wkdir;
     $dir = self.data-dir if self.current-page;
     indir $dir, {
-      put "starting shell in $dir";
-      shell "bash -i";
+      my $shell = %*ENV<SHELL> // '/bin/bash';
+      put "starting $shell in $dir";
+      shell "$shell -i";
     }
     if $! {
         $.ui.panes[1].put: "error starting shell: $!";
