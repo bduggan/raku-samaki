@@ -17,7 +17,11 @@ method description { "Run $name in a separate process" }
 
 method stream-output { True };
 
-method add-env { %() }
+method add-env {
+  %(
+    RAKUDO_LINE_EDITOR => 'none',
+   )
+}
 
 method output-ext { 'txt' }
 
