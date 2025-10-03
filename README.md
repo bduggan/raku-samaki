@@ -47,13 +47,15 @@ To use this:
 
 2. run `samaki planets'
 
-3. highlight the second cell and press enter to run the query
+3. press 'm' to toggle between raw mode and rendered mode
 
-4. press r to refresh the page, notice that it has changed to
+4. highlight the second cell and press enter to run the query
+
+5. press r to refresh the page, also press m to change the mode, and notice that it has changed to
 
     "Which planet from the sun is earth?"
 
-5. highlight the third cell and press enter to run the LLM query
+6. highlight the third cell and press enter to run the LLM query
 
 For more examples, check out the [eg/](https://github.com/bduggan/raku-samaki/tree/main/eg) directory.
 
