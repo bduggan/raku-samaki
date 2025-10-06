@@ -322,7 +322,7 @@ will be created if it doesn't exist.  e.g.
 
 The samaki file is a text file divided into cells, each of which looks like this:
 
-    -- <cell type> [ : name ]?
+    -- <cell type> [ : name ['.' ext]? ]?
     | conf-key 1 : conf-value 1
     | conf-key 2 : conf-value 2
     [... cell content ..]
@@ -345,6 +345,10 @@ Another example: a cell named "the_answer" that runs a query and uses a duckdb f
     | file: life.duckdb
 
     select 42 as life_the_universe_and_everything
+
+Running the cell above creates `the_answer.csv` in the data directory.  Note that
+if the extension is omitted, it is assumed to be `.csv`.  `the_answer.csv` could
+also have been written.
 
 Cells may reference other cells by using angle brackets, as shown above:
 
