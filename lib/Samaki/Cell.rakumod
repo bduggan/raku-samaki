@@ -27,6 +27,8 @@ class Samaki::Cell {
 
   has $.plugin handles <wrap stream-output output-stream output-ext>;
 
+  has $.default-ext = 'csv';
+
   has @.conf;
 
   method is-valid {
@@ -112,7 +114,7 @@ class Samaki::Cell {
   }
 
   method output-file {
-    my $ext = self.get-conf('ext') // $.output-ext;
+    my $ext = self.get-conf('ext') || $.output-ext || $.default-ext;
     self.cell-dir.child( self.name ~ "." ~ $ext);
   }
 

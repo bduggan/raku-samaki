@@ -17,7 +17,7 @@ method stream-output { True }
 
 method setup(Samaki::Conf :$conf) { }
 
-method output-ext { 'csv' }
+method output-ext { '' }
 method write-output { True }
 
 has $.output; # Str or array

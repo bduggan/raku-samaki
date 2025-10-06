@@ -20,6 +20,7 @@ use Samaki::Plugin::Process;
     / html /   => 'Samaki::Plugout::HTML',
     / txt  /   => 'Samaki::Plugout::Plain',
     / geojson / => 'Samaki::Plugout::Geojson',
+    / json /    => 'Samaki::Plugout::JSON',
     / .*   /   => 'Samaki::Plugout::Raw',
   ]
 ;

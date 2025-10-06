@@ -141,10 +141,11 @@ class Samaki::Page {
       return False;
     }
     my regex cell-type { \h* <[a..zA..Z0..9_-]>+ \h* }
+    my regex cell-ext { <[a..zA..Z0..9_-]>+ }
     my regex cell-name { <[a..zA..Z0..9_-]>+ }
     my @dashes = "─", "―", "⸺", "–", "—", "﹣", "－", '--','┌──','──','┌─';
     my regex dashes { @dashes }
-    my regex cell-header { ^^ <dashes> \h* <cell-type> \h*  [ ':' \h*  <cell-name> ]?  \h* $$ }
+    my regex cell-header { ^^ <dashes> \h* <cell-type> \h*  [ ':' \h*  <cell-name> [ '.' <cell-ext> ]? ]?  \h* $$ }
     my @indexes = $!content.lines.grep: { / <cell-header> / }, :k;
     @indexes.push: $!content.lines.elems;
     if @indexes[0] != 0 {
@@ -180,6 +181,10 @@ class Samaki::Page {
       with $<cell-header><cell-name> -> $n {
         $cell-name = $n.Str.trim;
       }
+      my %args;
+      with $<cell-header><cell-ext> -> $ext {
+        %args<default-ext> = $ext.Str;
+      }
       my @conf;
       while @lines[0] && @lines[0] ~~ &confline {
         @conf.push: ( $<confkey>.Str => $<confvalue>.Str );
@@ -195,7 +200,8 @@ class Samaki::Page {
         content => (@lines.join("\n") ~ "\n"),
         index => $++,
         start-line => @ranges[ $block-index ][0],
-        page-name => $.name;
+        page-name => $.name,
+        |%args;
       @!cells.tail.load-plugin: :$plugins;
     }
     my $l = @!cells.tail.start-line;

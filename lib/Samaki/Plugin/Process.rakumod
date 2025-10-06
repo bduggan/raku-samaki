@@ -19,8 +19,6 @@ method stream-output { True };
 
 method add-env { %() }
 
-method output-ext { 'txt' }
-
 method wrap { 'word' }
 
 method do-ready($pid, $proc, $timeout = Nil) {
