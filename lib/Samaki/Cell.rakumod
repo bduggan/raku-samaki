@@ -95,7 +95,7 @@ class Samaki::Cell {
       }
       try {
         my $eval-str = ($p<phrase> // $p<alt>).Str;
-        info "EVAL: $eval-str";
+        trace "calling EVAL with $eval-str";
         my $res = do {
           indir self.data-dir, { $eval-str.EVAL }
         }
