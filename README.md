@@ -82,9 +82,9 @@ The directory name will be the same as the basename of the file, and it will be 
 
 The samaki file is a text file divided into cells, each of which looks like this:
 
-    -- <cell type> [ : name ['.' ext]? ]?
-    | conf-key 1 : conf-value 1
-    | conf-key 2 : conf-value 2
+    -- <cell type> [ : <name> ['.' <ext>]? ]?
+    | <conf-key 1> : <conf-value 1>
+    | <conf-key 2> : <conf-value 2>
     [... cell content ..]
 
 That is:
