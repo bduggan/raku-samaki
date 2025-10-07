@@ -322,9 +322,9 @@ will be created if it doesn't exist.  e.g.
 
 The samaki file is a text file divided into cells, each of which looks like this:
 
-    -- <cell type> [ : name ['.' ext]? ]?
-    | conf-key 1 : conf-value 1
-    | conf-key 2 : conf-value 2
+    -- <cell type> [ : <name> ['.' <ext>]? ]?
+    | <conf-key 1> : <conf-value 1>
+    | <conf-key 2> : <conf-value 2>
     [... cell content ..]
 
 That is:
