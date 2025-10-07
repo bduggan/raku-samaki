@@ -85,7 +85,7 @@ class Samaki::Cell {
     my regex alt { '<<<' <( <( .*? )> )> '>>>' }
 
     my @pieces = $.content.split( / <phrase> | <alt> /, :v);
-    info "Spliting { $.content }";
+    info "Splitting { $.content }";
     info @pieces.raku;
     my $out;
     for @pieces -> $p {
@@ -94,10 +94,15 @@ class Samaki::Cell {
         next;
       }
       try {
-        my $res = ($p<phrase> // $p<alt>).Str.EVAL;
+        my $eval-str = ($p<phrase> // $p<alt>).Str;
+        info "EVAL: $eval-str";
+        my $res = do {
+          indir self.data-dir, { $eval-str.EVAL }
+        }
         $out ~= $res;
         CATCH {
           default {
+            info "errors in eval, got $_ when running '$eval-str'";
             $out ~= "¡¡ $p !!";
             $!errors ~= "Error evaluating $p : $_\n";
           }
