@@ -163,6 +163,8 @@ method set-events {
         my $cell = $page.current-cell // $page.cells[0];
         $.plugouts.dispatch:
            $path, pane => btm, data-dir => self.data-dir, name => $cell.name,
+           cell-content => $cell.last-content,
+           cell-conf => $cell.conf,
            |%( %meta<plugout_name> ?? %( plugout_name => %meta<plugout_name>) !! %() )
       }
       when 'view_row' {
