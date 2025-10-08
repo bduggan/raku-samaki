@@ -14,7 +14,10 @@ method dispatch(
     :$pane,
     :$data-dir = $path.dirname.IO,
     :$name!, #= cell name
-    Str :$plugout_name) {
+    Str :$plugout_name,
+    Str :$cell-content,
+    :@cell-conf,
+  ) {
   my @handlers;
   for @.rules -> %entry {
     next if $plugout_name && %entry<handler>.name ne $plugout_name;
@@ -44,7 +47,7 @@ method dispatch(
   }
   try {
    $handler.pane = $pane;
-   $handler.execute(:$path, :$pane, :$data-dir, :$name);
+   $handler.execute(:$path, :$pane, :$data-dir, :$name, :$cell-content, :@cell-conf);
    $pane.select(0) if $handler.clear-before;
    CATCH {
      default {
