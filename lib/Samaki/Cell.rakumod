@@ -20,7 +20,7 @@ class Samaki::Cell {
   has Str $.errors; #= errors during evaluation, execution or setup
   has $.index;       #= 1-based index of cell in page
   has $.start-line;  #= line number in page where cell starts
-  has $.timeout = 5; #= default execution timeout in seconds
+  has $.timeout = 60; #= default execution timeout in seconds
   has $.plugin handles <wrap stream-output output-stream output-ext>;
   has $.default-ext = 'csv';
   has @.conf;
