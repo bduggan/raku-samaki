@@ -150,7 +150,9 @@ class Samaki::Cell {
         LEAVE {
           try { $out.close } if self.close-output-file && $out;
         }
-        $.plugin.execute: cell => self, :$mode, :$page, :$out;
+        indir self.data-dir, {
+          $.plugin.execute: cell => self, :$mode, :$page, :$out;
+        }
         CATCH {
           default {
             $!errors = "Errors running { $.plugin.name } : $_";

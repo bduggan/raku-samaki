@@ -2,6 +2,7 @@ use Samaki::Plugin::Process;
 
 %*samaki-conf =
   plugins => [
+    / duckie / => 'Samaki::Plugin::Duckie',
     / duck /   => 'Samaki::Plugin::Duck',
     / llm  /   => 'Samaki::Plugin::LLM',
     / text /   => 'Samaki::Plugin::Text',
