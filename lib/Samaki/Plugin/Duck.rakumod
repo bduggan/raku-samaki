@@ -24,7 +24,7 @@ method execute(:$cell!, :$page!, :$mode!, :$out) {
   info "Executing duck cell";
   self.info: "Executing duckdb with db {$db // '<memory>'}";
   self.info: "db is { $db.IO.resolve }" if $db;
-  my $timeout = $cell.get-conf('timeout') // 5;
+  my $timeout = $cell.get-conf('timeout') // $cell.timeout;
   my $cwd = $cell.data-dir;
   self.info: "Running in $cwd/";
   my $proc = $db ?? Proc::Async.new: <<$!executable $db --batch --csv>>, :out, :err, :w
