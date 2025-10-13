@@ -436,6 +436,8 @@ it will send code to stdin for python and put unbuffered output from stdout into
           },
       ...
 
+See below for a list of plugins that come with samaki.
+
 =head1 PLUGOUTS
 
 Output files are also matched against a sequence of regexes, and these can be
@@ -452,9 +454,79 @@ an HTML file is basically:
     shell <<open $path>>;
   }
 
+See below for a list of plugouts that come with samaki.
+
+=head1 INCLUDED PLUGINS
+
+The list below are plugins that come with samaki.
+
+=head2 Samaki::Plugin::Duck
+
+Run SQL queries using the duckdb executable.  i.e. the cell is sent to stdin
+of the `duckdb` executable, and stdout is saved to a file.
+
+=head2 Samaki::Plugin::Duckie
+
+Send the contents of the cell to an inline duckdb driver.  For this and the
+above, the first 100 rows are placed in the bottom row, and selecting
+them will show that row in the top pane.
+
+=head2 Samaki::Plugin::LLM
+
+Send the contents of the cell to an llm which will be evaluted using L<LLM::DWIM>.
+
+=head2 Samaki::Plugin::Raku
+
+Send the contents to a separate process that is running raku.
+
+=head2 Samak::Plugin::Text
+
+Write the contents of a cell to a text file.
+
+=head2 Samaki::Plugin::Repl
+
+Write the contents to a running version of the raku repl, and keep it running.
+
+=head2 Samaki::Plugin::Bash
+
+Execute the contents as a bash program.
+
+=head1 Included Plugouts
+
+These plugouts are available by default, and included in the Samaki distribution:
+
+=head2 Samaki::Plugin::DataTable
+
+Show a csv in a web browser with column-sorting, pagination, and searching.
+
+=head2 Samaki::Plugin::Duckview
+
+Use the built-in summarization of duckdb to show a csv in the bottom pane.
+
+=head2 Samaki::Plugin::HTML
+
+Open a webbrowser with the content.
+
+=head2 Samaki::Plugin::JSON
+
+Show the (prettified) json in the bottom pane.
+
+=head2 Samaki::Plugin::Plain
+
+Display plain text in a web browser.
+
+=head2 Samaki::Plugin::Geojson
+
+Use leafpad to create an HTML page with the content, and open a web browser.
+
+=head2 Samak::Plugin::Raw
+
+Call the system `open` or `xdg-open` whhch will open the file based on system
+settings, and the file extension.
+
 =head1 USAGE
 
-For help, type `samaki -h`.
+Usage is described at the top.  For help, type `samaki -h`.
 
 Have fun!
 

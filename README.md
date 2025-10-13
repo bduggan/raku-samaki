@@ -180,6 +180,8 @@ Alternatively, the `Process` plugin provides a convenient way to run external pr
           },
       ...
 
+See below for a list of plugins that come with samaki.
+
 PLUGOUTS
 ========
 
@@ -195,10 +197,92 @@ Plugouts are intended to either visualize or export data. The plugout for viewin
       shell <<open $path>>;
     }
 
+See below for a list of plugouts that come with samaki.
+
+INCLUDED PLUGINS
+================
+
+The list below are plugins that come with samaki.
+
+Samaki::Plugin::Duck
+--------------------
+
+Run SQL queries using the duckdb executable. i.e. the cell is sent to stdin of the `duckdb` executable, and stdout is saved to a file.
+
+Samaki::Plugin::Duckie
+----------------------
+
+Send the contents of the cell to an inline duckdb driver. For this and the above, the first 100 rows are placed in the bottom row, and selecting them will show that row in the top pane.
+
+Samaki::Plugin::LLM
+-------------------
+
+Send the contents of the cell to an llm which will be evaluted using [LLM::DWIM](LLM::DWIM).
+
+Samaki::Plugin::Raku
+--------------------
+
+Send the contents to a separate process that is running raku.
+
+Samak::Plugin::Text
+-------------------
+
+Write the contents of a cell to a text file.
+
+Samaki::Plugin::Repl
+--------------------
+
+Write the contents to a running version of the raku repl, and keep it running.
+
+Samaki::Plugin::Bash
+--------------------
+
+Execute the contents as a bash program.
+
+Included Plugouts
+=================
+
+These plugouts are available by default, and included in the Samaki distribution:
+
+Samaki::Plugin::DataTable
+-------------------------
+
+Show a csv in a web browser with column-sorting, pagination, and searching.
+
+Samaki::Plugin::Duckview
+------------------------
+
+Use the built-in summarization of duckdb to show a csv in the bottom pane.
+
+Samaki::Plugin::HTML
+--------------------
+
+Open a webbrowser with the content.
+
+Samaki::Plugin::JSON
+--------------------
+
+Show the (prettified) json in the bottom pane.
+
+Samaki::Plugin::Plain
+---------------------
+
+Display plain text in a web browser.
+
+Samaki::Plugin::Geojson
+-----------------------
+
+Use leafpad to create an HTML page with the content, and open a web browser.
+
+Samak::Plugin::Raw
+------------------
+
+Call the system `open` or `xdg-open` whhch will open the file based on system settings, and the file extension.
+
 USAGE
 =====
 
-For help, type `samaki -h`.
+Usage is described at the top. For help, type `samaki -h`.
 
 Have fun!
 
