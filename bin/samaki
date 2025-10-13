@@ -3,6 +3,7 @@
 use Samaki;
 use Log::Async; 
 use Terminal::ANSI::OO;
+use JSON::Fast;
 
 logger.untapped-ok = True;
 logger.send-to("samaki.log") if %*ENV<SAMAKI_DEBUG>;
@@ -25,6 +26,22 @@ multi MAIN() {
 #| Open a file
 multi MAIN($target) {
   MAIN("edit", $target);
+}
+
+#| Import a Jupyter notebook
+multi MAIN('from-jupyter', Str $nb-filename) {
+  exit note "notebook should end in .ipynb" unless $nb-filename.ends-with('ipynb');
+  my $in = from-json slurp $nb-filename;
+  my @out = $in<cells>.map: *<source>;
+  my @lines;
+  for @out {
+    @lines.push: "-- repl";
+    @lines.push: .join("\n");
+    @lines.push: "\n";
+  }
+  my $samaki-name = $nb-filename.subst('.ipynb','.samaki');
+  @lines.join("\n") ==> spurt $samaki-name;
+  MAIN($samaki-name);
 }
 
 #| Open a new page for editing
