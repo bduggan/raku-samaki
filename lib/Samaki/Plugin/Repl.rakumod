@@ -22,31 +22,24 @@ has $.out-promise;
 
 method start-repl($pane) {
   $pane.clear;
-  $.output-stream.send: "init repl";
+  self.info: "init repl";
   unlink $!fifo-file if $!fifo-file.IO.e;
   shell "mkfifo $!fifo-file";
   $!fifo = $!fifo-file.IO.open(:ra, :0out-buffer, :0in-buffer);
   my $proc;
+  self.info: "Starting REPL process " ~ $!fifo-file.IO.resolve.absolute;
   $!promise = start {
-    $.output-stream.send: "Starting REPL process " ~ $!fifo-file.IO.resolve.absolute;
     $proc = shell "raku --repl-mode=process < $!fifo-file", :out;
-    $.output-stream.send: "done with promise";
   }
   sleep 0.5;
-  $.output-stream.send: "starting output loop";
   $!out-promise = start {
-    #loop {
-    #   my $buf = $proc.out.read;
-    #  $.output-stream.send: "got : " ~ $buf.decode.raku;
-    #}
+    my regex prompt { '[' \d+ ']' }
     loop {
-      my $chunk = $proc.out.read;
-      my $c = $chunk.decode;
-      if $c ~~ /^ '[' \d+ ']' / {
-        $.output-stream.send: [ t.color(%COLORS<data>) => $c ];
-      } else {
-        $.output-stream.send: [ t.color(%COLORS<info>) => $c ];
-      }
+      my $raw = $proc.out.read;
+      last if !defined($raw);
+      my $chunk = $raw.decode;
+      self.stream($chunk);
+      next;
     }
   }
 }
