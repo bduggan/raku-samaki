@@ -28,7 +28,7 @@ $fifo.put("");
 loop {
   sleep 1;
   my $cmd = prompt "command> ";
-  $fifo.print("$cmd\n");
   last if !$cmd || $cmd.trim eq 'exit';
+  $fifo.print("$cmd\n");
 }
 
