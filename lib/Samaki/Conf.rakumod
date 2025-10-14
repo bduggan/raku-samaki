@@ -7,9 +7,10 @@ has $.file is required;
 has $.plugins;
 has $.plugouts;
 
-my $base = Color.new("#95f0fc");
-my @palette = color-scheme($base, 'six-tone-ccw');
-my @more = color-scheme($base, 'analogous');
+# Amber
+my $base = Color.new("#ffbf00");
+my @palette = color-scheme($base, 'analogous');
+my @more = @palette.map({ .lighten(30) });
 @palette = ( |@palette, |@more );
 
 my $red = Color.new("#fc5a50");
