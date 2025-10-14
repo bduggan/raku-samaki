@@ -19,6 +19,7 @@ method setup(Samaki::Conf :$conf) { }
 
 method output-ext { '' }
 method write-output { True }
+method clear-stream-before { True }
 
 has $.output; # Str or array
 has Channel $.output-stream = Channel.new;
@@ -54,7 +55,7 @@ method line-format(Str $line) {
   $line;
 }
  
-method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out) {
+method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane) {
   ... 
 }
 

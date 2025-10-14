@@ -21,7 +21,8 @@ class Samaki::Cell {
   has $.index;       #= 1-based index of cell in page
   has $.start-line;  #= line number in page where cell starts
   has $.timeout = 60; #= default execution timeout in seconds
-  has $.plugin handles <wrap stream-output output-stream output-ext>;
+  has $.plugin handles <wrap stream-output output-stream output-ext clear-stream-before>;
+
   has $.default-ext = 'csv';
   has @.conf;
 
@@ -133,7 +134,7 @@ class Samaki::Cell {
     read-csv self.output-file;
   }
 
-  method execute(:$mode = 'eval', :$page!) {
+  method execute(:$mode = 'eval', :$page!, :$pane!) {
     return without $!plugin;
     info "Executing cell of type { $.cell-type }";
     indir self.cell-dir, {
@@ -141,8 +142,10 @@ class Samaki::Cell {
       try {
         my $out;
         if $.plugin.write-output {
-          $.plugin.stream:  txt => [ t.color(%COLORS<info>) => "Writing to ", t.color(%COLORS<link>) => "[" ~ self.output-file ~ "]" ],
-                            meta => %( action => 'do_output', path => self.output-file );
+          if $.plugin.clear-stream-before {
+            $.plugin.stream:  txt => [ t.color(%COLORS<info>) => "Writing to ", t.color(%COLORS<link>) => "[" ~ self.output-file ~ "]" ],
+                              meta => %( action => 'do_output', path => self.output-file );
+          }
           $out = self.output-file.open(:w) 
         } else {
           $.plugin.info: "Not writing output";
@@ -151,7 +154,7 @@ class Samaki::Cell {
           try { $out.close } if self.close-output-file && $out;
         }
         indir self.data-dir, {
-          $.plugin.execute: cell => self, :$mode, :$page, :$out;
+          $.plugin.execute: cell => self, :$mode, :$page, :$out, :$pane;
         }
         CATCH {
           default {
