@@ -1,0 +1,24 @@
+-- repl
+say "hello, world"
+
+-- repl
+my $n = 2¹²⁷ - 1;
+$n
+
+-- repl
+say is-prime( $n )
+
+-- repl
+my @fib = 1, 1, * + * ... ∞
+
+-- repl
+say @fib[0..10]
+
+-- repl
+say "this goes to stdout";
+
+# this is an output expression
+# this is a comment
+
+42
+
