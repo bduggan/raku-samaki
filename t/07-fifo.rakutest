@@ -1,0 +1,30 @@
+#!raku
+
+use Test;
+use Log::Async;
+use Samaki::Plugin::Repl;
+
+plan 1;
+
+logger.send-to: $*ERR;
+
+class MockCell is Samaki::Cell {
+    has $.content = 'say "hello world"';
+    method get-content(:$mode) { $.content }
+}
+
+my $p = Samaki::Plugin::Repl.new( fifo-file => $*TMPDIR.child("test-fifo.$*PID") );
+
+my @out;
+$p.^find_method('stream').wrap: -> |args { @out.push: args }
+my $cell = MockCell.new(page-name => 'test', cell-type => 'test', name => 'test', data-dir => $*TMPDIR, wkdir => $*TMPDIR);
+
+$p.execute(:$cell, :mode<raw>);
+
+my $found;
+for @out {
+  $found = True if .[1].Str.contains('hello world');
+}
+
+ok $found, 'found hello world in output';
+

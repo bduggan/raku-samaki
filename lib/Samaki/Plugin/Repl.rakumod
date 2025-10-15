@@ -21,7 +21,7 @@ has $.fifo;
 has $.out-promise;
 
 method start-repl($pane) {
-  $pane.clear;
+  $pane.clear with $pane;
   self.info: "init repl";
   unlink $!fifo-file if $!fifo-file.IO.e;
   shell "mkfifo $!fifo-file";
@@ -45,7 +45,7 @@ method start-repl($pane) {
 }
 
 method execute(:$cell, :$mode, :$page, :$out, :$pane) {
-  $pane.auto-scroll = True;
+  $pane.auto-scroll = True with $pane;
   unless defined($.promise) {
     self.start-repl($pane);
   }
