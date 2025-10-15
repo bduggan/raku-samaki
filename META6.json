@@ -19,6 +19,7 @@
     "Samaki::Plugin::HTML" : "lib/Samaki/Plugin/HTML.rakumod",
     "Samaki::Plugin::Bash" : "lib/Samaki/Plugin/Bash.rakumod",
     "Samaki::Plugin::Raku" : "lib/Samaki/Plugin/Raku.rakumod",
+    "Samaki::Plugin::Repl" : "lib/Samaki/Plugin/Repl.rakumod",
     "Samaki::Plugin::Process" : "lib/Samaki/Plugin/Process.rakumod",
     "Samaki::Plugins" : "lib/Samaki/Plugins.rakumod",
     "Samaki::Plugouts" : "lib/Samaki/Plugouts.rakumod",
