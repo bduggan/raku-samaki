@@ -7,9 +7,11 @@ has $.file is required;
 has $.plugins;
 has $.plugouts;
 
-my $base = Color.new("#95f0fc");
-my @palette = color-scheme($base, 'six-tone-ccw');
-my @more = color-scheme($base, 'analogous');
+# Amber
+my $base = Color.new("#ffbf00");
+my @palette = color-scheme($base, 'analogous');
+my @more = @palette.map({ .lighten(30) });
+my @range = (0..20).map({ $base.lighten($_ * 2) });
 @palette = ( |@palette, |@more );
 
 my $red = Color.new("#fc5a50");
@@ -17,6 +19,7 @@ my $yellow = Color.new('#ffff00');
 my $grey = Color.new('#888888');
 
 our %COLORS is export = (
+  prompt => @range[5],
   error => $red,
   warn => @palette[9],
   info => $grey,
@@ -26,7 +29,7 @@ our %COLORS is export = (
   raw => @palette[2],
   title => $base,
   button => @palette[4],
-  data => @palette[5],
+  data => @range[19],
   unknown => @palette[6],
   datafile => @palette[7],
   inactive => $grey,

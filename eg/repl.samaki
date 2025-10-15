@@ -1,6 +1,9 @@
 -- repl
 
 say "hello";
+
+-- repl
+
 say DateTime.now;
 my $x = 12;
 

@@ -211,7 +211,7 @@ class Samaki::Page {
   method run-cell(Samaki::Cell $cell!, :$btm, :$top) {
     my \btm := $btm;
     my \top := $top;
-    btm.clear;
+    btm.clear if $cell.clear-stream-before;
 
     unless $cell.is-valid {
       btm.put: "sorry, cell is not valid";
@@ -220,7 +220,7 @@ class Samaki::Page {
 
     $!current-cell = $cell;
 
-    my $running = start { $cell.execute: mode => self.mode, :page(self) };
+    my $running = start { $cell.execute: mode => self.mode, :page(self), pane => btm };
     if $cell.stream-output {
       my $streamer = start {
         loop {
