@@ -94,9 +94,9 @@ method set-events {
   top.on: select => -> :%meta {
     debug "Top pane action { %meta<action>.raku }";
     with %meta<action> {
-      when 'run' {
+      when 'run' | 'save' {
         my $cell = %meta<cell> or die "NO CELL";
-        self.current-page.run-cell($cell, btm => btm, top => top);
+        self.current-page.run-cell($cell, btm => btm, top => top, action => %meta<action>);
       }
       when 'load_page' {
         my $page = %meta<target_page> // Samaki::Page.new(name => %meta<page_name>, wkdir => %meta<wkdir>);

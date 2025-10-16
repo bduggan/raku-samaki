@@ -8,7 +8,7 @@ unit class Samaki::Plugin::Text does Samaki::Plugin;
 has $.name = 'text';
 has $.description = 'Text cell, with optional links to other pages';
 
-method output-ext { 'txt' }
+method select-action { 'save' }
 
 method execute(:$cell, :$mode, :$page) {
   $cell.output-file.spurt: $cell.get-content(:$mode, :$page);

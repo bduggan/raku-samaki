@@ -91,17 +91,18 @@ class Samaki::Page {
         my $select-action = $cell.select-action;
         my @actions;
         my %meta;
-        if $select-action {
-          @actions.push: t.color(%COLORS<button>) => " [run",
+        if $select-action -> $action {
+          @actions.push: t.color(%COLORS<button>) => " [$action",
                          t.color(%COLORS<cell-name>) => " { $cell.name }",
                          t.color(%COLORS<button>) => "]";
-          %meta = ( action => 'run', cell => $cell );
+          %meta = ( :$action, cell => $cell );
         }
         %meta<page> = self;
         %meta<cell> = $cell;
-        my $lead = $cell.conf.elems ?? "┌──" !! "──";
+        my $lead = $cell.conf.elems ?? "┌── " !! "── ";
+        my $post = ' (' ~ $cell.ext ~ ')';
         $pane.put: [
-          t.color(%COLORS<cell-type>) => $lead ~ $cell.cell-type.fmt('%-20s'),
+          t.color(%COLORS<cell-type>) => $lead ~ ($cell.cell-type ~ $post).fmt('%-20s'),
           |@actions,
          ], :%meta;
         for $cell.conf.list -> $conf {
@@ -208,7 +209,7 @@ class Samaki::Page {
     return True;
   }
 
-  method run-cell(Samaki::Cell $cell!, :$btm, :$top) {
+  method run-cell(Samaki::Cell $cell!, :$btm, :$top, :$action) {
     my \btm := $btm;
     my \top := $top;
     btm.clear if $cell.clear-stream-before;
@@ -220,7 +221,7 @@ class Samaki::Page {
 
     $!current-cell = $cell;
 
-    my $running = start { $cell.execute: mode => self.mode, :page(self), pane => btm };
+    my $running = start { $cell.execute: mode => self.mode, :page(self), pane => btm, :$action };
     if $cell.stream-output {
       my $streamer = start {
         loop {

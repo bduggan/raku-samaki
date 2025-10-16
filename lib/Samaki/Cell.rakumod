@@ -21,7 +21,7 @@ class Samaki::Cell {
   has $.index;       #= 1-based index of cell in page
   has $.start-line;  #= line number in page where cell starts
   has $.timeout = 60; #= default execution timeout in seconds
-  has $.plugin handles <wrap stream-output output-stream output-ext clear-stream-before>;
+  has $.plugin handles <wrap stream-output output-stream output-ext clear-stream-before select-action>;
 
   has $.default-ext = 'csv';
   has @.conf;
@@ -33,10 +33,6 @@ class Samaki::Cell {
 
   method get-conf($key) {
     @.conf.Hash{ $key };
-  }
-
-  method select-action {
-    return 'run';
   }
 
   method label-height {
@@ -114,8 +110,12 @@ class Samaki::Cell {
     return $subdir;
   }
 
+  method ext {
+    self.get-conf('ext') || $.output-ext || $.default-ext;
+  }
+
   method output-file {
-    my $ext = self.get-conf('ext') || $.output-ext || $.default-ext;
+    my $ext = self.ext;
     self.cell-dir.child( self.name ~ "." ~ $ext);
   }
 
@@ -134,7 +134,7 @@ class Samaki::Cell {
     read-csv self.output-file;
   }
 
-  method execute(:$mode = 'eval', :$page!, :$pane!) {
+  method execute(:$mode = 'eval', :$page!, :$pane!, :$action) {
     return without $!plugin;
     info "Executing cell of type { $.cell-type }";
     indir self.cell-dir, {
@@ -154,7 +154,7 @@ class Samaki::Cell {
           try { $out.close } if self.close-output-file && $out;
         }
         indir self.data-dir, {
-          $.plugin.execute: cell => self, :$mode, :$page, :$out, :$pane;
+          $.plugin.execute: cell => self, :$mode, :$page, :$out, :$pane, :$action;
         }
         CATCH {
           default {

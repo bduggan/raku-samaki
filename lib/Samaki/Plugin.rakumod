@@ -12,14 +12,25 @@ use Samaki::Page;
 method name { ... }
 method description { ... }
 
+#| Action to run when the cell is selected
+method select-action { 'run' }
+
+#| Wrap words?
 method wrap { 'none' }
+
+#| Stream output as it is produced?
 method stream-output { True }
+
+#| Clear the output pane before running?
+method clear-stream-before { True }
 
 method setup(Samaki::Conf :$conf) { }
 
+#| Default extension for output files
 method output-ext { '' }
+
+#| Write output to file?
 method write-output { True }
-method clear-stream-before { True }
 
 has $.output; # Str or array
 has Channel $.output-stream = Channel.new;
@@ -55,7 +66,7 @@ method line-format(Str $line) {
   $line;
 }
  
-method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane) {
+method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane, Str :$action) {
   ... 
 }
 
