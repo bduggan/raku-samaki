@@ -90,6 +90,7 @@ sub format-row(@row) {
 multi method output-duckie(Duckie::Result $result-set, :$max-rows = 100) {
   my $table = Prettier::Table.new(
     field-names => $result-set.column-names,
+    align => 'l',
   );
   my $row-count = $result-set.row-count;
   my $cols = $result-set.column-names;
