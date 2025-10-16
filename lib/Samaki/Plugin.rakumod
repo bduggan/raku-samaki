@@ -105,7 +105,10 @@ multi method output-duckie(Duckie::Result $result-set, :$max-rows = 100) {
       last;
     }
   }
-  my @lines;
+
+  my sub pl(Int $count,Str $str) { $count ~ ' ' ~ $str ~ ($count == 1 ?? '' !! 's') }
+
+  my @lines = ( pl($row-count,'row') ~ ', ' ~ pl($cols.elems,'column') );
   my $row = 0;
   for $table.gist.lines -> $txt {
     if $row == 1 { # columns

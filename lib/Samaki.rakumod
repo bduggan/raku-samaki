@@ -140,7 +140,6 @@ multi method show-page(Str $name) {
 
 multi method show-page(Samaki::Page $page) {
   top.clear;
-  btm.clear;
   $page.show(pane => top, :$!plugins);
   $!current-page = $page;
 }
