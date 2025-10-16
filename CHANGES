@@ -1,3 +1,20 @@
+0.0.7 2025-10-16
+  - add counts to table output
+  - don't clear bottom pane on refresh
+  - left align output
+  - "save" for text files not run
+  - show the extension
+  - various execute params
+  - repl demo
+  - postgres plugin
+  - from-jupyter option
+  - add duckie plugin
+  - better timeout and cwd logic
+  - change color to amber
+  - use fifos for repl
+  - send cell configuration and content to plugin
+  - other stuff
+
 0.0.6 2025-10-13
   - lots of docs
   - change default timeout, add info method
