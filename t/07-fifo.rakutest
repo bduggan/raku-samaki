@@ -4,7 +4,7 @@ use Test;
 use Log::Async;
 use Samaki::Plugin::Repl;
 
-plan 1;
+plan 2;
 
 logger.send-to: $*ERR;
 
@@ -27,4 +27,8 @@ for @out {
 }
 
 ok $found, 'found hello world in output';
+
+$p.fifo.put: "exit";
+
+ok 1, 'process exited';
 
