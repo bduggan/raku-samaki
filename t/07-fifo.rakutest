@@ -6,8 +6,6 @@ use Samaki::Plugin::Repl;
 
 plan 2;
 
-logger.send-to: $*ERR;
-
 class MockCell is Samaki::Cell {
     has $.content = 'say "hello world"';
     method get-content(:$mode) { $.content }
@@ -28,7 +26,7 @@ for @out {
 
 ok $found, 'found hello world in output';
 
-$p.fifo.put: "exit";
+$p.shutdown;
 
 ok 1, 'process exited';
 
