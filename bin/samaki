@@ -17,8 +17,8 @@ sub edit(IO::Path $path) {
 }
 
 #| Browse pages
-multi MAIN() {
-  my $wkdir = $*CWD;
+multi MAIN(:$dir = $*CWD) {
+  my $wkdir = $dir;
   my $q = Samaki.new(:wkdir($wkdir.IO), :$editor);
   $q.start-ui: 'browse';
 }
@@ -60,6 +60,11 @@ multi MAIN('edit', $target) {
   if $target.ends-with('.samaki') {
     $filename = $target.IO;
     $page-name = $target.IO.basename.subst('.samaki','');
+  } elsif "$target.samaki".IO.e {
+    $filename = "$target.samaki".IO;
+    $page-name = $target;
+  } elsif $target.IO.d {
+    exit MAIN(:dir($target));
   } else {
     $filename = "$target.samaki".IO;
     $page-name = $target.IO.basename;
@@ -71,7 +76,6 @@ multi MAIN('edit', $target) {
 }
 
 #| Edit a file
-
 multi MAIN($file where {.ends-with('.samaki')}) {
   my $wkdir = $file.IO.parent;
   my $q = Samaki.new: :$wkdir, :$editor;

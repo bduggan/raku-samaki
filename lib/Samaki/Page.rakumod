@@ -88,6 +88,12 @@ class Samaki::Page {
     }
     with self.content {
       for self.cells -> $cell {
+        unless $cell.is-valid {
+          $pane.put: [ t.color(%COLORS<error>) => "invalid cell" ];
+          $pane.put([ t.color(%COLORS<error>) => $_]) for $cell.errors.lines;
+          $pane.put($_) for $cell.source.lines;
+          next;
+        }
         my $select-action = $cell.select-action;
         my @actions;
         my %meta;
@@ -193,6 +199,7 @@ class Samaki::Page {
       }
       my $data-dir = self.data-dir;
       @!cells.push: Samaki::Cell.new:
+        source => $block,
         :@conf,
         :$!wkdir,
         :name( $cell-name // "cell-{+@!cells}" ),

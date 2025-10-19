@@ -20,7 +20,7 @@ my $grey = Color.new('#888888');
 
 our %COLORS is export = (
   prompt => @range[5],
-  error => $red,
+  error => $red.lighten(10),
   warn => @palette[9],
   info => $grey,
   cell-type => $base,

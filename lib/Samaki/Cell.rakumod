@@ -8,6 +8,7 @@ use Samaki::Conf;
 use Samaki::Plugins;
 
 class Samaki::Cell {
+  has Str $.source;
   has Str $.page-name is required;
   has Str $.cell-type is required;
   has Str $.name is required;
