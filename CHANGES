@@ -1,3 +1,8 @@
+0.0.9 2025-10-19
+  - shutdown repl when shutting down ui
+  - browse dirs when given from the cli, better errors
+  - improve errors for invalid cells, store source
+
 0.0.8 2025-10-18
   - fix tests
 
