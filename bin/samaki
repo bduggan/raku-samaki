@@ -62,9 +62,10 @@ multi MAIN('edit', $target) {
     $page-name = $target.IO.basename.subst('.samaki','');
   } elsif "$target.samaki".IO.e {
     $filename = "$target.samaki".IO;
-    $page-name = $target;
+    $page-name = $target.IO.basename;
   } elsif $target.IO.d {
-    exit MAIN(:dir($target));
+    MAIN(:dir($target));
+    exit;
   } else {
     $filename = "$target.samaki".IO;
     $page-name = $target.IO.basename;

@@ -55,6 +55,10 @@ method warn(Str $what) {
   self.stream: [t.color(%COLORS<warn>) => $what]
 }
 
+#| Run shutdown actions
+method shutdown {
+}
+
 has Str $.errors;
 has $.res;
 

@@ -268,4 +268,12 @@ class Samaki::Page {
     }
   }
 
+  method shutdown {
+    info "shutting down page {self.name}";
+    for @!cells -> $cell {
+      info "shutting down cell { $cell.name }";
+      $cell.shutdown;
+    }
+  }
+
 }

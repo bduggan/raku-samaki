@@ -115,6 +115,7 @@ multi method start-ui(Samaki::Page :$page!) {
   self.show-dir(self.data-dir, pane => btm, header => False);
   $.ui.interact;
   $.ui.shutdown;
+  .shutdown with self.current-page;
 }
 
 multi method start-ui('browse') {
@@ -132,6 +133,7 @@ multi method start-ui('browse') {
     self.show-dir($!wkdir, :highlight-samaki);
     $.ui.interact;
     $.ui.shutdown;
+    .shutdown with self.current-page;
 }
 
 multi method show-page(Str $name) {

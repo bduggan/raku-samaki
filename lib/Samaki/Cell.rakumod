@@ -27,6 +27,11 @@ class Samaki::Cell {
   has $.default-ext = 'csv';
   has @.conf;
 
+  method shutdown {
+    return unless $.plugin;
+    $.plugin.shutdown;
+  }
+
   method is-valid {
     return False unless $!plugin;
     return True;
