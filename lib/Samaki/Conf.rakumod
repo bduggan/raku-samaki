@@ -7,36 +7,37 @@ has $.file is required;
 has $.plugins;
 has $.plugouts;
 
-# Amber
-my $base = Color.new("#ffbf00");
+# amber shades
+my $bright = '#FFE599';
+my $mid = '#FFC005';
+my $dark = '#997200';
+
+my $base = Color.new($mid);
 my @palette = color-scheme($base, 'analogous');
-my @more = @palette.map({ .lighten(30) });
-my @range = (0..20).map({ $base.lighten($_ * 2) });
-@palette = ( |@palette, |@more );
 
 my $red = Color.new("#fc5a50");
 my $yellow = Color.new('#ffff00');
 my $grey = Color.new('#888888');
 
 our %COLORS is export = (
-  prompt => @range[5],
+  prompt => $mid,
   error => $red.lighten(10),
-  warn => @palette[9],
-  info => $grey,
-  cell-type => $base,
-  cell-name => $yellow.darken(20),
-  plugin-info => @palette[1],
-  raw => @palette[2],
-  title => $base,
-  button => @palette[4],
-  link => @palette[4],
-  data => @range[19],
-  unknown => @palette[6],
-  datafile => @palette[7],
-  inactive => $grey,
-  yellow => $yellow,
-  normal => $base,
-  input => @palette[3],
+  warn => $bright,
+  info => $dark,
+  cell-type => $mid,
+  cell-name => $bright,
+  plugin-info => $mid,
+  raw => $mid,
+  title => $bright,
+  button => $bright,
+  link => $bright,
+  data => $mid,
+  unknown => $dark,
+  datafile => $mid,
+  inactive => $dark,
+  yellow => $bright,
+  normal => $mid,
+  input => $bright,
 ).map: { .key => .value.gist };
 
 multi method load-handler(Str $handler-class) {
