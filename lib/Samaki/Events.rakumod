@@ -171,8 +171,9 @@ method set-events {
         top.clear;
         my $cols = %meta<cols>;
         my $row = %meta<row_data>;
+        my $width = 50 min $cols.map(*.chars).max + 2;
         for @$cols Z, @$row -> ($c,$r) {
-          top.put: [ t.color(%COLORS<info>) => "$c".fmt('%-15s') ~ " : ", t.color(%COLORS<data>) => show-datum($r) ];
+          top.put: [ t.color(%COLORS<info>) => "$c".fmt("%-{$width}s") ~ " : ", t.color(%COLORS<data>) => show-datum($r) ];
         }
         top.put: [ t.color(%COLORS<button>) => "[save to cols.txt] ",
                    t.color(%COLORS<data>) => $cols.join(',')
