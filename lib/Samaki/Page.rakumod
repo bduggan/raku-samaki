@@ -179,6 +179,7 @@ class Samaki::Page {
     my regex confvalue { \V+ }
     my rule confline {^^ [ '|' | '│' ] \h* <confkey> \h* ':' \h* <confvalue> \h* $$ }
 
+    my %names;
     for @blocks.kv -> $block-index, $block {
       my ($cell-lead, @lines) = $block.lines;
       my $cell-type;
@@ -198,11 +199,15 @@ class Samaki::Page {
         @lines.shift;
       }
       my $data-dir = self.data-dir;
+      my $name = $cell-name // "cell-{+@!cells}";
+      if %names{$name}:exists {
+        die "duplicate cell name: $name";
+      }
       @!cells.push: Samaki::Cell.new:
         source => $block,
         :@conf,
         :$!wkdir,
-        :name( $cell-name // "cell-{+@!cells}" ),
+        :$name,
         :$data-dir,
         :$cell-type,
         content => (@lines.join("\n") ~ "\n"),
