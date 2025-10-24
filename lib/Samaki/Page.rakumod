@@ -179,7 +179,7 @@ class Samaki::Page {
     my regex confvalue { \V+ }
     my rule confline {^^ [ '|' | '│' ] \h* <confkey> \h* ':' \h* <confvalue> \h* $$ }
 
-    my %names;
+    my SetHash $names;
     for @blocks.kv -> $block-index, $block {
       my ($cell-lead, @lines) = $block.lines;
       my $cell-type;
@@ -200,9 +200,11 @@ class Samaki::Page {
       }
       my $data-dir = self.data-dir;
       my $name = $cell-name // "cell-{+@!cells}";
-      if %names{$name}:exists {
-        die "duplicate cell name: $name";
+      if $name ∈ $names {
+        $!errors = "duplicate cell name: $name";
+        fail "duplicate cell name: $name" 
       }
+      $names{$name} = True;
       @!cells.push: Samaki::Cell.new:
         source => $block,
         :@conf,
