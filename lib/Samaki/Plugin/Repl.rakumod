@@ -21,6 +21,8 @@ has $.fifo;
 has $.out-promise;
 has $!proc;
 has Bool $.shutting-down = False;
+has $.last-prompt;
+has Promise $.prompt-promise = Promise.new;
 
 method start-repl($pane) {
   $pane.clear with $pane;
@@ -39,6 +41,12 @@ method start-repl($pane) {
       my $raw = $!proc.out.read;
       last if !defined($raw);
       my $chunk = $raw.decode;
+      if $chunk ~~ /<prompt>/ {
+        $!last-prompt = $<prompt>.Str;
+        $!prompt-promise.keep;
+        $!prompt-promise = Promise.new;
+      }
+
       if self.shutting-down {
         debug "shutting down, ignoring chunk: " ~ $chunk;
         last;
@@ -56,6 +64,9 @@ method execute(:$cell, :$mode, :$page, :$out, :$pane) {
     self.start-repl($pane);
   }
   my $input = $cell.get-content(:$mode, :$page).trim;
+  unless $!last-prompt {
+    await $!prompt-promise;
+  }
   for $input.lines {
     $.output-stream.send([ t.color(%COLORS<data>) => $_ ] );
     sleep 0.01;
