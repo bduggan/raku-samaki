@@ -4,7 +4,12 @@ use Test;
 use Log::Async;
 use Samaki::Plugin::Repl;
 
-plan 2;
+if %*ENV<SAMAKI_TEST_REPL> {
+  plan 2;
+} else {
+  plan :skip-all<Set SAMAKI_TEST_REPL environment variable to run this test>;
+}
+
 
 class MockCell is Samaki::Cell {
     has $.content = 'say "hello world"';
