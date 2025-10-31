@@ -1,3 +1,6 @@
+0.0.11 2025-10-31
+ - skip repl tests
+
 0.0.10 2025-10-31
  -  remove output-ext from llm
  -  better column names
