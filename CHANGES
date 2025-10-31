@@ -1,3 +1,10 @@
+0.0.10 2025-10-31
+ -  remove output-ext from llm
+ -  better column names
+ -  wait for prompts (repl plugin, experimental)
+ -  check for duplicate cell names
+ -  various formatting things
+
 0.0.9 2025-10-19
   - shutdown repl when shutting down ui
   - browse dirs when given from the cli, better errors
