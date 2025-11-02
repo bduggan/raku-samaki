@@ -33,4 +33,4 @@ jobs:
       - name: Install dependencies
         run: zef install --deps-only .
       - name: Run tests
-        run: zef test -v .
+        run: SAMAKI_TEST_REPL=1 zef test -v .

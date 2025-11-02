@@ -25,20 +25,26 @@ has $.last-prompt;
 has Promise $.prompt-promise = Promise.new;
 
 method start-repl($pane) {
+  trace "starting repl";
   $pane.clear with $pane;
   self.info: "init repl";
   unlink $!fifo-file if $!fifo-file.IO.e;
+  trace "making fifo file at " ~ $!fifo-file.IO.resolve.absolute;
   shell "mkfifo $!fifo-file";
   $!fifo = $!fifo-file.IO.open(:ra, :0out-buffer, :0in-buffer);
   self.info: "Starting REPL process " ~ $!fifo-file.IO.resolve.absolute;
+  trace "starting raku repl process";
   $!promise = start {
     $!proc = shell "raku --repl-mode=process < $!fifo-file", :out;
   }
   sleep 0.5;
+  trace "starting output reader";
   $!out-promise = start {
     my regex prompt { '[' \d+ ']' }
     loop {
+      trace "waiting for output chunk";
       my $raw = $!proc.out.read;
+      trace "got output chunk " ~ $raw.decode.raku;
       last if !defined($raw);
       my $chunk = $raw.decode;
       if $chunk ~~ /<prompt>/ {
