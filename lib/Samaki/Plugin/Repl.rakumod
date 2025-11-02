@@ -25,21 +25,38 @@ has $.last-prompt;
 has Promise $.prompt-promise = Promise.new;
 
 method start-repl($pane) {
+  trace "starting repl";
   $pane.clear with $pane;
   self.info: "init repl";
   unlink $!fifo-file if $!fifo-file.IO.e;
+  trace "making fifo file at " ~ $!fifo-file.IO.resolve.absolute;
   shell "mkfifo $!fifo-file";
   $!fifo = $!fifo-file.IO.open(:ra, :0out-buffer, :0in-buffer);
   self.info: "Starting REPL process " ~ $!fifo-file.IO.resolve.absolute;
+  trace "starting raku repl process";
   $!promise = start {
-    $!proc = shell "raku --repl-mode=process < $!fifo-file", :out;
+    my %env = %*ENV;
+    %env<RAKUDO_LINE_EDITOR> = 'none';
+    $!proc = shell "raku --repl-mode=interactive < $!fifo-file", :%env, :out;
   }
   sleep 0.5;
+  # dunno why, but this helps
+  $!fifo.put("") or die "could not write to fifo";
+  trace "starting output reader";
   $!out-promise = start {
     my regex prompt { '[' \d+ ']' }
     loop {
+      trace "waiting for output chunk";
       my $raw = $!proc.out.read;
-      last if !defined($raw);
+      if !defined($raw) {
+        trace "output stream closed, exiting output reader";
+        last;
+      }
+      if $raw.elems == 0 {
+        trace "got empty output chunk, exiting output reader";
+        last;
+      }
+      trace "got output chunk " ~ $raw.decode.raku;
       my $chunk = $raw.decode;
       if $chunk ~~ /<prompt>/ {
         $!last-prompt = $<prompt>.Str;
@@ -65,7 +82,11 @@ method execute(:$cell, :$mode, :$page, :$out, :$pane) {
   }
   my $input = $cell.get-content(:$mode, :$page).trim;
   unless $!last-prompt {
-    await $!prompt-promise;
+    my $timeout = Promise.in(10);
+    await Promise.anyof($timeout, $!prompt-promise);
+    unless $!last-prompt {
+      die "Timeout waiting for REPL prompt (10 seconds)";
+    }
   }
   for $input.lines {
     $.output-stream.send([ t.color(%COLORS<data>) => $_ ] );

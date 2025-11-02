@@ -9,7 +9,7 @@ jobs:
   raku:
     strategy:
       matrix:
-        raku-version: ['2025.08', 'latest']
+        raku-version: ['latest','2025.08']
         duckdb-version: ['1.1.1']
     runs-on: ubuntu-latest
     
@@ -34,4 +34,4 @@ jobs:
       - name: Install dependencies
         run: zef install --deps-only .
       - name: Run tests
-        run: zef test -v .
+        run: SAMAKI_TEST_REPL=1 zef test -v .

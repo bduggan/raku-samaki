@@ -3,6 +3,9 @@
 use Test;
 use Log::Async;
 use Samaki::Plugin::Repl;
+logger.add-tap: -> $m {
+  note "# LOG: {$m<msg>}";
+};
 
 if %*ENV<SAMAKI_TEST_REPL> {
   plan 2;
