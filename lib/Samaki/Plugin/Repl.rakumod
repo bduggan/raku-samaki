@@ -71,7 +71,11 @@ method execute(:$cell, :$mode, :$page, :$out, :$pane) {
   }
   my $input = $cell.get-content(:$mode, :$page).trim;
   unless $!last-prompt {
-    await $!prompt-promise;
+    my $timeout = Promise.in(10);
+    await Promise.anyof($timeout, $!prompt-promise);
+    unless $!last-prompt {
+      die "Timeout waiting for REPL prompt (10 seconds)";
+    }
   }
   for $input.lines {
     $.output-stream.send([ t.color(%COLORS<data>) => $_ ] );
