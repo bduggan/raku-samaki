@@ -35,7 +35,7 @@ method start-repl($pane) {
   self.info: "Starting REPL process " ~ $!fifo-file.IO.resolve.absolute;
   trace "starting raku repl process";
   $!promise = start {
-    $!proc = shell "raku --repl-mode=process < $!fifo-file", :out;
+    $!proc = shell "stdbuf -o0 raku --repl-mode=process < $!fifo-file", :out;
   }
   sleep 0.5;
   trace "starting output reader";
