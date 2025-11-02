@@ -8,106 +8,72 @@ unit class Samaki::Plugin::Repl does Samaki::Plugin;
 
 has $.start-time;
 
-method name { "raku-repl" }
+method name { "repl" }
 method description { "Run raku in a separate process" }
 method stream-output { True };
+method add-env { %() }
 method output-ext { 'txt' }
 method wrap { 'word' }
-method clear-stream-before { False }
 
 has $.promise;
-has $.fifo-file = $*TMPDIR.child('repl-fifo');
-has $.fifo;
-has $.out-promise;
-has $!proc;
-has Bool $.shutting-down = False;
-has $.last-prompt;
-has Promise $.prompt-promise = Promise.new;
+has $.input-supplier = Supplier.new;
 
-method start-repl($pane) {
-  trace "starting repl";
-  $pane.clear with $pane;
-  self.info: "init repl";
-  unlink $!fifo-file if $!fifo-file.IO.e;
-  trace "making fifo file at " ~ $!fifo-file.IO.resolve.absolute;
-  shell "mkfifo $!fifo-file";
-  $!fifo = $!fifo-file.IO.open(:ra, :0out-buffer, :0in-buffer);
-  self.info: "Starting REPL process " ~ $!fifo-file.IO.resolve.absolute;
-  trace "starting raku repl process";
-  $!promise = start {
-    my %env = %*ENV;
-    %env<RAKUDO_LINE_EDITOR> = 'none';
-    $!proc = shell "raku --repl-mode=interactive < $!fifo-file", :%env, :out;
-  }
-  sleep 0.5;
-  # dunno why, but this helps
-  $!fifo.put("") or die "could not write to fifo";
-  trace "starting output reader";
-  $!out-promise = start {
-    my regex prompt { '[' \d+ ']' }
-    loop {
-      trace "waiting for output chunk";
-      my $raw = $!proc.out.read;
-      if !defined($raw) {
-        trace "output stream closed, exiting output reader";
-        last;
-      }
-      if $raw.elems == 0 {
-        trace "got empty output chunk, exiting output reader";
-        last;
-      }
-      trace "got output chunk " ~ $raw.decode.raku;
-      my $chunk = $raw.decode;
-      if $chunk ~~ /<prompt>/ {
-        $!last-prompt = $<prompt>.Str;
-        $!prompt-promise.keep;
-        $!prompt-promise = Promise.new;
-      }
+method do-ready($pid, $proc, $timeout = Nil) {
+  self.info: "started pid $pid " ~ ($timeout ?? "with timeout $timeout seconds" !! "");
+  $!start-time = DateTime.now;
+  sleep 0.01;
+  $.output-stream.send: %( txt => [t.color(%COLORS<button>) => "[cancel]" ], meta => { action => 'kill_proc', :$proc } );
+  return $pid;
+}
 
-      if self.shutting-down {
-        debug "shutting down, ignoring chunk: " ~ $chunk;
-        last;
-      } else {
-        self.stream($chunk)
-      }
-      next;
-    }
+method do-done($res) {
+  self.info: "-- done in " ~ duration( (DateTime.now - $!start-time).Int ) ~ ' --';
+  given $res {
+    if .signal { self.warn: "Process terminated with signal $^code" }
+    if .exitcode { self.warn: "Process exited with code $^code" }
   }
 }
 
-method execute(:$cell, :$mode, :$page, :$out, :$pane) {
-  $pane.auto-scroll = True with $pane;
+method start-react-loop($proc, :$cell, :$out) {
+  info "starting react loop";
+  my $cwd = $cell.data-dir;
+  my $env = %*ENV.clone;
+  my $supply = $.input-supplier.Supply;
+  for self.add-env.kv -> $k, $v { $env{$k} = $v; }
+  $!promise = start react {
+    whenever $proc.ready { info "proc is ready"; self.do-ready($_, $proc); }
+    whenever $proc.stdout {
+      $.output-stream.send("$_\n");
+      $out.put($_) if $out;
+    }
+    whenever $proc.stderr.lines { $.output-stream.send: "ERR: $_"; sleep 0.01;}
+    whenever $proc.start(:$cwd,:$env) { info "proc is done"; self.do-done($_); done; }
+    whenever $supply {
+      $.output-stream.send: [ t.color(%COLORS<input>) => "$_" ],;
+      $proc.print($_);
+    }
+    # maybe we need to close-stdin and call done at some point
+  }
+}
+
+method execute(:$cell, :$mode, :$page, :$out) {
+  my @cmd = self.command;
+  info "executing process {@cmd.join(' ')}";
+  my $content = $cell.get-content(:$mode, :$page).trim;
   unless defined($.promise) {
-    self.start-repl($pane);
+    # stream forever
+    my $out2 = $cell.output-file.open(:a);
+    my $proc = Proc::Async.new: |@cmd, :out, :err, :w;
+    self.start-react-loop($proc, :$cell, :out($out2));
+    sleep 2;
   }
-  my $input = $cell.get-content(:$mode, :$page).trim;
-  unless $!last-prompt {
-    my $timeout = Promise.in(10);
-    await Promise.anyof($timeout, $!prompt-promise);
-    unless $!last-prompt {
-      die "Timeout waiting for REPL prompt (10 seconds)";
-    }
+  for $content.trim.lines {
+     $.input-supplier.emit("$_\n");
+     sleep 0.5;
   }
-  for $input.lines {
-    $.output-stream.send([ t.color(%COLORS<data>) => $_ ] );
-    sleep 0.01;
-  }
-  $!fifo.put("$input") or die "could not write to fifo";
-  sleep 1;
 }
 
-method shutdown {
-  $!shutting-down = True;
-  if defined($!fifo) {
-    info "sending exit to REPL fifo";
-    try $!fifo.put: "exit";
-    $!fifo.close;
-    $!fifo = Nil;
-  }
-  if defined($!fifo-file) && $!fifo-file.IO.e {
-    info "Removing fifo file " ~ $!fifo-file.IO.resolve.absolute;
-    unlink $!fifo-file;
-    $!fifo-file = Nil;
-  }
+method command( --> List) {
+  <<raku --repl-mode=process>>
 }
 
