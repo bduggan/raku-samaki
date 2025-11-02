@@ -17,6 +17,7 @@ method wrap { 'word' }
 
 has $.promise;
 has $.input-supplier = Supplier.new;
+has Promise $!prompt;
 
 method do-ready($pid, $proc, $timeout = Nil) {
   self.info: "started pid $pid " ~ ($timeout ?? "with timeout $timeout seconds" !! "");
@@ -43,7 +44,11 @@ method start-react-loop($proc, :$cell, :$out) {
   $!promise = start react {
     whenever $proc.ready { info "proc is ready"; self.do-ready($_, $proc); }
     whenever $proc.stdout {
-      trace "received from proc stdout: $_";
+      if / '[' \d+ ']' / {
+        trace 'got prompt';
+        $!prompt.keep;
+        $!prompt = Promise.new;
+      }
       self.stream: $_;
       $out.put($_) if $out;
     }
@@ -63,16 +68,19 @@ method execute(:$cell, :$mode, :$page, :$out) {
   my @cmd = self.command;
   info "executing process {@cmd.join(' ')}";
   my $content = $cell.get-content(:$mode, :$page).trim;
+  $!prompt = Promise.new;
   unless defined($.promise) {
     # stream forever
     my $out2 = $cell.output-file.open(:a);
     my $proc = Proc::Async.new: |@cmd, :out, :err, :w;
     self.start-react-loop($proc, :$cell, :out($out2));
   }
+  self.stream: "waiting for prompt...";
+  await $!prompt;
   trace "Sending content to REPL:\n$content";
   for $content.trim.lines {
-     $.input-supplier.emit("$_\n");
-     sleep 0.5;
+    $.input-supplier.emit("$_\n");
+    sleep 0.5;
   }
 }
 
