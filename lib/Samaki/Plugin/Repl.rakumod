@@ -43,14 +43,17 @@ method start-react-loop($proc, :$cell, :$out) {
   $!promise = start react {
     whenever $proc.ready { info "proc is ready"; self.do-ready($_, $proc); }
     whenever $proc.stdout {
-      $.output-stream.send("$_\n");
+      trace "received from proc stdout: $_";
+      self.stream: $_;
       $out.put($_) if $out;
     }
     whenever $proc.stderr.lines { $.output-stream.send: "ERR: $_"; sleep 0.01;}
     whenever $proc.start(:$cwd,:$env) { info "proc is done"; self.do-done($_); done; }
     whenever $supply {
+      trace "sending to proc stdin: $_";
       $.output-stream.send: [ t.color(%COLORS<input>) => "$_" ],;
-      $proc.print($_);
+      $proc.put($_);
+      trace "sent to proc stdin";
     }
     # maybe we need to close-stdin and call done at some point
   }
@@ -65,8 +68,8 @@ method execute(:$cell, :$mode, :$page, :$out) {
     my $out2 = $cell.output-file.open(:a);
     my $proc = Proc::Async.new: |@cmd, :out, :err, :w;
     self.start-react-loop($proc, :$cell, :out($out2));
-    sleep 2;
   }
+  trace "Sending content to REPL:\n$content";
   for $content.trim.lines {
      $.input-supplier.emit("$_\n");
      sleep 0.5;

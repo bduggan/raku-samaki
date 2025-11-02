@@ -13,17 +13,15 @@ if %*ENV<SAMAKI_TEST_REPL> {
   plan :skip-all<Set SAMAKI_TEST_REPL environment variable to run this test>;
 }
 
-
-class MockCell is Samaki::Cell {
-    has $.content = 'say "hello world"';
-    method get-content(:$mode) { $.content }
-}
-
-my $p = Samaki::Plugin::Repl.new( fifo-file => $*TMPDIR.child("test-fifo.$*PID") );
+my $p = Samaki::Plugin::Repl.new;
 
 my @out;
 $p.^find_method('stream').wrap: -> |args { @out.push: args }
-my $cell = MockCell.new(page-name => 'test', cell-type => 'test', name => 'test', data-dir => $*TMPDIR, wkdir => $*TMPDIR);
+my $cell = Samaki::Cell.new:
+  page-name => 'test', cell-type => 'test', name => 'test', data-dir => $*TMPDIR, wkdir => $*TMPDIR,
+  content => "say 'hello world';",
+  plugin => $p;
+  ;
 
 $p.execute(:$cell, :mode<raw>);
 
