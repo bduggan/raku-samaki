@@ -44,8 +44,15 @@ method start-repl($pane) {
     loop {
       trace "waiting for output chunk";
       my $raw = $!proc.out.read;
+      if !defined($raw) {
+        trace "output stream closed, exiting output reader";
+        last;
+      }
+      if $raw.elems == 0 {
+        trace "got empty output chunk, exiting output reader";
+        last;
+      }
       trace "got output chunk " ~ $raw.decode.raku;
-      last if !defined($raw);
       my $chunk = $raw.decode;
       if $chunk ~~ /<prompt>/ {
         $!last-prompt = $<prompt>.Str;
