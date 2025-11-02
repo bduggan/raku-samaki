@@ -35,9 +35,13 @@ method start-repl($pane) {
   self.info: "Starting REPL process " ~ $!fifo-file.IO.resolve.absolute;
   trace "starting raku repl process";
   $!promise = start {
-    $!proc = shell "stdbuf -o0 raku --repl-mode=process < $!fifo-file", :out;
+    my %env = %*ENV;
+    %env<RAKUDO_LINE_EDITOR> = 'none';
+    $!proc = shell "raku --repl-mode=interactive < $!fifo-file", :%env, :out;
   }
   sleep 0.5;
+  # dunno why, but this helps
+  $!fifo.put("") or die "could not write to fifo";
   trace "starting output reader";
   $!out-promise = start {
     my regex prompt { '[' \d+ ']' }
