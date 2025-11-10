@@ -1,6 +1,6 @@
 {
   "name" : "App::samaki",
-  "description" : "Stitch together snippets of code and data",
+  "description" : "Simple Arrangements of Modules with Any Kind of Items",
   "authors" : [
     "Brian Duggan"
   ],
@@ -28,7 +28,7 @@
     "Samaki::Plugout::Raw" : "lib/Samaki/Plugout/Raw.rakumod",
     "Samaki::Plugout::DataTable" : "lib/Samaki/Plugout/DataTable.rakumod",
     "Samaki::Plugout::Duckview" : "lib/Samaki/Plugout/Duckview.rakumod",
-    "samaki" : "bin/samaki"
+    "sam" : "bin/sam"
   },
   "resources" : [ "samaki-conf-default.raku" ],
   "build-depends" : [ ],
