@@ -4,7 +4,7 @@
 NAME
 ====
 
-Samaki -- Stitch together snippets of code and data
+Samaki -- Simple Arrangements of Modules with Any Kind of Items
 
 SYNOPSIS
 ========
