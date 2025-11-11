@@ -42,7 +42,11 @@ method start-react-loop($proc, :$cell, :$out) {
   my $supply = $.input-supplier.Supply;
   for self.add-env.kv -> $k, $v { $env{$k} = $v; }
   $!promise = start react {
-    whenever $proc.ready { info "proc is ready"; self.do-ready($_, $proc); }
+    whenever $proc.ready {
+      info "proc is ready";
+      self.do-ready($_, $proc);
+      $proc.put: ""; # help the repl
+    }
     whenever $proc.stdout {
       if / '[' \d+ ']' / {
         trace 'got prompt';
@@ -60,7 +64,6 @@ method start-react-loop($proc, :$cell, :$out) {
       $proc.put($_);
       trace "sent to proc stdin";
     }
-    # maybe we need to close-stdin and call done at some point
   }
 }
 
