@@ -8,22 +8,27 @@ unit class Samaki::Plugin::Repl does Samaki::Plugin;
 
 has $.start-time;
 
-method name { "repl" }
-method description { "Run raku in a separate process" }
+method name { !!! }
+method description { !!! }
+method command( --> List) { !!! }
+
 method stream-output { True };
-method add-env { %() }
+method add-env { %( NO_COLOR => 1, TERM => 'dumb' ) }
 method output-ext { 'txt' }
 method wrap { 'word' }
 
 has $.promise;
 has $.input-supplier = Supplier.new;
 has Promise $!prompt;
+has Promise $!ready .= new;
+has $!ready-vow = $!ready.vow;
 
 method do-ready($pid, $proc, $timeout = Nil) {
   self.info: "started pid $pid " ~ ($timeout ?? "with timeout $timeout seconds" !! "");
   $!start-time = DateTime.now;
   sleep 0.01;
   $.output-stream.send: %( txt => [t.color(%COLORS<button>) => "[cancel]" ], meta => { action => 'kill_proc', :$proc } );
+  $!ready-vow.keep(True);
   return $pid;
 }
 
@@ -45,22 +50,16 @@ method start-react-loop($proc, :$cell, :$out) {
     whenever $proc.ready {
       info "proc is ready";
       self.do-ready($_, $proc);
-      $proc.put: ""; # help the repl
     }
-    whenever $proc.stdout {
-      if / '[' \d+ ']' / {
-        trace 'got prompt';
-        $!prompt.keep;
-        $!prompt = Promise.new;
-      }
+    whenever $proc.stdout.lines {
       self.stream: $_;
       $out.put($_) if $out;
     }
     whenever $proc.stderr.lines { $.output-stream.send: "ERR: $_"; sleep 0.01;}
-    whenever $proc.start(:$cwd,:$env) { info "proc is done"; self.do-done($_); done; }
+    whenever $proc.start(:$cwd,:ENV($env)) { info "proc is done"; self.do-done($_); done; }
     whenever $supply {
       trace "sending to proc stdin: $_";
-      $.output-stream.send: [ t.color(%COLORS<input>) => "$_" ],;
+      $.output-stream.send: [ t.color(%COLORS<input>) => "[sending] $_" ],;
       $proc.put($_);
       trace "sent to proc stdin";
     }
@@ -71,23 +70,16 @@ method execute(:$cell, :$mode, :$page, :$out) {
   my @cmd = self.command;
   info "executing process {@cmd.join(' ')}";
   my $content = $cell.get-content(:$mode, :$page).trim;
-  $!prompt = Promise.new;
   unless defined($.promise) {
     # stream forever
     my $out2 = $cell.output-file.open(:a);
     my $proc = Proc::Async.new: |@cmd, :out, :err, :w;
     self.start-react-loop($proc, :$cell, :out($out2));
+    await $!ready; # wait for react loop to be ready
   }
-  self.stream: "waiting for prompt...";
-  await $!prompt;
   trace "Sending content to REPL:\n$content";
   for $content.trim.lines {
     $.input-supplier.emit("$_\n");
     sleep 0.5;
   }
 }
-
-method command( --> List) {
-  <<raku --repl-mode=process>>
-}
-
