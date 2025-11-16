@@ -16,8 +16,9 @@ method script-command($cmd, *@args --> List) {
   if $*DISTRO.is-win {
     die "REPL not supported on Windows";
   } elsif $*DISTRO ~~ /macos/ {
-    # BSD script syntax: script -q file command
-    ('script', '-q', '/dev/null', $cmd, |@args)
+    # On macOS, use unbuffer instead of script to avoid TTY issues
+    # unbuffer is from the expect package and handles pseudo-TTY better
+    ('unbuffer', '-p', $cmd, |@args)
   } else {
     # GNU script syntax: script -qefc command file
     ('script', '-qefc', "$cmd @args[]", '/dev/null')
