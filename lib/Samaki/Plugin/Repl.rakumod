@@ -57,8 +57,21 @@ method start-react-loop($proc, :$cell, :$out) {
       self.stream: $_;
       $out.put($_) if $out;
     }
-    whenever $proc.stderr.lines { $.output-stream.send: "ERR: $_"; sleep 0.01;}
-    whenever $proc.start(:$cwd,:ENV($env)) { info "proc is done"; self.do-done($_); done; }
+    whenever $proc.stderr.lines {
+      info "stderr from proc: $_";
+      $.output-stream.send: "ERR: $_";
+      sleep 0.01;
+    }
+    whenever $proc.start(:$cwd,:ENV($env)) {
+      info "proc is done, exit code: {.exitcode // 'none'}, signal: {.signal // 'none'}";
+      if .exitcode != 0 || .signal {
+        warning "Process failed - exit code: {.exitcode // 'N/A'}, signal: {.signal // 'N/A'}";
+        warning "Command was: {$proc.command.join(' ')}";
+        warning "Working directory: $cwd";
+      }
+      self.do-done($_);
+      done;
+    }
     whenever $supply {
       trace "sending to proc stdin: $_";
       $.output-stream.send: [ t.color(%COLORS<input>) => "[sending] $_" ],;
