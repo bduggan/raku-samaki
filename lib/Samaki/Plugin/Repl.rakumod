@@ -23,6 +23,7 @@ has Promise $!prompt;
 has Promise $!ready .= new;
 has $!ready-vow = $!ready.vow;
 has $!proc;
+has $!out;
 
 method do-ready($pid, $proc, $timeout = Nil) {
   self.info: "started pid $pid " ~ ($timeout ?? "with timeout $timeout seconds" !! "");
@@ -75,9 +76,9 @@ method execute(:$cell, :$mode, :$page, :$out) {
   } else {
     info "executing process {@cmd.join(' ')}";
     # stream forever
-    my $out2 = $cell.output-file.open(:a);
+    $!out = $cell.output-file.open(:a);
     $!proc = Proc::Async.new: |@cmd, :out, :err, :w;
-    self.start-react-loop($!proc, :$cell, :out($out2));
+    self.start-react-loop($!proc, :$cell, :out($!out));
     await $!ready; # wait for react loop to be ready
   }
   trace "Sending content to REPL:\n$content";
@@ -108,6 +109,11 @@ method shutdown {
         info "process still running, sending SIGKILL";
         $!proc.kill(SIGKILL);
       }
+    }
+    # Close output file
+    if $!out {
+      $!out.close;
+      info "closed output file";
     }
     $!proc = Nil;
   }
