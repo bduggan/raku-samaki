@@ -88,9 +88,18 @@ method execute(:$cell, :$mode, :$page, :$out) {
 method shutdown {
   if $!proc {
     info "shutting down REPL process";
-    $!proc.kill(SIGTERM);
-    with $.promise {
-      await Promise.anyof($_, Promise.in(2));
+    try {
+      # Close stdin to signal EOF
+      $!proc.close-stdin;
+      with $.promise {
+        await Promise.anyof($_, Promise.in(1));
+      }
+      # If still running, send TERM signal
+      if $.promise.status ~~ PromiseStatus::Planned {
+        $!proc.kill(SIGTERM);
+        await Promise.anyof($.promise, Promise.in(1));
+      }
     }
+    $!input-supplier.done;
   }
 }
