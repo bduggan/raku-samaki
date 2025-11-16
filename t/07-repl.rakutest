@@ -125,3 +125,53 @@ $p.shutdown;
 
 ok 1, 'process exited';
 
+# Diagnostic information for debugging GitHub Actions timeouts
+diag "=== Post-test diagnostics ===";
+
+# Check script command availability
+diag "Checking script command...";
+my $script-check = run 'script', '--version', :out, :err;
+if $script-check.exitcode == 0 {
+  diag "script version: {$script-check.out.slurp(:close).lines.head}";
+} else {
+  diag "script command check failed";
+}
+
+diag "Checking for lingering processes...";
+my $ps-proc = run 'ps', 'aux', :out;
+my $ps-output = $ps-proc.out.slurp(:close);
+my @lines = $ps-output.lines.grep: /script|raku.*repl/;
+if @lines {
+  diag "Found {+@lines} REPL-related processes:";
+  for @lines -> $line {
+    diag "  $line";
+  }
+} else {
+  diag "No lingering REPL processes found";
+}
+
+diag "Checking open file descriptors for this process (PID: $*PID)...";
+try {
+  my $lsof-proc = run 'lsof', '-p', ~$*PID, :out, :err;
+  if $lsof-proc.exitcode == 0 {
+    my $lsof-output = $lsof-proc.out.slurp(:close);
+    my @fds = $lsof-output.lines;
+    diag "Open file descriptors: {+@fds}";
+    for @fds.head(20) -> $line {
+      diag "  $line";
+    }
+    if +@fds > 20 {
+      diag "  ... and {+@fds - 20} more";
+    }
+  } else {
+    diag "lsof returned non-zero exit code";
+  }
+  CATCH {
+    default {
+      diag "lsof not available or failed: {.message}";
+    }
+  }
+}
+
+diag "=== End diagnostics ===";
+

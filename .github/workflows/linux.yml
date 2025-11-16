@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install packages
-        run: sudo apt-get update && sudo apt-get install -y curl wget unzip
+        run: sudo apt-get update && sudo apt-get install -y curl wget unzip lsof util-linux
       - name: Install DuckDB library
         run: |
           wget https://github.com/duckdb/duckdb/releases/download/v${{ matrix.duckdb-version }}/libduckdb-linux-amd64.zip
