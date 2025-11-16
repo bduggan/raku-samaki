@@ -175,3 +175,22 @@ try {
 
 diag "=== End diagnostics ===";
 
+# Final cleanup - ensure everything is really done
+diag "Final cleanup check...";
+diag "Test script PID: $*PID";
+diag "About to exit test script...";
+
+# Give system a moment to clean up
+sleep 0.5;
+
+diag "Test script exiting now.";
+
+END {
+  diag "END block running...";
+  # Force cleanup of any remaining resources
+  try {
+    CATCH { default { diag "Error in END block: {.message}" } }
+  }
+  diag "END block complete.";
+}
+

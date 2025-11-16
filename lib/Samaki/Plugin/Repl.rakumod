@@ -118,6 +118,15 @@ method shutdown {
         info "process still running after SIGTERM, sending SIGKILL";
         $!proc.kill(SIGKILL);
         info "SIGKILL sent";
+        await Promise.anyof($.promise, Promise.in(0.5));
+      }
+      # Ensure the react loop promise is fully resolved
+      if $.promise.defined && $.promise.status ~~ PromiseStatus::Kept {
+        info "react loop promise kept, ensuring it's fully resolved";
+        try { await $.promise; }
+        info "react loop promise fully resolved";
+      } elsif $.promise.defined {
+        info "react loop promise status: {$.promise.status}";
       }
     }
     # Close output file
