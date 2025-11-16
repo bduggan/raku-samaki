@@ -12,6 +12,18 @@ method name { !!! }
 method description { !!! }
 method command( --> List) { !!! }
 
+method script-command($cmd, *@args --> List) {
+  if $*DISTRO.is-win {
+    die "REPL not supported on Windows";
+  } elsif $*DISTRO ~~ /macos/ {
+    # BSD script syntax: script -q file command
+    ('script', '-q', '/dev/null', $cmd, |@args)
+  } else {
+    # GNU script syntax: script -qefc command file
+    ('script', '-qefc', "$cmd @args[]", '/dev/null')
+  }
+}
+
 method stream-output { True };
 method add-env { %( NO_COLOR => 1, TERM => 'dumb' ) }
 method output-ext { 'txt' }
@@ -58,7 +70,7 @@ method start-react-loop($proc, :$cell, :$out) {
       $out.put($_) if $out;
     }
     whenever $proc.stderr.lines {
-      info "stderr from proc: $_";
+      warning "stderr from proc: $_";
       $.output-stream.send: "ERR: $_";
       sleep 0.01;
     }
@@ -102,56 +114,34 @@ method execute(:$cell, :$mode, :$page, :$out) {
 }
 
 method shutdown {
-  info "shutdown called, proc defined: {$!proc.defined}";
   if $!proc {
-    info "shutting down REPL process, promise status: {$.promise.status}";
-    info "marking input supplier as done";
+    info "shutting down REPL process";
     $!input-supplier.done;
-    info "input supplier done";
     try {
       # Close stdin to signal EOF
-      info "closing stdin to send EOF";
       $!proc.close-stdin;
-      info "stdin closed";
       with $.promise {
-        info "waiting up to 2 seconds for process to exit";
         await Promise.anyof($_, Promise.in(2));
-        info "wait completed, promise status: {$.promise.status}";
       }
       # If still running, send TERM signal
       if $.promise.status ~~ PromiseStatus::Planned {
-        info "process still running after EOF, sending SIGTERM";
         $!proc.kill(SIGTERM);
-        info "SIGTERM sent, waiting 1 second";
         await Promise.anyof($.promise, Promise.in(1));
-        info "wait completed, promise status: {$.promise.status}";
       }
       # Last resort: SIGKILL
       if $.promise.status ~~ PromiseStatus::Planned {
-        info "process still running after SIGTERM, sending SIGKILL";
         $!proc.kill(SIGKILL);
-        info "SIGKILL sent";
         await Promise.anyof($.promise, Promise.in(0.5));
       }
       # Ensure the react loop promise is fully resolved
       if $.promise.defined && $.promise.status ~~ PromiseStatus::Kept {
-        info "react loop promise kept, ensuring it's fully resolved";
         try { await $.promise; }
-        info "react loop promise fully resolved";
-      } elsif $.promise.defined {
-        info "react loop promise status: {$.promise.status}";
       }
     }
     # Close output file
     if $!out {
-      info "closing output file";
       $!out.close;
-      info "output file closed";
     }
-    info "setting proc to Nil";
     $!proc = Nil;
-    info "shutdown complete";
-  } else {
-    info "shutdown called but no proc to shut down";
   }
 }
