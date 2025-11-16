@@ -89,32 +89,47 @@ method execute(:$cell, :$mode, :$page, :$out) {
 }
 
 method shutdown {
+  info "shutdown called, proc defined: {$!proc.defined}";
   if $!proc {
-    info "shutting down REPL process";
+    info "shutting down REPL process, promise status: {$.promise.status}";
+    info "marking input supplier as done";
     $!input-supplier.done;
+    info "input supplier done";
     try {
       # Close stdin to signal EOF
+      info "closing stdin to send EOF";
       $!proc.close-stdin;
+      info "stdin closed";
       with $.promise {
+        info "waiting up to 2 seconds for process to exit";
         await Promise.anyof($_, Promise.in(2));
+        info "wait completed, promise status: {$.promise.status}";
       }
       # If still running, send TERM signal
       if $.promise.status ~~ PromiseStatus::Planned {
-        info "process still running, sending SIGTERM";
+        info "process still running after EOF, sending SIGTERM";
         $!proc.kill(SIGTERM);
+        info "SIGTERM sent, waiting 1 second";
         await Promise.anyof($.promise, Promise.in(1));
+        info "wait completed, promise status: {$.promise.status}";
       }
       # Last resort: SIGKILL
       if $.promise.status ~~ PromiseStatus::Planned {
-        info "process still running, sending SIGKILL";
+        info "process still running after SIGTERM, sending SIGKILL";
         $!proc.kill(SIGKILL);
+        info "SIGKILL sent";
       }
     }
     # Close output file
     if $!out {
+      info "closing output file";
       $!out.close;
-      info "closed output file";
+      info "output file closed";
     }
+    info "setting proc to Nil";
     $!proc = Nil;
+    info "shutdown complete";
+  } else {
+    info "shutdown called but no proc to shut down";
   }
 }
