@@ -22,6 +22,7 @@ has $.input-supplier = Supplier.new;
 has Promise $!prompt;
 has Promise $!ready .= new;
 has $!ready-vow = $!ready.vow;
+has $!proc;
 
 method do-ready($pid, $proc, $timeout = Nil) {
   self.info: "started pid $pid " ~ ($timeout ?? "with timeout $timeout seconds" !! "");
@@ -73,13 +74,23 @@ method execute(:$cell, :$mode, :$page, :$out) {
   unless defined($.promise) {
     # stream forever
     my $out2 = $cell.output-file.open(:a);
-    my $proc = Proc::Async.new: |@cmd, :out, :err, :w;
-    self.start-react-loop($proc, :$cell, :out($out2));
+    $!proc = Proc::Async.new: |@cmd, :out, :err, :w;
+    self.start-react-loop($!proc, :$cell, :out($out2));
     await $!ready; # wait for react loop to be ready
   }
   trace "Sending content to REPL:\n$content";
   for $content.trim.lines {
     $.input-supplier.emit("$_\n");
     sleep 0.5;
+  }
+}
+
+method shutdown {
+  if $!proc {
+    info "shutting down REPL process";
+    $!proc.kill(SIGTERM);
+    with $.promise {
+      await Promise.anyof($_, Promise.in(2));
+    }
   }
 }
