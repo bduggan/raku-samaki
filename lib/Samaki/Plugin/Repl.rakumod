@@ -69,9 +69,11 @@ method start-react-loop($proc, :$cell, :$out) {
 
 method execute(:$cell, :$mode, :$page, :$out) {
   my @cmd = self.command;
-  info "executing process {@cmd.join(' ')}";
   my $content = $cell.get-content(:$mode, :$page).trim;
-  unless defined($.promise) {
+  if defined($.promise) || defined($!proc) {
+    info "reusing existing REPL process";
+  } else {
+    info "executing process {@cmd.join(' ')}";
     # stream forever
     my $out2 = $cell.output-file.open(:a);
     $!proc = Proc::Async.new: |@cmd, :out, :err, :w;
@@ -88,18 +90,25 @@ method execute(:$cell, :$mode, :$page, :$out) {
 method shutdown {
   if $!proc {
     info "shutting down REPL process";
+    $!input-supplier.done;
     try {
       # Close stdin to signal EOF
       $!proc.close-stdin;
       with $.promise {
-        await Promise.anyof($_, Promise.in(1));
+        await Promise.anyof($_, Promise.in(2));
       }
       # If still running, send TERM signal
       if $.promise.status ~~ PromiseStatus::Planned {
+        info "process still running, sending SIGTERM";
         $!proc.kill(SIGTERM);
         await Promise.anyof($.promise, Promise.in(1));
       }
+      # Last resort: SIGKILL
+      if $.promise.status ~~ PromiseStatus::Planned {
+        info "process still running, sending SIGKILL";
+        $!proc.kill(SIGKILL);
+      }
     }
-    $!input-supplier.done;
+    $!proc = Nil;
   }
 }
