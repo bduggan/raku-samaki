@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install packages
-        run: sudo apt-get update && sudo apt-get install -y curl wget unzip
+        run: sudo apt-get update && sudo apt-get install -y curl wget unzip lsof util-linux
       - name: Install DuckDB library
         run: |
           wget https://github.com/duckdb/duckdb/releases/download/v${{ matrix.duckdb-version }}/libduckdb-linux-amd64.zip
@@ -34,4 +34,4 @@ jobs:
       - name: Install dependencies
         run: zef install --deps-only .
       - name: Run tests
-        run: SAMAKI_TEST_REPL=1 zef test -v .
+        run: SAMAKI_TEST_REPL=1 TEST_VERBOSE=1 zef test -v .

@@ -1,9 +1,9 @@
--- duck
+-- duck:hello.txt
 select 'hello' as world;
 
--- duck
+-- duck:earth.csv
 select 'earth' as planet;
 
--- llm
+-- llm:planet.txt
 Which planet from the sun is 〈 cells(1).rows[0]<planet> 〉?
 
