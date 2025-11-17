@@ -233,25 +233,28 @@ method pages-exist {
 
 =head1 NAME
 
-Samaki -- Simple Arrangements of Modules with Any Kind of Items
+Samaki -- Statiching Associated Modes of Accessing and Keeping Information
 
 =head1 SYNOPSIS
 
 =begin code
 
 Usage:
-  samaki [<wkdir>] -- Browse pages
-  samaki [--wkdir[=Any]] new -- Open a new page for editing
-  samaki edit <target> -- Edit a page with the given name
-  samaki <file> -- Edit a file
-  samaki reset-conf -- Reset the configuration to the default
-  samaki conf -- Edit the configuration file
+  sam [<wkdir>] -- Browse pages
+  sam [--wkdir[=Any]] new -- Open a new page for editing
+  sam edit <target> -- Edit a page with the given name
+  sam <file> -- Edit a file
+  sam reset-conf -- Reset the configuration to the default
+  sam conf -- Edit the configuration file
 
 =end code
 
 =head1 DESCRIPTION
 
-Samaki is a system for writing queries and snippets of programs in multiple
+Samaki is a file format and tool for using multiple programming languages
+in a single file.
+
+system for writing queries and snippets of programs in multiple
 languages in one file.  It's a bit like Jupyter notebooks (or R 
 or Observable notebooks), but with multiple types of cells in one notebook.  It
 has a plugin architecture for defining the types of cells, and for describing
@@ -530,6 +533,10 @@ settings, and the file extension.
 Usage is described at the top.  For help, type `samaki -h`.
 
 Have fun!
+
+=head1 BUGS
+
+The backronym is a bit forced.  Here's another one: Simple Arrangements of Modules with Any Kind of Items
 
 =head1 TODO
 

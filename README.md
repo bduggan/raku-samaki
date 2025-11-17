@@ -4,23 +4,25 @@
 NAME
 ====
 
-Samaki -- Simple Arrangements of Modules with Any Kind of Items
+Samaki -- Statiching Associated Modes of Accessing and Keeping Information
 
 SYNOPSIS
 ========
 
     Usage:
-      samaki [<wkdir>] -- Browse pages
-      samaki [--wkdir[=Any]] new -- Open a new page for editing
-      samaki edit <target> -- Edit a page with the given name
-      samaki <file> -- Edit a file
-      samaki reset-conf -- Reset the configuration to the default
-      samaki conf -- Edit the configuration file
+      sam [<wkdir>] -- Browse pages
+      sam [--wkdir[=Any]] new -- Open a new page for editing
+      sam edit <target> -- Edit a page with the given name
+      sam <file> -- Edit a file
+      sam reset-conf -- Reset the configuration to the default
+      sam conf -- Edit the configuration file
 
 DESCRIPTION
 ===========
 
-Samaki is a system for writing queries and snippets of programs in multiple languages in one file. It's a bit like Jupyter notebooks (or R or Observable notebooks), but with multiple types of cells in one notebook. It has a plugin architecture for defining the types of cells, and for describing the types of output. Outputs from cells are serialized, often as CSV files. Cells can reference each others' content or output.
+Samaki is a file format and tool for using multiple programming languages in a single file.
+
+system for writing queries and snippets of programs in multiple languages in one file. It's a bit like Jupyter notebooks (or R or Observable notebooks), but with multiple types of cells in one notebook. It has a plugin architecture for defining the types of cells, and for describing the types of output. Outputs from cells are serialized, often as CSV files. Cells can reference each others' content or output.
 
 Some use cases for samaki include
 
@@ -285,6 +287,11 @@ USAGE
 Usage is described at the top. For help, type `samaki -h`.
 
 Have fun!
+
+BUGS
+====
+
+The backronym is a bit forced. Here's another one: Simple Arrangements of Modules with Any Kind of Items
 
 TODO
 ====
