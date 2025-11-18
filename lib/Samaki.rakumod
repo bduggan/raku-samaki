@@ -10,7 +10,7 @@ use Samaki::Plugins;
 use Samaki::Plugouts;
 use Samaki::Conf;
 
-unit class Samaki:ver<0.0.1>:api<1>:auth<zef:bduggan> does Samaki::Events;
+unit class Samaki:ver<0.0.12>:api<1>:auth<zef:bduggan> does Samaki::Events;
 
 has $.ui = Terminal::UI.new;
 my \top := my $;
@@ -233,19 +233,19 @@ method pages-exist {
 
 =head1 NAME
 
-Samaki -- Statiching Associated Modes of Accessing and Keeping Information
+Samaki -- Stich Associated Modes of Accessing and Keeping Information
 
 =head1 SYNOPSIS
 
 =begin code
 
 Usage:
-  sam [<wkdir>] -- Browse pages
-  sam [--wkdir[=Any]] new -- Open a new page for editing
-  sam edit <target> -- Edit a page with the given name
-  sam <file> -- Edit a file
-  sam reset-conf -- Reset the configuration to the default
-  sam conf -- Edit the configuration file
+  sam            -- start the default UI, and browser the current directory
+  sam <name>     -- start with the named samaki page or directory
+  sam conf       -- edit the configuration file ~/.samaki.conf
+  sam reset-conf -- reset the configuration file to the default
+
+Type `sam -h` for the full list of options.
 
 =end code
 
@@ -254,10 +254,9 @@ Usage:
 Samaki is a file format and tool for using multiple programming languages
 in a single file.
 
-system for writing queries and snippets of programs in multiple
-languages in one file.  It's a bit like Jupyter notebooks (or R 
-or Observable notebooks), but with multiple types of cells in one notebook.  It
-has a plugin architecture for defining the types of cells, and for describing
+It's a bit like Jupyter notebooks (or R or Observable notebooks), but with multiple
+types of cells in one notebook and all the cells belong to a simple text file.
+It has a plugin architecture for defining the types of cells, and for describing
 the types of output.  Outputs from cells are serialized, often as CSV
 files.  Cells can reference each others' content or output.
 
@@ -288,7 +287,7 @@ To use this:
 
 1. save it as a file, e.g. "planets.samaki"
 
-2. run `samaki planets'
+2. run `sam planets'
 
 3. press 'm' to toggle between raw mode and rendered mode
 
@@ -487,9 +486,13 @@ Send the contents to a separate process that is running raku.
 
 Write the contents of a cell to a text file.
 
-=head2 Samaki::Plugin::Repl
+=head2 Samaki::Plugin::Repl::Raku
 
 Write the contents to a running version of the raku repl, and keep it running.
+
+=head2 Samaki::Plugin::Repl::Python
+
+Ditto, but for python.
 
 =head2 Samaki::Plugin::Bash
 
@@ -530,7 +533,7 @@ settings, and the file extension.
 
 =head1 USAGE
 
-Usage is described at the top.  For help, type `samaki -h`.
+Usage is described at the top.  For help, type `sam -h`.
 
 Have fun!
 
