@@ -1,3 +1,9 @@
+0.0.12 2025-11-18
+  - rename CLI to sam
+  - Improve repl plugins (#5)
+    add Raku and Python repl support
+    Use script and expect for unbuffering.
+
 0.0.11 2025-10-31
  - skip repl tests
 
