@@ -23,11 +23,6 @@ multi MAIN(:$dir = $*CWD) {
   $q.start-ui: 'browse';
 }
 
-#| Open a file
-multi MAIN($target) {
-  MAIN("edit", $target);
-}
-
 #| Import a Jupyter notebook
 multi MAIN('from-jupyter', Str $nb-filename) {
   exit note "notebook should end in .ipynb" unless $nb-filename.ends-with('ipynb');
@@ -44,7 +39,7 @@ multi MAIN('from-jupyter', Str $nb-filename) {
   MAIN($samaki-name);
 }
 
-#| Open a new page for editing
+#| Make a new page and edit
 multi MAIN('new', :$wkdir = $*CWD) {
   my $q = Samaki.new(:$wkdir, :$editor);
   my $name = prompt "Please enter a name for the new Samaki page: ";
@@ -53,34 +48,11 @@ multi MAIN('new', :$wkdir = $*CWD) {
   $q.start-ui: :page($name);
 }
 
-#| Edit a page with the given name
-multi MAIN('edit', $target) {
-  my $filename; 
-  my $page-name;
-  if $target.ends-with('.samaki') {
-    $filename = $target.IO;
-    $page-name = $target.IO.basename.subst('.samaki','');
-  } elsif "$target.samaki".IO.e {
-    $filename = "$target.samaki".IO;
-    $page-name = $target.IO.basename;
-  } elsif $target.IO.d {
-    MAIN(:dir($target));
-    exit;
-  } else {
-    $filename = "$target.samaki".IO;
-    $page-name = $target.IO.basename;
-  }
-  my $wkdir = $filename.IO.parent;
-  edit $filename;
+#| Edit an existing page
+multi MAIN($target, :$wkdir = $*CWD) {
   my $q = Samaki.new(:$wkdir, :$editor);
-  $q.start-ui: :page($page-name);
-}
-
-#| Edit a file
-multi MAIN($file where {.ends-with('.samaki')}) {
-  my $wkdir = $file.IO.parent;
-  my $q = Samaki.new: :$wkdir, :$editor;
-  my $page = $file.IO.basename.subst( /\.samaki/,'');
+  my $page = $target;
+  $page .= subst('.samaki','') if $page.ends-with('samaki');
   $q.start-ui: :$page;
 }
 

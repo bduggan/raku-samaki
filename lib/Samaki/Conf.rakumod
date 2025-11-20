@@ -2,15 +2,19 @@ unit class Samaki::Conf;
 use Log::Async;
 use Color;
 use Color::Scheme;
+use Terminal::ANSI::OO 't';
 
 has $.file is required;
 has $.plugins;
 has $.plugouts;
 
 # amber shades
-my $bright = '#FFE599';
+my $white = '#FFFFFF';
 my $mid = '#FFC005';
 my $dark = '#997200';
+my $cyan = '#00FFFF';
+my $bright = $cyan;
+my $dim-cyan = Color.new($cyan).darken(20);
 
 my $base = Color.new($mid);
 my @palette = color-scheme($base, 'analogous');
@@ -25,7 +29,7 @@ our %COLORS is export = (
   warn => $bright,
   info => $dark,
   cell-type => $mid,
-  cell-name => $bright,
+  cell-name => $dim-cyan,
   plugin-info => $mid,
   raw => $mid,
   title => $bright,
@@ -38,7 +42,13 @@ our %COLORS is export = (
   yellow => $bright,
   normal => $mid,
   input => $bright,
+  text => $white,
+  line => $dark,
 ).map: { .key => .value.gist };
+
+sub col($name) is export {
+  t.color( %COLORS{ $name } )
+}
 
 multi method load-handler(Str $handler-class) {
   my $handler;

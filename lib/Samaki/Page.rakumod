@@ -88,24 +88,24 @@ class Samaki::Page {
     }
     with self.content {
       for self.cells -> $cell {
+        my $line = 0;
         unless $cell.is-valid {
           $pane.put: [ t.color(%COLORS<error>) => "invalid cell" ];
           $pane.put([ t.color(%COLORS<error>) => $_]) for $cell.errors.lines;
-          $pane.put($_) for $cell.source.lines;
+          $pane.put([ t.color(%COLORS<line>) => ($line++).fmt('%3d'), t.color(%COLORS<text>) => $_]) for $cell.source.lines;
           next;
         }
         my $select-action = $cell.select-action;
         my @actions;
         my %meta;
         if $select-action -> $action {
-          @actions.push: t.color(%COLORS<button>) => " [$action",
-                         t.color(%COLORS<cell-name>) => " { $cell.name }",
-                         t.color(%COLORS<button>) => "]";
+          @actions.push: t.color(%COLORS<button>) => " [$action]",
+                         t.color(%COLORS<cell-name>) => " ─→ { $cell.name }.{ $cell.ext }";
           %meta = ( :$action, cell => $cell );
         }
         %meta<page> = self;
         %meta<cell> = $cell;
-        my $lead = $cell.conf.elems ?? "┌── " !! "── ";
+        my $lead = "┌── ".indent(4);
         my $post = ' (' ~ $cell.ext ~ ')';
         $pane.put: [
           t.color(%COLORS<cell-type>) => $lead ~ ($cell.cell-type ~ $post).fmt('%-20s'),
@@ -125,10 +125,16 @@ class Samaki::Page {
            if $cell.errors {
              $pane.put( [ t.color(%COLORS<error>) => "--> $_" ] ) for $cell.errors.lines;
            }
-           for $out.lines {
-             my %meta = $cell.line-meta($_);
-             my $line = $cell.line-format($_);
-             $pane.put: $line, meta => %( :$cell, :self, |%meta );
+           for $out.lines.kv -> $n, $txt {
+             my %meta = $cell.line-meta($txt);
+             my $line = $cell.line-format($txt);
+             my Pair $l = ($line.isa(Pair) ?? $line !! t.color(%COLORS<text>) => $line);
+             $pane.put: [
+               col('line') => $n.fmt('%3d '),
+               col('cell-type') =>
+                ( $n == $out.lines.elems - 1 ?? '└ ' !! '│ '),
+               $l
+             ], meta => %( :$cell, :self, |%meta );
            }
          }
       }
