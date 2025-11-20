@@ -187,12 +187,9 @@ method set-events {
   top.on: next-query => -> :%meta {
     my $page = %meta<page> // self.current-page;
     with %meta<cell> -> $cell {
-      if $cell.index < $page.cells - 1 {
-       my $next = $cell.index + 1;
-       info "selecting next cell $next";
-       info "line: " ~ $page.cells[$next].start-line;
-       top.select: $page.cells[$next].start-line + $page.title-height;
-     }
+      my $next = $cell.index + 1;
+      $next = 0 if $next >= $page.cells;
+      top.select: $page.cells[$next].start-line + $page.title-height;
     } else {
       top.select: $page.title-height;
     }
@@ -202,11 +199,12 @@ method set-events {
   top.on: prev-query => -> :%meta {
     with %meta<page> -> $page {
       with %meta<cell> -> $cell {
-          if $cell.index == 0 {
-            top.select: $page.title-height;
-          } else {
-            top.select: $page.cells[$cell.index - 1].start-line + $page.title-height;
-         }
+        my $next = $cell.index - 1;
+        $next = $page.cells.elems - 1 if $next < 0;
+        top.select: $page.cells[$next].start-line + $page.title-height;
+      } else {
+        my $next = $page.cells.elems - 1;
+        top.select: $page.cells[$next].start-line + $page.title-height;
       }
     }
   }
