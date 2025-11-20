@@ -175,7 +175,7 @@ method show-dir(IO::Path $dir, :$suffix = 'samaki', :$pane = top, Bool :$header 
   my %subs = @subdirs.map({.basename}).Set;
   my %shown = Set.new;
 
-  my @pages = reverse $dir.IO.dir(test => { /'.' [ $suffix ] $$/ }).sort: *.basename;
+  my @pages = reverse $dir.IO.dir(test => { /'.' [ $suffix ] $$/ }).sort: *.accessed;
   for @pages -> $d {
     my $name = $d.basename.subst(/'.' $suffix/,'');
     my $title = "〜 { $name } 〜";

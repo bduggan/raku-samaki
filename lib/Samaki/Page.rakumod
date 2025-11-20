@@ -156,7 +156,8 @@ class Samaki::Page {
     my regex cell-type { \h* <[a..zA..Z0..9_-]>+ \h* }
     my regex cell-ext { <[a..zA..Z0..9_-]>+ }
     my regex cell-name { <[a..zA..Z0..9_-]>+ }
-    my @dashes = "─", "―", "⸺", "–", "—", "﹣", "－", '--','┌──','──','┌─';
+    my @dashes = "─", "―", "⸺", "–", "—", "﹣", "－", '--',
+                 '┌──','──','┌─', '━━','━━','┏━━','━━━','┏━━━';
     my regex dashes { @dashes }
     my regex cell-header { ^^ <dashes> \h* <cell-type> \h*  [ ':' \h*  <cell-name> [ '.' <cell-ext> ]? ]?  \h* $$ }
     my @indexes = $!content.lines.grep: { / <cell-header> / }, :k;
