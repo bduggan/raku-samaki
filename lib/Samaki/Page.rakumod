@@ -112,7 +112,7 @@ class Samaki::Page {
           |@actions,
          ], :%meta;
         for $cell.conf.list -> $conf {
-          $pane.put: [ t.color(%COLORS<cell-type>) => "│ " ~ $conf.raku ];
+          $pane.put: [ t.color(%COLORS<cell-type>) => "│ ".indent(4) ~ $conf.raku ];
         }
         try {
            CATCH {
