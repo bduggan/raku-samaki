@@ -226,8 +226,8 @@ Samaki::Plugin::Raku
 
 Send the contents to a separate process that is running raku.
 
-Samak::Plugin::Text
--------------------
+Samaki::Plugin::Text
+--------------------
 
 Write the contents of a cell to a text file.
 
@@ -251,38 +251,38 @@ Included Plugouts
 
 These plugouts are available by default, and included in the Samaki distribution:
 
-Samaki::Plugin::DataTable
--------------------------
+Samaki::Plugout::DataTable
+--------------------------
 
 Show a csv in a web browser with column-sorting, pagination, and searching.
 
-Samaki::Plugin::Duckview
-------------------------
+Samaki::Plugout::Duckview
+-------------------------
 
 Use the built-in summarization of duckdb to show a csv in the bottom pane.
 
-Samaki::Plugin::HTML
---------------------
+Samaki::Plugout::HTML
+---------------------
 
 Open a webbrowser with the content.
 
-Samaki::Plugin::JSON
---------------------
+Samaki::Plugout::JSON
+---------------------
 
 Show the (prettified) json in the bottom pane.
 
-Samaki::Plugin::Plain
----------------------
+Samaki::Plugout::Plain
+----------------------
 
 Display plain text in a web browser.
 
-Samaki::Plugin::Geojson
------------------------
+Samaki::Plugout::Geojson
+------------------------
 
 Use leafpad to create an HTML page with the content, and open a web browser.
 
-Samak::Plugin::Raw
-------------------
+Samaki::Plugout::Raw
+--------------------
 
 Call the system `open` or `xdg-open` whhch will open the file based on system settings, and the file extension.
 

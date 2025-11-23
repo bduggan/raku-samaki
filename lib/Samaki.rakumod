@@ -482,7 +482,7 @@ Send the contents of the cell to an llm which will be evaluted using L<LLM::DWIM
 
 Send the contents to a separate process that is running raku.
 
-=head2 Samak::Plugin::Text
+=head2 Samaki::Plugin::Text
 
 Write the contents of a cell to a text file.
 
@@ -502,31 +502,31 @@ Execute the contents as a bash program.
 
 These plugouts are available by default, and included in the Samaki distribution:
 
-=head2 Samaki::Plugin::DataTable
+=head2 Samaki::Plugout::DataTable
 
 Show a csv in a web browser with column-sorting, pagination, and searching.
 
-=head2 Samaki::Plugin::Duckview
+=head2 Samaki::Plugout::Duckview
 
 Use the built-in summarization of duckdb to show a csv in the bottom pane.
 
-=head2 Samaki::Plugin::HTML
+=head2 Samaki::Plugout::HTML
 
 Open a webbrowser with the content.
 
-=head2 Samaki::Plugin::JSON
+=head2 Samaki::Plugout::JSON
 
 Show the (prettified) json in the bottom pane.
 
-=head2 Samaki::Plugin::Plain
+=head2 Samaki::Plugout::Plain
 
 Display plain text in a web browser.
 
-=head2 Samaki::Plugin::Geojson
+=head2 Samaki::Plugout::Geojson
 
 Use leafpad to create an HTML page with the content, and open a web browser.
 
-=head2 Samak::Plugin::Raw
+=head2 Samaki::Plugout::Raw
 
 Call the system `open` or `xdg-open` whhch will open the file based on system
 settings, and the file extension.
