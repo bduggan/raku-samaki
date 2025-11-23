@@ -246,6 +246,11 @@ Samaki::Plugin::Bash
 
 Execute the contents as a bash program.
 
+Samaki::Plugin::Postgres
+------------------------
+
+Execute SQL queries against a Postgres database by sending queries to the psql command-line tool.
+
 Included Plugouts
 =================
 
