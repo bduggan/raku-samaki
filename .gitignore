@@ -5,3 +5,4 @@ log.*
 eg/*/
 eg/*/*.html
 eg/*/*.png
+.precomp
