@@ -30,6 +30,7 @@
     "Samaki::Plugout::Duckview" : "lib/Samaki/Plugout/Duckview.rakumod",
     "Samaki::Plugout::Geojson" : "lib/Samaki/Plugout/Geojson.rakumod",
     "Samaki::Plugout::HTML" : "lib/Samaki/Plugout/HTML.rakumod",
+    "Samaki::Plugout::JSON" : "lib/Samaki/Plugout/JSON.rakumod",
     "Samaki::Plugout::Plain" : "lib/Samaki/Plugout/Plain.rakumod",
     "Samaki::Plugout::Raw" : "lib/Samaki/Plugout/Raw.rakumod",
     "sam" : "bin/sam"
