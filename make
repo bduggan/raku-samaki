@@ -2,6 +2,7 @@
 
 constant $readme-src = "lib/Samaki.rakumod";
 constant $github-repo = 'bduggan/raku-samaki';
+constant $version-src = $readme-src;
 
 if %*ENV<VERBOSE> {
   &shell.wrap: -> |c { say c.raku; callsame; }
@@ -39,6 +40,9 @@ sub make-dist($version) {
   say "wrote $out";
 }
 
+sub update-module($version,$next) {
+   shell "perl -p -i -e 's/$version/$next/' $version-src";
+}
 sub update-changes($version, $next) {
   "/tmp/changes".IO.spurt: $next ~ ' ' ~ now.Date.yyyy-mm-dd ~ "\n\n";
   shell "git log --format=full $version...HEAD >> /tmp/changes"; 
@@ -75,6 +79,7 @@ multi MAIN('bumpdist') {
     perl -p -i -e "s/{$version}/{$next}/" META6.json
     SH
   update-changes($version,$next);  
+  update-module($version,$next);
   shell "git commit -am$next";
   shell "git tag $next";
   make-dist($next);
