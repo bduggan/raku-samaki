@@ -28,6 +28,7 @@
     "Samaki::Plugouts" : "lib/Samaki/Plugouts.rakumod",
     "Samaki::Plugout::HTML" : "lib/Samaki/Plugout/HTML.rakumod",
     "Samaki::Plugout::Raw" : "lib/Samaki/Plugout/Raw.rakumod",
+    "Samaki::Plugout::Plain" : "lib/Samaki/Plugout/Plain.rakumod",
     "Samaki::Plugout::DataTable" : "lib/Samaki/Plugout/DataTable.rakumod",
     "Samaki::Plugout::Duckview" : "lib/Samaki/Plugout/Duckview.rakumod",
     "sam" : "bin/sam"
