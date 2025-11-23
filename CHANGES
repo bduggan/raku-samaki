@@ -1,3 +1,7 @@
+0.0.13 2025-11-23
+  - fix some distribution issues:
+  - typos, version, dependencies, provides, make
+
 0.0.12 2025-11-18
   - rename CLI to sam
   - Improve repl plugins (#5)

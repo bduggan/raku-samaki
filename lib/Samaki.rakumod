@@ -10,7 +10,7 @@ use Samaki::Plugins;
 use Samaki::Plugouts;
 use Samaki::Conf;
 
-unit class Samaki:ver<0.0.12>:api<1>:auth<zef:bduggan> does Samaki::Events;
+unit class Samaki:ver<0.0.13>:api<1>:auth<zef:bduggan> does Samaki::Events;
 
 has $.ui = Terminal::UI.new;
 my \top := my $;
