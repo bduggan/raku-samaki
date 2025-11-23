@@ -16,6 +16,7 @@
     "Samaki::Plugin::Duck" : "lib/Samaki/Plugin/Duck.rakumod",
     "Samaki::Plugin::Duckie" : "lib/Samaki/Plugin/Duckie.rakumod",
     "Samaki::Plugin::LLM" : "lib/Samaki/Plugin/LLM.rakumod",
+    "Samaki::Plugin::Postgres" : "lib/Samaki/Plugin/Postgres.rakumod",
     "Samaki::Plugin::Text" : "lib/Samaki/Plugin/Text.rakumod",
     "Samaki::Plugin::HTML" : "lib/Samaki/Plugin/HTML.rakumod",
     "Samaki::Plugin::Bash" : "lib/Samaki/Plugin/Bash.rakumod",
