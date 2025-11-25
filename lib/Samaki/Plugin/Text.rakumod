@@ -18,15 +18,15 @@ method execute(:$cell, :$mode, :$page) {
 my regex page { <[a..zA..Z0..9]>+ }
 
 method line-meta($text, :$cell) {
-  if $text ~~ /'[' <page> ']'/ {
+  if $text ~~ /'[link:' <page> ']'/ {
     return %( action => 'load_page', page_name => ~$<page>, wkdir => $cell.wkdir );
   }
   return %();
 }
 
 method line-format(Str $line) {
-  return $line unless $line ~~ /'[' <page> ']'/;
-  my @pieces = $line.split: / \[ <page> \] /, :v;
+  return $line unless $line ~~ /'[link:' <page> ']'/;
+  my @pieces = $line.split: / '[link:' <page> \] /, :v;
   my @out = @pieces.map: {
     when Match {
       t.color(%COLORS<title>) => "[〜 $<page> 〜]"
