@@ -11,6 +11,7 @@
     "Samaki::Conf" : "lib/Samaki/Conf.rakumod",
     "Samaki::Events" : "lib/Samaki/Events.rakumod",
     "Samaki::Page" : "lib/Samaki/Page.rakumod",
+    "Samaki::Share" : "lib/Samaki/Share.rakumod",
     "Samaki::Plugin" : "lib/Samaki/Plugin.rakumod",
     "Samaki::Plugout" : "lib/Samaki/Plugout.rakumod",
     "Samaki::Plugin::Duck" : "lib/Samaki/Plugin/Duck.rakumod",

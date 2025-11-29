@@ -1,0 +1,71 @@
+#!raku
+
+use Test;
+use Samaki::Share;
+use Samaki::Page;
+use Samaki::Plugins;
+use Samaki::Conf;
+
+plan 8;
+
+# Test 1: Module loads
+use-ok 'Samaki::Share';
+
+# Setup test environment
+my $test-dir = $*TMPDIR.child("samaki-test-{time}");
+$test-dir.mkdir;
+
+# Create a simple test samaki file
+my $test-content = q:to/END/;
+-- text
+hello world
+
+-- text
+goodbye world
+END
+
+my $test-file = $test-dir.child('test.samaki');
+spurt $test-file, $test-content;
+
+# Create a test output file
+my $data-dir = $test-dir.child('test');
+$data-dir.mkdir;
+spurt $data-dir.child('cell-0.txt'), 'test output';
+
+# Test 2: Create Samaki::Share instance
+my $conf-file = $*CWD.child('resources').child('samaki-conf-default.raku');
+my $conf = Samaki::Conf.new(:file($conf-file));
+my $plugins = Samaki::Plugins.new;
+$plugins.configure($conf);
+
+my $page = Samaki::Page.new(name => 'test', wkdir => $test-dir);
+ok $page.load(:$plugins), 'page loads';
+
+my $share = Samaki::Share.new(:$page, :$plugins);
+ok $share, 'Samaki::Share instance created';
+
+# Test 3: Generate HTML
+my $html;
+lives-ok { $html = $share.generate-html() }, 'generate-html runs without error';
+
+# Test 4: HTML contains basic structure
+ok $html ~~ /'<!DOCTYPE html>'/, 'HTML has DOCTYPE';
+ok $html ~~ /'<title>test - Samaki</title>'/, 'HTML has title';
+
+# Test 5: HTML contains cell type
+ok $html ~~ /'cell-type'/, 'HTML contains cell-type class';
+
+# Test 6: HTML contains tab functionality
+ok $html ~~ /'openTab'/, 'HTML contains tab JavaScript';
+
+# Cleanup
+$data-dir.&remove-tree;
+
+done-testing;
+
+sub remove-tree($dir) {
+  for $dir.dir -> $path {
+    $path.unlink;
+  }
+  $dir.rmdir;
+}

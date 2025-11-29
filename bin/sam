@@ -1,7 +1,10 @@
 #!/usr/bin/env raku
 
 use Samaki;
-use Log::Async; 
+use Samaki::Share;
+use Samaki::Page;
+use Samaki::Plugins;
+use Log::Async;
 use Terminal::ANSI::OO;
 use JSON::Fast;
 
@@ -84,4 +87,50 @@ multi MAIN('conf') {
   $path.IO.e or exit note "No config file at $path";
   shell <<$editor $path>>;
   note "Done editing config file at $path";
+}
+
+#| Generate an HTML version of a samaki file for easy sharing
+multi MAIN('share', $target, :$wkdir = $*CWD, :$output) {
+  my $page-path = $target.IO;
+  unless $page-path.e {
+    exit note "File not found: $target";
+  }
+
+  # Determine page name and working directory
+  my $page-name;
+  my $actual-wkdir;
+  if $target.contains('/') {
+    $page-name = $page-path.basename.subst(/'.samaki'$/, '');
+    $actual-wkdir = $page-path.dirname.IO;
+  } else {
+    $page-name = $target.subst(/'.samaki'$/, '');
+    $actual-wkdir = $wkdir.IO;
+  }
+
+  # Initialize Samaki to get plugins configured
+  my $q = Samaki.new(:wkdir($actual-wkdir), :$editor);
+
+  # Load the page
+  my $page = Samaki::Page.new(name => $page-name, wkdir => $actual-wkdir);
+  my $loaded = $page.load(plugins => $q.plugins);
+
+  unless $loaded {
+    exit note "Failed to load page: " ~ ($page.errors // "unknown error");
+  }
+
+  # Generate HTML
+  my $share = Samaki::Share.new(:$page, plugins => $q.plugins);
+  my $html = $share.generate-html();
+
+  # Determine output path
+  my $output-path = $output ?? $output.IO !! $actual-wkdir.child("$page-name.html");
+
+  # Write HTML to file
+  spurt $output-path, $html;
+
+  note "✓ Generated HTML: $output-path";
+
+  # Open in browser
+  my $open-cmd = $*DISTRO.is-win ?? 'start' !! ($*KERNEL.name eq 'darwin' ?? 'open' !! 'xdg-open');
+  shell "$open-cmd $output-path";
 }

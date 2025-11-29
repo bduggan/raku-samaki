@@ -539,6 +539,14 @@ settings, and the file extension.
 
 Use `jless` to view json in a new `tmux` window.  (requires jless and tmux)
 
+=head1 MORE
+
+There is also a `share` option, still a work in progress:
+
+    sam share eg/planets
+
+will generate a nice HTML page based on the samaki input.  It will embed output files into the HTML.
+
 =head1 USAGE
 
 Usage is described at the top.  For help, type `sam -h`.

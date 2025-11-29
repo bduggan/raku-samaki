@@ -6,3 +6,4 @@ eg/*/
 eg/*/*.html
 eg/*/*.png
 .precomp
+eg/*.html
