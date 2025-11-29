@@ -298,12 +298,12 @@ Samaki::Plugout::TJLess
 
 Use `jless` to view json in a new `tmux` window. (requires jless and tmux)
 
-MORE
-====
+IMPORTS/EXPORTS
+===============
 
-There is also a `share` option, still a work in progress:
+An entire samaki page can be exported as HTML or imported from Jupyter. This is still evolving. For now, for instance:
 
-    sam share eg/planets
+    sam export eg/planets
 
 will generate a nice HTML page based on the samaki input. It will embed output files into the HTML.
 
