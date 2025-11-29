@@ -1,7 +1,8 @@
 #!/usr/bin/env raku
 
 use Samaki;
-use Samaki::Share;
+use Samaki::Exporter::HTML;
+use Samaki::Importer::Jupyter;
 use Samaki::Page;
 use Samaki::Plugins;
 use Log::Async;
@@ -26,20 +27,19 @@ multi MAIN(:$dir = $*CWD) {
   $q.start-ui: 'browse';
 }
 
-#| Import a Jupyter notebook
-multi MAIN('from-jupyter', Str $nb-filename) {
-  exit note "notebook should end in .ipynb" unless $nb-filename.ends-with('ipynb');
-  my $in = from-json slurp $nb-filename;
-  my @out = $in<cells>.map: *<source>;
-  my @lines;
-  for @out {
-    @lines.push: "-- repl";
-    @lines.push: .join("\n");
-    @lines.push: "\n";
+#| Import from another format to a samaki file (default: jupyter)
+multi MAIN('import', $target, :$format = 'jupyter') {
+  given $format.lc {
+    when 'jupyter' {
+      my $importer = Samaki::Importer::Jupyter.new;
+      my $samaki-name = $importer.import-file($target);
+      note "✓ Imported from Jupyter: $samaki-name";
+      MAIN($samaki-name);
+    }
+    default {
+      exit note "Unknown import format: $format (supported: jupyter)";
+    }
   }
-  my $samaki-name = $nb-filename.subst('.ipynb','.samaki');
-  @lines.join("\n") ==> spurt $samaki-name;
-  MAIN($samaki-name);
 }
 
 #| Make a new page and edit
@@ -89,8 +89,8 @@ multi MAIN('conf') {
   note "Done editing config file at $path";
 }
 
-#| Generate an HTML version of a samaki file for easy sharing
-multi MAIN('share', $target, :$wkdir = $*CWD, :$output) {
+#| Export a samaki file to another format (default: HTML)
+multi MAIN('export', $target, :$wkdir = $*CWD, :$output, :$format = 'html') {
   my $page-path = $target.IO;
   unless $page-path.e {
     exit note "File not found: $target";
@@ -118,19 +118,26 @@ multi MAIN('share', $target, :$wkdir = $*CWD, :$output) {
     exit note "Failed to load page: " ~ ($page.errors // "unknown error");
   }
 
-  # Generate HTML
-  my $share = Samaki::Share.new(:$page, plugins => $q.plugins);
-  my $html = $share.generate-html();
+  # Export based on format
+  given $format.lc {
+    when 'html' {
+      my $exporter = Samaki::Exporter::HTML.new(:$page, plugins => $q.plugins);
+      my $html = $exporter.generate-html();
 
-  # Determine output path
-  my $output-path = $output ?? $output.IO !! $actual-wkdir.child("$page-name.html");
+      # Determine output path
+      my $output-path = $output ?? $output.IO !! $actual-wkdir.child("$page-name.html");
 
-  # Write HTML to file
-  spurt $output-path, $html;
+      # Write HTML to file
+      spurt $output-path, $html;
 
-  note "✓ Generated HTML: $output-path";
+      note "✓ Exported to HTML: $output-path";
 
-  # Open in browser
-  my $open-cmd = $*DISTRO.is-win ?? 'start' !! ($*KERNEL.name eq 'darwin' ?? 'open' !! 'xdg-open');
-  shell "$open-cmd $output-path";
+      # Open in browser
+      my $open-cmd = $*DISTRO.is-win ?? 'start' !! ($*KERNEL.name eq 'darwin' ?? 'open' !! 'xdg-open');
+      shell "$open-cmd $output-path";
+    }
+    default {
+      exit note "Unknown export format: $format (supported: html)";
+    }
+  }
 }

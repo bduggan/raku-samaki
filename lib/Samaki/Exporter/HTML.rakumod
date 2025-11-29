@@ -1,7 +1,7 @@
 use Samaki::Page;
 use Samaki::Plugins;
 
-unit class Samaki::Share;
+unit class Samaki::Exporter::HTML;
 
 has $.page;
 has $.plugins;

@@ -1,7 +1,7 @@
 #!raku
 
 use Test;
-use Samaki::Share;
+use Samaki::Exporter::HTML;
 use Samaki::Page;
 use Samaki::Plugins;
 use Samaki::Conf;
@@ -9,7 +9,7 @@ use Samaki::Conf;
 plan 8;
 
 # Test 1: Module loads
-use-ok 'Samaki::Share';
+use-ok 'Samaki::Exporter::HTML';
 
 # Setup test environment
 my $test-dir = $*TMPDIR.child("samaki-test-{time}");
@@ -32,7 +32,7 @@ my $data-dir = $test-dir.child('test');
 $data-dir.mkdir;
 spurt $data-dir.child('cell-0.txt'), 'test output';
 
-# Test 2: Create Samaki::Share instance
+# Test 2: Create Samaki::Exporter::HTML instance
 my $conf-file = $*CWD.child('resources').child('samaki-conf-default.raku');
 my $conf = Samaki::Conf.new(:file($conf-file));
 my $plugins = Samaki::Plugins.new;
@@ -41,12 +41,12 @@ $plugins.configure($conf);
 my $page = Samaki::Page.new(name => 'test', wkdir => $test-dir);
 ok $page.load(:$plugins), 'page loads';
 
-my $share = Samaki::Share.new(:$page, :$plugins);
-ok $share, 'Samaki::Share instance created';
+my $exporter = Samaki::Exporter::HTML.new(:$page, :$plugins);
+ok $exporter, 'Samaki::Exporter::HTML instance created';
 
 # Test 3: Generate HTML
 my $html;
-lives-ok { $html = $share.generate-html() }, 'generate-html runs without error';
+lives-ok { $html = $exporter.generate-html() }, 'generate-html runs without error';
 
 # Test 4: HTML contains basic structure
 ok $html ~~ /'<!DOCTYPE html>'/, 'HTML has DOCTYPE';

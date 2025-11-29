@@ -242,6 +242,8 @@ Samaki -- Stich Associated Modes of Accessing and Keeping Information
 Usage:
   sam            -- start the default UI, and browser the current directory
   sam <name>     -- start with the named samaki page or directory
+  sam import <file> [--format=jupyter] -- import from another format to samaki
+  sam export <name> [--format=html] -- export a samaki file to HTML (or other formats)
   sam conf       -- edit the configuration file ~/.samaki.conf
   sam reset-conf -- reset the configuration file to the default
 
