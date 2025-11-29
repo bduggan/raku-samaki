@@ -1,3 +1,12 @@
+0.0.14 2025-11-29
+  - add TJLess plugin: tmux + jless
+  - change link format for text input + example
+  - CLI fixes around interpreting the argument
+  - Color improvements, line numbers
+  - UI improvements: next/prev when using [ and ]
+  - better sorting
+  - suppress warnings during EVAL
+
 0.0.13 2025-11-23
   - fix some distribution issues:
   - typos, version, dependencies, provides, make
