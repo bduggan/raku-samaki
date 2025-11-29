@@ -94,9 +94,14 @@ class Samaki::Cell {
         my $eval-str = ($p<phrase> // $p<alt>).Str;
         trace "calling EVAL with $eval-str";
         my $res = do {
+          my $wrapped = &warn.wrap: -> |c {
+            warning c.Str with c;
+            warning ( ($_ // "empty").Str ).trim for Backtrace.new;
+          }
+          LEAVE $wrapped.restore;
           indir self.data-dir, { $eval-str.EVAL }
         }
-        $out ~= $res;
+        $out ~= ( $res // "");
         CATCH {
           default {
             info "errors in eval, got $_ when running '$eval-str'";
