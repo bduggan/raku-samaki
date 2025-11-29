@@ -291,6 +291,11 @@ Samaki::Plugout::Raw
 
 Call the system `open` or `xdg-open` whhch will open the file based on system settings, and the file extension.
 
+Samaki::Plugout::TJLess
+-----------------------
+
+Use `jless` to view json in a new `tmux` window. (requires jless and tmux)
+
 USAGE
 =====
 

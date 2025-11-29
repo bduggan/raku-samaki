@@ -34,6 +34,7 @@
     "Samaki::Plugout::JSON" : "lib/Samaki/Plugout/JSON.rakumod",
     "Samaki::Plugout::Plain" : "lib/Samaki/Plugout/Plain.rakumod",
     "Samaki::Plugout::Raw" : "lib/Samaki/Plugout/Raw.rakumod",
+    "Samaki::Plugout::TJLess" : "lib/Samaki/Plugout/TJLess.rakumod",
     "sam" : "bin/sam"
   },
   "resources" : [ "samaki-conf-default.raku" ],

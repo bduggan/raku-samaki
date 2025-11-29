@@ -535,6 +535,10 @@ Use leafpad to create an HTML page with the content, and open a web browser.
 Call the system `open` or `xdg-open` whhch will open the file based on system
 settings, and the file extension.
 
+=head2 Samaki::Plugout::TJLess
+
+Use `jless` to view json in a new `tmux` window.  (requires jless and tmux)
+
 =head1 USAGE
 
 Usage is described at the top.  For help, type `sam -h`.
