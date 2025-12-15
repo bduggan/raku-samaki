@@ -27,6 +27,10 @@ class Samaki::Cell {
   has $.default-ext = 'csv';
   has @.conf;
 
+  method Str {
+    self.content.trim;
+  }
+
   method shutdown {
     return unless $.plugin;
     $.plugin.shutdown;
@@ -70,13 +74,12 @@ class Samaki::Cell {
       page.get-cell($.index - 1)
     }
 
-    multi cells(Int $i) {
-      page.get-cell($i);
-    }
-
-    multi cells(Str $name) {
-      page.get-cell($name);
-    }
+    multi c(Str $name) { cells($name); }
+    multi c(Int $i) { cells($i); }
+    multi cell(Str $name) { cells($name); }
+    multi cell(Int $i) { cells($i); }
+    multi cells(Int $i) { page.get-cell($i); }
+    multi cells(Str $name) { page.get-cell($name); }
 
     my regex phrase { '〈' <( <-[〉]>* )> '〉' }
     my regex alt { '<<<' <( <( .*? )> )> '>>>' }

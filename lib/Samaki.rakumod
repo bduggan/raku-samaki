@@ -367,7 +367,10 @@ Cells can be referenced by name or by number, e.g.
 
     〈 cells('the_answer').content 〉
 
-refers to the contents of the above cell.
+refers to the contents of the above cell.  Also `c` and `cell` are synonyms for `cells`, and the
+default Stringification will call `.content.trim`.  e.g.  this will also work:
+
+    〈 c('the_answer') 〉
 
 The API is still evolving, but at a minimum, it has the name of an output file;
 plugins are responsible for writing to the output file.
