@@ -167,7 +167,8 @@ method show-dir(IO::Path $dir, :$suffix = 'samaki', :$pane = top, Bool :$header 
   }
 
   unless $dir && $dir.d {
-    pane.put: "$dir does not exist";
+    pane.put: "$dir does not exist (yet).";
+    pane.put: "Use [e] to edit the page, run a query and create some outputs.";
     return;
   }
 
@@ -371,6 +372,9 @@ refers to the contents of the above cell.  Also `c` and `cell` are synonyms for 
 default Stringification will call `.content.trim`.  e.g.  this will also work:
 
     〈 c('the_answer') 〉
+
+Calling `res` will return a C<Duckie::Result> object.  Calling `col`
+uses `res` and `column-data` to return a list of values from a named column.
 
 The API is still evolving, but at a minimum, it has the name of an output file;
 plugins are responsible for writing to the output file.

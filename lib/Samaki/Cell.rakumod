@@ -3,6 +3,7 @@
 use Terminal::ANSI::OO 't';
 use Log::Async;
 use Duck::CSV;
+use Duckie;
 
 use Samaki::Conf;
 use Samaki::Plugins;
@@ -146,6 +147,20 @@ class Samaki::Cell {
 
   method rows {
     read-csv self.output-file;
+  }
+
+  method col($str, Bool :$csv) {
+    with self.res.column-data($str) {
+      return .join(',') if $csv;
+      return $_;
+    }
+  }
+
+  method res {
+    my $file = self.output-file;
+    my $db = Duckie.new;
+    my $q = $db.query: "select * from read_csv('$file')";
+    $q;
   }
 
   method execute(:$mode = 'eval', :$page!, :$pane!, :$action) {
