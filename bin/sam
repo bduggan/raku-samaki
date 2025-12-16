@@ -52,14 +52,20 @@ multi MAIN('new', :$wkdir = $*CWD) {
 }
 
 #| Edit an existing page
-multi MAIN($target, :$wkdir = $*CWD) {
-  if $target.contains('/') {
+multi MAIN(Str $target, :$wkdir = $*CWD) {
+  if $target.contains('/') && !$target.ends-with('/') {
     my $page = $target.IO.basename;
     my $wkdir = $target.IO.dirname.IO;
     my $q = Samaki.new(:$wkdir, :$editor);
     $q.start-ui: :$page;
     exit;
   }
+
+  if $target.IO.d && !("{$target}.samaki".IO.e) {
+    MAIN(dir => $target);
+    return;
+  }
+
   my $q = Samaki.new(:$wkdir, :$editor);
   my $page = $target;
   $page .= subst('.samaki','') if $page.ends-with('samaki');

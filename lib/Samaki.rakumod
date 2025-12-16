@@ -167,8 +167,11 @@ method show-dir(IO::Path $dir, :$suffix = 'samaki', :$pane = top, Bool :$header 
   }
 
   unless $dir && $dir.d {
-    pane.put: "$dir does not exist (yet).";
-    pane.put: "Use [e] to edit the page, run a query and create some outputs.";
+    pane.put: "$dir does not exist.";
+    pane.put: "";
+    pane.put: "Run a query to create this working directory.";
+    pane.put: "";
+    pane.put: "Use 'e' to edit this page.";
     return;
   }
 
