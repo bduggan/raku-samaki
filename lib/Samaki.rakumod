@@ -29,7 +29,9 @@ has $.plugins = Samaki::Plugins.new;
 has $.plugouts = Samaki::Plugouts.new;
 has Str $.config-file;
 has $.conf-errors;
-my $config-location = %*ENV<SAMAKI_CONF> // (%*ENV<XDG_HOME> // $*HOME).IO.child('.samaki.conf');
+my $base = %*ENV<XDG_CONFIG_HOME> // $*HOME.child('.config');
+my $samaki-home = %*ENV<SAMAKI_HOME> // $base.child('samaki');
+my $config-location = %*ENV<SAMAKI_CONFIG> // $samaki-home.child('samaki-conf.raku');
 
 method data-dir {
   $.wkdir.child( $.current-page.name );
@@ -41,6 +43,10 @@ submethod TWEAK {
     mkdir $!wkdir
   }
   unless $!conf {
+    unless $samaki-home.IO.d {
+      @!startup-log.push: "Creating samaki config directory at " ~ $samaki-home;
+      mkdir $samaki-home;
+    }
     unless $config-location.IO.e {
       copy %?RESOURCES{ 'samaki-conf-default.raku' }.IO.Str, $config-location;
       @!startup-log.push: "copied fresh config file to $config-location";
@@ -383,6 +389,10 @@ The API is still evolving, but at a minimum, it has the name of an output file;
 plugins are responsible for writing to the output file.
 
 =head1 CONFIGURATION
+
+The configuration file for samaki is a raku file located at `~/.config/samaki/samaki-conf.raku`.
+Environment variables `$SAMAKI_HOME` and `$SAMAKI_CONFIG` can be used to override
+the directory and file name respectively.  Also `$XDG_CONFIG_HOME` is used if set.
 
 Samaki is configured with a set of regular expressions which are used to determine
 how to handle each cell.  The "type" of the cell above is matched against the

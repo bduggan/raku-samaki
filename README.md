@@ -126,10 +126,14 @@ refers to the contents of the above cell. Also `c` and `cell` are synonyms for `
 
     〈 c('the_answer') 〉
 
+Calling `res` will return a `Duckie::Result` object. Calling `col` uses `res` and `column-data` to return a list of values from a named column.
+
 The API is still evolving, but at a minimum, it has the name of an output file; plugins are responsible for writing to the output file.
 
 CONFIGURATION
 =============
+
+The configuration file for samaki is a raku file located at `~/.config/samaki/samaki-conf.raku`. Environment variables `$SAMAKI_HOME` and `$SAMAKI_CONFIG` can be used to override the directory and file name respectively. Also `$XDG_CONFIG_HOME` is used if set.
 
 Samaki is configured with a set of regular expressions which are used to determine how to handle each cell. The "type" of the cell above is matched against the regexes, and whichever one matches first will be used to parse the input and generate output.
 
