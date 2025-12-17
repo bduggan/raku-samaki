@@ -159,8 +159,8 @@ class Samaki::Cell {
   method res {
     my $file = self.output-file;
     my $db = Duckie.new;
-    my $q = $db.query: "select * from read_csv('$file')";
-    $q;
+    my $res = $db.query: "select * from read_csv('$file')";
+    $res;
   }
 
   method execute(:$mode = 'eval', :$page!, :$pane!, :$action) {
