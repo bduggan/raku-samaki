@@ -133,7 +133,9 @@ method set-events {
       }
 
       when 'write_file' {
-        %meta<content> ==> spurt %meta<file>;
+        indir self.data-dir, {
+          %meta<content> ==> spurt %meta<file>;
+        }
         top.put: "saved!"
       }
 
