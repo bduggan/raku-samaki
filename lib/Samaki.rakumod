@@ -9,6 +9,7 @@ use Samaki::Events;
 use Samaki::Plugins;
 use Samaki::Plugouts;
 use Samaki::Conf;
+use Samaki::Utils;
 
 unit class Samaki:ver<0.0.14>:api<1>:auth<zef:bduggan> does Samaki::Events;
 

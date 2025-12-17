@@ -5,6 +5,7 @@ use Terminal::ANSI::OO 't';
 use Samaki::Plugins;
 use Samaki::Cell;
 use Samaki::Conf;
+use Samaki::Utils;
 
 logger.untapped-ok = True;
 
@@ -249,7 +250,9 @@ class Samaki::Page {
           my $line = $cell.output-stream.receive;
           last unless $line.defined;
           if $line.isa(Hash) {
-            btm.put: $line<txt>, meta => $line<meta>, wrap => $cell.wrap // 'none';
+            next unless log-visible($line<level>);
+            my $txt = $line<txt>;
+            btm.put: $txt, meta => ($line<meta> // {}), wrap => ($cell.wrap // 'none');
           } else {
             btm.put: $line, wrap => $cell.wrap // 'none';
           }

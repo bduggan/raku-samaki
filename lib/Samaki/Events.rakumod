@@ -11,9 +11,18 @@ method plugouts { ... }
 method data-dir { ... } #= current data directory
 
 method set-events {
-  $.ui.bind: 'pane', 'e' => 'edit';
   my (\ui) = $.ui;
   my (\top,\btm) = $.ui.panes;
+
+  ui.bind: 'pane', 'e' => 'edit';
+
+  ui.bind: 'v' => 'verbose-toggle';
+  ui.on: verbose-toggle => {
+    my $level = get-stream-log-level;
+    my $new-level = $level eq 'quiet' ?? 'verbose' !! 'quiet';
+    ui.alert: "output level: $new-level";
+    set-stream-log-level($new-level);
+  };
 
   $.ui.bind: 'pane', 's' => 'run-shell';
   top.on-sync: run-shell => -> :%meta {

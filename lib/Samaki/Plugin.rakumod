@@ -35,6 +35,10 @@ method write-output { True }
 has $.output; # Str or array
 has Channel $.output-stream = Channel.new;
 
+multi method stream(:$txt!, :$level!, :$meta) {
+  self.stream: %( :$txt, :$meta, :$level )
+}
+
 multi method stream(:$txt!, :$meta) {
   self.stream: %( :$txt, :$meta )
 }
@@ -44,7 +48,8 @@ multi method stream($stuff) {
 }
 
 method info(Str $what) {
-  self.stream: [t.color(%COLORS<info>) => $what]
+  self.stream: txt => [t.color(%COLORS<info>) => $what], level => 'info';
+  #self.stream: [t.color(%COLORS<info>) => $what];
 }
 
 method error(Str $what) {

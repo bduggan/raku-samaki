@@ -40,3 +40,30 @@ sub show-datum($d) is export {
   }
 }
 
+my $stream-log-level = 'quiet';
+
+sub set-stream-log-level(Str $level) is export {
+  info "Setting stream log level to $level";
+  $stream-log-level = $level;
+}
+
+sub get-stream-log-level() is export {
+  return $stream-log-level;
+}
+
+sub log-visible( $line-level) is export {
+  return True unless $line-level.defined;
+  # only supporting output-level = 'verbose', line-level = 'info' for now
+  # output-level may be undefined or 'quiet'
+  given $stream-log-level {
+    when 'quiet' {
+      return False;
+    }
+    when 'verbose' {
+      return True if $line-level eq 'info';
+      return False;
+    }
+  }
+  return True;
+}
+
