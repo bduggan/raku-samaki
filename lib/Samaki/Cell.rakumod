@@ -172,7 +172,7 @@ class Samaki::Cell {
         my $out;
         if $.plugin.write-output {
           if $.plugin.clear-stream-before {
-            $.plugin.stream:  txt => [ t.color(%COLORS<info>) => "Writing to ", t.color(%COLORS<link>) => "[" ~ self.output-file ~ "]" ],
+            $.plugin.stream:  txt => [ t.color(%COLORS<info>) => "Writing to ", t.color(%COLORS<link>) => "[" ~ self.output-file.IO.relative ~ "]" ],
                               meta => %( action => 'do_output', path => self.output-file );
           }
           $out = self.output-file.open(:w) 
