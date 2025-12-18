@@ -30,9 +30,9 @@ has $.plugins = Samaki::Plugins.new;
 has $.plugouts = Samaki::Plugouts.new;
 has Str $.config-file;
 has $.conf-errors;
-my $base = %*ENV<XDG_CONFIG_HOME> // $*HOME.child('.config');
-my $samaki-home = %*ENV<SAMAKI_HOME> // $base.child('samaki');
-my $config-location = %*ENV<SAMAKI_CONFIG> // $samaki-home.child('samaki-conf.raku');
+my $base = %*ENV<XDG_CONFIG_HOME>.?IO // $*HOME.child('.config');
+my $samaki-home = %*ENV<SAMAKI_HOME>.?IO // $base.child('samaki');
+my $config-location = %*ENV<SAMAKI_CONFIG>.?IO // $samaki-home.child('samaki-conf.raku');
 
 method data-dir {
   $.wkdir.child( $.current-page.name );
