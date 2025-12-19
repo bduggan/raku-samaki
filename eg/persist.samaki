@@ -1,0 +1,8 @@
+-- text:one
+〈 my $a = 12; 〉
+
+-- text:two
+the number is 〈 $a + 1 〉 , okay?
+
+-- text:three
+the number is 〈 $b 〉 , okay?
