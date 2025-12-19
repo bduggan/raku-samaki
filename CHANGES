@@ -1,3 +1,14 @@
+0.0.15 2025-12-19
+   - new export option to export HTML
+   - new import design for importing jupyter notebooks
+   - new configuration location: ~/.config (not-backwards compatible)
+   - geojson example
+   - better startup messages
+   - more methods for getting data between cells
+      - alias for "cells" (c, cell)
+      - 'col' and 'res' methods
+   - verbose mode for quieter streaming data
+
 0.0.14 2025-11-29
   - add TJLess plugin: tmux + jless
   - change link format for text input + example
