@@ -6,6 +6,7 @@ use Samaki::Plugins;
 use Samaki::Cell;
 use Samaki::Conf;
 use Samaki::Utils;
+use CodeUnit;
 
 logger.untapped-ok = True;
 
@@ -21,6 +22,7 @@ class Samaki::Page {
   has $.mode is rw = 'eval'; # or 'raw'
   has $.current-cell is rw;
   has Str $.errors;
+  has $.cu = CodeUnit.new(:keep-warnings);
 
   method data-dir {
     $!wkdir.child(self.name);
@@ -124,7 +126,7 @@ class Samaki::Page {
            my $*page = self;
            my $out = $cell.get-content(:$mode, page => self);
            if $cell.errors {
-             $pane.put( [ t.color(%COLORS<error>) => "--> $_" ] ) for $cell.errors.lines;
+             $pane.put( [ t.color(%COLORS<error>) => "▶ $_".indent(4) ] ) for $cell.errors.lines;
            }
            for $out.lines.kv -> $n, $txt {
              my %meta = $cell.line-meta($txt);

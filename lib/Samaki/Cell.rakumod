@@ -103,15 +103,20 @@ class Samaki::Cell {
             warning ( ($_ // "empty").Str ).trim for Backtrace.new;
           }
           LEAVE $wrapped.restore;
-          indir self.data-dir, { $eval-str.EVAL }
+          indir self.data-dir, { $page.cu.eval($eval-str) }
         }
         $out ~= ( $res // "");
         CATCH {
           default {
             info "errors in eval, got $_ when running '$eval-str'";
-            $out ~= "¡¡ $p !!";
+            $out ~= " ▶$p◀ ";
             $!errors ~= "Error evaluating $p : $_\n";
           }
+        }
+        with $page.cu.exception {
+          $out ~= " ▶$p◀ ";
+          $!errors ~= "Error evaluating $p : " ~ .message.chomp ~ "\n";
+          $page.cu.exception = Nil;
         }
       }
     }
