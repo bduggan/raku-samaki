@@ -100,30 +100,16 @@ class Samaki::Cell {
         $out ~= $p;
         next;
       }
-      try {
-        my $eval-str = ($p<phrase> // $p<alt>).Str;
-        trace "calling EVAL with $eval-str";
-        my $res = do {
-          my $wrapped = &warn.wrap: -> |c {
-            warning c.Str with c;
-            warning ( ($_ // "empty").Str ).trim for Backtrace.new;
-          }
-          LEAVE $wrapped.restore;
-          indir self.data-dir, { $page.cu.eval($eval-str) }
-        }
-        $out ~= ( $res // "");
-        CATCH {
-          default {
-            info "errors in eval, got $_ when running '$eval-str'";
-            $out ~= " ▶$p◀ ";
-            $!errors ~= "Error evaluating $p : $_\n";
-          }
-        }
-        with $page.cu.exception {
-          $out ~= " ▶$p◀ ";
-          $!errors ~= "Error evaluating $p : " ~ .message.chomp ~ "\n";
-          $page.cu.exception = Nil;
-        }
+      my $eval-str = ($p<phrase> // $p<alt>).Str;
+      trace "calling EVAL with $eval-str";
+      my $res = do {
+        indir self.data-dir, { $page.cu.eval($eval-str) }
+      }
+      $out ~= ( $res // "");
+      with $page.cu.exception {
+        $out ~= " ▶$p◀ ";
+        $!errors ~= "$p │ Sorry!\n " ~ .message.chomp ~ "\n";
+        $page.cu.exception = Nil;
       }
     }
     $!last-content = $out;

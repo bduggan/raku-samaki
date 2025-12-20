@@ -207,10 +207,15 @@ class Samaki::Page {
         # this is an auto-eval cell, run it as we go
         debug "evaluating block " ~ @lines.join("\n");
         $.cu.eval: @lines.join("\n");
+        my $content = @lines.join("\n") ~ "\n";
+        with $.cu.exception {
+          $content = "--▶ sorry! something went wrong --\n{.message }\n----\n$content";
+          $.cu.exception = Nil;
+        }
         $cell-type = 'auto';
         @!cells.push: Samaki::Cell.new:
           source => $block, :$!wkdir, :name('auto'), data-dir => self.data-dir, :$cell-type,
-          content => (@lines.join("\n") ~ "\n"), index => $++, start-line => @ranges[ $block-index ][0], page-name => $.name;
+          :$content, index => $++, start-line => @ranges[ $block-index ][0], page-name => $.name;
         next;
       }
       with $<cell-header><cell-name> -> $n {
