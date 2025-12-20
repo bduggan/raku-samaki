@@ -157,6 +157,19 @@ Samaki comes with a default configuration file and some default plugins. The def
       ]
     ;
 
+INIT BLOCKS
+===========
+
+A special type of cell that has no type can be used to run Raku code when the page loads, like this:
+
+    --
+    my $p = 'mars';
+
+    -- duck
+    select * from planets where name = '〈 $p 〉';
+
+The two dashes without a type indicate that this code should immediately be evalutead. There can be many of these blocks anywhere in the page.
+
 PLUGINS
 =======
 

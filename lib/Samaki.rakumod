@@ -428,6 +428,20 @@ for the actual contents) :
       ]
     ;
 
+=head1 INIT BLOCKS
+
+A special type of cell that has no type can be used to run Raku code when the
+page loads, like this:
+
+   --
+   my $p = 'mars';
+
+   -- duck
+   select * from planets where name = '〈 $p 〉';
+
+The two dashes without a type indicate that this code should immediately
+be evalutead.  There can be many of these blocks anywhere in the page.
+
 =head1 PLUGINS
 
 Plugin classes should do the `Samaki::Plugin` role, and at a minimum should
