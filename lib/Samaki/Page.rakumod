@@ -103,7 +103,7 @@ class Samaki::Page {
         my %meta;
         if $select-action -> $action {
           @actions.push: t.color(%COLORS<button>) => " [$action]",
-                         t.color(%COLORS<cell-name>) => " ―→ { $cell.name }.{ $cell.ext }";
+                         t.color(%COLORS<cell-name>) => " ➞  { $cell.name }.{ $cell.ext }";
           %meta = ( :$action, cell => $cell );
         }
         %meta<page> = self;
