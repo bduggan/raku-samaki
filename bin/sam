@@ -54,7 +54,7 @@ multi MAIN('new', :$wkdir = $*CWD) {
 #| Edit an existing page
 multi MAIN(Str $target, :$wkdir = $*CWD) {
   if $target.contains('/') && !$target.ends-with('/') {
-    my $page = $target.IO.basename;
+    my $page = $target.IO.basename.subst( /'.'samaki$/,'');
     my $wkdir = $target.IO.dirname.IO;
     my $q = Samaki.new(:$wkdir, :$editor);
     $q.start-ui: :$page;

@@ -43,6 +43,7 @@ submethod TWEAK {
     @!startup-log.push: "Creating working directory at " ~ $!wkdir;
     mkdir $!wkdir
   }
+
   unless $!conf {
     unless $samaki-home.IO.d {
       @!startup-log.push: "Creating samaki config directory at " ~ $samaki-home;
@@ -109,6 +110,10 @@ multi method start-ui(Str :$page) {
 
 multi method start-ui(Samaki::Page :$page!) {
   $!current-page = $page;
+  unless self.data-dir.IO.d {
+    @!startup-log.push: "Creating data dir: " ~ self.data-dir;
+    mkdir self.data-dir;
+  }
   $.ui.setup: :2panes;
   (top, btm) = $.ui.panes;
   top.auto-scroll = False;
