@@ -109,13 +109,19 @@ class Samaki::Page {
         %meta<page> = self;
         %meta<cell> = $cell;
         my $lead = "┌── ".indent(4);
-        my $post = ' (' ~ $cell.ext ~ ')';
-        $pane.put: [
-          t.color(%COLORS<cell-type>) => $lead ~ ($cell.cell-type ~ $post).fmt('%-20s'),
-          |@actions,
-         ], :%meta;
+
+        unless $cell.cell-type eq 'auto' {
+          my $post = ' (' ~ $cell.ext ~ ')';
+          $pane.put: [
+            t.color(%COLORS<cell-type>) => $lead ~ ($cell.cell-type ~ $post).fmt('%-20s'),
+            |@actions,
+           ], :%meta;
+         }
+
+        my $leadchar = '│';
+        $leadchar =  '╎' if $cell.cell-type eq 'auto';
         for $cell.conf.list -> $conf {
-          $pane.put: [ t.color(%COLORS<cell-type>) => "│ ".indent(4) ~ $conf.raku ];
+          $pane.put: [ t.color(%COLORS<cell-type>) => "$leadchar ".indent(4) ~ $conf.raku ];
         }
         try {
            CATCH {
@@ -133,9 +139,8 @@ class Samaki::Page {
              my $line = $cell.line-format($txt);
              my Pair $l = ($line.isa(Pair) ?? $line !! t.color(%COLORS<text>) => $line);
              $pane.put: [
-               col('line') => $n.fmt('%3d '),
-               col('cell-type') =>
-                ( $n == $out.lines.elems - 1 ?? '└ ' !! '│ '),
+               col('line')      => $n.fmt('%3d '),
+               col('cell-type') => ( $n == $out.lines.elems - 1 && $cell.cell-type ne 'auto' ?? '└ ' !! "$leadchar "),
                $l
              ], meta => %( :$cell, :self, |%meta );
            }
@@ -200,7 +205,8 @@ class Samaki::Page {
         $cell-type = $type.trim;
       } else {
         # this is an auto-eval cell, run it as we go
-        $.cu.eval($block);
+        debug "evaluating block " ~ @lines.join("\n");
+        $.cu.eval: @lines.join("\n");
         $cell-type = 'auto';
         @!cells.push: Samaki::Cell.new:
           source => $block, :$!wkdir, :name('auto'), data-dir => self.data-dir, :$cell-type,

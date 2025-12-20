@@ -18,11 +18,11 @@ class Samaki::Cell {
   has Str $.content;
   has Str $.last-content; #= last evaled content
   has $.wkdir is required;
-  has $.res;    #= result set, if any.  usually Duckie::Result
-  has $.output; #= displayed output.  string or array of lines
-  has Str $.errors; #= errors during evaluation, execution or setup
-  has $.index;       #= 1-based index of cell in page
-  has $.start-line;  #= line number in page where cell starts
+  has $.res;          #= result set, if any.  usually Duckie::Result
+  has $.output;       #= displayed output.  string or array of lines
+  has Str $.errors;   #= errors during evaluation, execution or setup
+  has $.index;        #= 1-based index of cell in page
+  has $.start-line;   #= line number in page where cell starts
   has $.timeout = 60; #= default execution timeout in seconds
   has $.plugin handles <wrap stream-output output-stream output-ext clear-stream-before select-action>;
 
@@ -223,7 +223,6 @@ class Samaki::Cell {
   #| used to format content
   method line-format(Str $line) {
     return $line unless $!plugin;
-    return %() if self.cell-type eq 'auto';
     $!plugin.line-format($line, cell => self);
   }
 }

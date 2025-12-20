@@ -7,5 +7,8 @@ my $b = 12;
 -- text:two
 the number is 〈 $a + 1 〉 , okay?
 
+--
+$b = 100;
+
 -- text:three
 b is 〈 $b 〉
