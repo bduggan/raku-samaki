@@ -156,7 +156,7 @@ class Samaki::Page {
       $!errors = "failed to load page file: {self.path} - $!";
       return False;
     }
-    my regex cell-type { \h* <[a..zA..Z0..9_-]>+ \h* }
+    my regex cell-type { \h* <[a..zA..Z0..9_-]>* \h* }
     my regex cell-ext { <[a..zA..Z0..9_-]>+ }
     my regex cell-name { <[a..zA..Z0..9_-]>+ }
     my @dashes = "─", "―", "⸺", "–", "—", "﹣", "－", '--',
@@ -195,7 +195,18 @@ class Samaki::Page {
       my $cell-type;
       my $cell-name;
       $cell-lead ~~ /<cell-header>/ or die "malformed cell header: $cell-lead";
-      $cell-type = $<cell-header><cell-type>.Str.trim;
+      my $type = $<cell-header><cell-type>.Str;
+      if $type && $type.trim.chars > 0 {
+        $cell-type = $type.trim;
+      } else {
+        # this is an auto-eval cell, run it as we go
+        $.cu.eval($block);
+        $cell-type = 'auto';
+        @!cells.push: Samaki::Cell.new:
+          source => $block, :$!wkdir, :name('auto'), data-dir => self.data-dir, :$cell-type,
+          content => (@lines.join("\n") ~ "\n"), index => $++, start-line => @ranges[ $block-index ][0], page-name => $.name;
+        next;
+      }
       with $<cell-header><cell-name> -> $n {
         $cell-name = $n.Str.trim;
       }

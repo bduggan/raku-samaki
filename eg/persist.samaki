@@ -1,3 +1,6 @@
+--
+my $b = 12;
+
 -- text:one
 〈 my $a = 12; 〉
 
@@ -5,4 +8,4 @@
 the number is 〈 $a + 1 〉 , okay?
 
 -- text:three
-pi is 〈 pi 〉
+b is 〈 $b 〉

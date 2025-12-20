@@ -7,6 +7,7 @@ use Duckie;
 
 use Samaki::Conf;
 use Samaki::Plugins;
+use Samaki::Plugin::Auto;
 
 class Samaki::Cell {
   has Str $.source;
@@ -28,6 +29,10 @@ class Samaki::Cell {
   has $.default-ext = 'csv';
   has @.conf;
 
+  method TWEAK {
+    $!plugin = Samaki::Plugin::Auto.new if $!cell-type eq 'auto';
+  }
+
   method Str {
     self.content.trim;
   }
@@ -38,6 +43,7 @@ class Samaki::Cell {
   }
 
   method is-valid {
+    return True if $.cell-type eq 'auto';
     return False unless $!plugin;
     return True;
   }
@@ -210,12 +216,14 @@ class Samaki::Cell {
   #| used when writing out content
   method line-meta(Str $line) {
     return %() unless $!plugin;
+    return %() if self.cell-type eq 'auto';
     $!plugin.line-meta($line, cell => self);
   }
 
   #| used to format content
   method line-format(Str $line) {
     return $line unless $!plugin;
+    return %() if self.cell-type eq 'auto';
     $!plugin.line-format($line, cell => self);
   }
 }
