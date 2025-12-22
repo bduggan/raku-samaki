@@ -108,15 +108,16 @@ class Samaki::Page {
         }
         %meta<page> = self;
         %meta<cell> = $cell;
-        my $lead = "┌── ".indent(4);
-
-        unless $cell.cell-type eq 'auto' {
+        if $cell.cell-type eq 'auto' {
+          $pane.put: [ t.color(%COLORS<cell-type>) => '╌'.indent(4) ], :%meta;
+       } else {
+          my $lead = "┌── ".indent(4);
           my $post = ' (' ~ $cell.ext ~ ')';
           $pane.put: [
             t.color(%COLORS<cell-type>) => $lead ~ ($cell.cell-type ~ $post).fmt('%-20s'),
             |@actions,
            ], :%meta;
-         }
+        }
 
         my $leadchar = '│';
         $leadchar =  '╎' if $cell.cell-type eq 'auto';
@@ -194,6 +195,7 @@ class Samaki::Page {
     my regex confvalue { \V+ }
     my rule confline {^^ [ '|' | '│' ] \h* <confkey> \h* ':' \h* <confvalue> \h* $$ }
 
+    my $index = 0;
     my SetHash $names;
     for @blocks.kv -> $block-index, $block {
       my ($cell-lead, @lines) = $block.lines;
@@ -214,8 +216,12 @@ class Samaki::Page {
         }
         $cell-type = 'auto';
         @!cells.push: Samaki::Cell.new:
-          source => $block, :$!wkdir, :name('auto'), data-dir => self.data-dir, :$cell-type,
-          :$content, index => $++, start-line => @ranges[ $block-index ][0], page-name => $.name;
+          source => $block, :$!wkdir, :name('auto'),
+          data-dir => self.data-dir,
+          :$cell-type,
+          index => $index++,
+          :$content,
+           start-line => @ranges[ $block-index ][0], page-name => $.name;
         next;
       }
       with $<cell-header><cell-name> -> $n {
@@ -245,7 +251,7 @@ class Samaki::Page {
         :$data-dir,
         :$cell-type,
         content => (@lines.join("\n") ~ "\n"),
-        index => $++,
+        index => $index++,
         start-line => @ranges[ $block-index ][0],
         page-name => $.name,
         |%args;
@@ -310,9 +316,9 @@ class Samaki::Page {
   }
 
   method shutdown {
-    info "shutting down page {self.name}";
+    debug "shutting down page {self.name}";
     for @!cells -> $cell {
-      info "shutting down cell { $cell.name }";
+      debug "shutting down cell { $cell.name }";
       $cell.shutdown;
     }
   }
