@@ -46,5 +46,62 @@ is +$page.cells[0].last-line, 2, 'first cell ends at correct line';
 is +$page.cells[1].last-line, 5, 'second cell ends at correct line';
 is +$page.cells[2].last-line, 7, 'third cell ends at correct line';
 
+# Test invalid cells
+my $invalid-content = q:to/SAMAKI/;
+-- invalidtype
+This should not have a plugin.
+SAMAKI
+
+my $invalid-page = Samaki::Page.new(name => 'invalid-test', wkdir => $*CWD);
+ok $invalid-page.load($invalid-content, :$plugins), 'loaded page with invalid cell';
+is $invalid-page.cells.elems, 1, 'has one cell';
+nok $invalid-page.cells[0].is-valid, 'cell is invalid';
+ok $invalid-page.cells[0].errors, 'invalid cell has errors';
+
+# Test auto cells
+my $auto-content = q:to/SAMAKI/;
+--
+my $x = 42;
+
+-- raku
+say $x;
+SAMAKI
+
+my $auto-page = Samaki::Page.new(name => 'auto-test', wkdir => $*CWD);
+ok $auto-page.load($auto-content, :$plugins), 'loaded page with auto cell';
+is $auto-page.cells.elems, 2, 'has two cells';
+is $auto-page.cells[0].cell-type, 'auto', 'first cell is auto';
+is $auto-page.cells[1].cell-type, 'raku', 'second cell is raku';
+
+# Test raw vs eval mode with eval snippets
+my $eval-content = q:to/SAMAKI/;
+--
+my $lines = "a\nb\nc";
+
+-- text
+Before
+〈 $lines 〉
+After
+SAMAKI
+
+my $eval-page = Samaki::Page.new(name => 'eval-test', wkdir => $*CWD);
+ok $eval-page.load($eval-content, :$plugins), 'loaded page with eval snippets';
+is $eval-page.cells.elems, 2, 'has two cells';
+
+# Test raw mode (shows source with 〈〉)
+$eval-page.mode = 'raw';
+is $eval-page.mode, 'raw', 'page is in raw mode';
+my $raw-content = $eval-page.cells[1].get-content(:mode<raw>, :page($eval-page));
+is $raw-content.lines.elems, 3, 'raw mode shows 3 source lines';
+ok $raw-content.contains('〈'), 'raw mode shows eval snippet markers';
+
+# Test eval mode (〈〉 is evaluated)
+$eval-page.mode = 'eval';
+is $eval-page.mode, 'eval', 'page is in eval mode';
+my $eval-result = $eval-page.cells[1].get-content(:mode<eval>, :page($eval-page));
+is $eval-result.lines.elems, 3, 'eval mode shows 3 lines (Before, empty line, After)';
+nok $eval-result.contains('〈'), 'eval mode does not show snippet markers';
+ok $eval-result ne $raw-content, 'eval mode differs from raw mode';
+
 done-testing;
 
