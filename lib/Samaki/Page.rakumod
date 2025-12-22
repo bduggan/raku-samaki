@@ -345,7 +345,6 @@ class Samaki::Page {
   method shutdown {
     debug "shutting down page {self.name}";
     for @!cells -> $cell {
-      debug "shutting down cell { $cell.name }";
       $cell.shutdown;
     }
   }

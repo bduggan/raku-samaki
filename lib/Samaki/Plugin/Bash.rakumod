@@ -1,6 +1,5 @@
 use Samaki::Plugin;
 use Log::Async;
-use Terminal::ANSI::OO 't';
 
 use Samaki::Conf;
 use Samaki::Plugin::Process;
