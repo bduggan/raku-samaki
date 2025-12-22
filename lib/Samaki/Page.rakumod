@@ -91,6 +91,7 @@ class Samaki::Page {
     }
     with self.content {
       for self.cells -> $cell {
+        $cell.display-line = $pane.lines.elems;
         my $line = 0;
         unless $cell.is-valid {
           $pane.put: [ t.color(%COLORS<error>) => "invalid cell" ];

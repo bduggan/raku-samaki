@@ -200,7 +200,10 @@ method set-events {
     with %meta<cell> -> $cell {
       my $next = $cell.index + 1;
       $next = 0 if $next >= $page.cells;
-      top.select: $page.cells[$next].start-line + $page.title-height;
+      my $line = $page.mode eq 'eval'
+        ?? $page.cells[$next].display-line
+        !! $page.cells[$next].start-line + $page.title-height;
+      top.select: $line;
     } else {
       top.select: $page.title-height;
     }
@@ -212,10 +215,16 @@ method set-events {
       with %meta<cell> -> $cell {
         my $next = $cell.index - 1;
         $next = $page.cells.elems - 1 if $next < 0;
-        top.select: $page.cells[$next].start-line + $page.title-height;
+        my $line = $page.mode eq 'eval'
+          ?? $page.cells[$next].display-line
+          !! $page.cells[$next].start-line + $page.title-height;
+        top.select: $line;
       } else {
         my $next = $page.cells.elems - 1;
-        top.select: $page.cells[$next].start-line + $page.title-height;
+        my $line = $page.mode eq 'eval'
+          ?? $page.cells[$next].display-line
+          !! $page.cells[$next].start-line + $page.title-height;
+        top.select: $line;
       }
     }
   }
