@@ -92,59 +92,90 @@ class Samaki::Page {
     with self.content {
       for self.cells -> $cell {
         $cell.display-line = $pane.lines.elems;
-        my $line = 0;
-        unless $cell.is-valid {
-          $pane.put: [ t.color(%COLORS<error>) => "invalid cell" ];
-          $pane.put([ t.color(%COLORS<error>) => $_]) for $cell.errors.lines;
-          $pane.put([ t.color(%COLORS<line>) => ($line++).fmt('%3d'), t.color(%COLORS<text>) => $_]) for $cell.source.lines;
-          next;
-        }
-        my $select-action = $cell.select-action;
+
         my @actions;
         my %meta;
-        if $select-action -> $action {
-          @actions.push: t.color(%COLORS<button>) => " [$action]",
-                         t.color(%COLORS<cell-name>) => " ➞  { $cell.name }.{ $cell.ext }";
-          %meta = ( :$action, cell => $cell );
+        if $cell.is-valid {
+          my $select-action = $cell.select-action;
+          if $select-action -> $action {
+            @actions.push: t.color(%COLORS<button>) => " [$action]",
+                           t.color(%COLORS<cell-name>) => " ➞  { $cell.name }.{ $cell.ext }";
+            %meta = ( :$action, cell => $cell );
+          }
         }
         %meta<page> = self;
         %meta<cell> = $cell;
+
+        my $leadchar = '│';
+        $leadchar =  '╎' if $cell.cell-type eq 'auto';
+
+        unless $cell.is-valid {
+          # Display simpler header for invalid cells
+          my $lead = "┌── ".indent(4);
+          my $error-msg = $cell.cell-type ?? " [invalid: no plugin found]" !! " [invalid]";
+          $pane.put: [
+            t.color(%COLORS<error>) => $lead ~ ($cell.cell-type ~ $error-msg).fmt('%-20s'),
+          ], :%meta;
+          with $cell.errors {
+            for .lines -> $err {
+              $pane.put: [
+                col('cell-type') => "$leadchar ".indent(4),
+                t.color(%COLORS<error>) => $err
+              ], :%meta;
+            }
+          }
+          my $line = 0;
+          for $cell.source.lines -> $src {
+            $pane.put: [
+              col('line')      => ($line++).fmt('%3d '),
+              col('cell-type') => "$leadchar ",
+              t.color(%COLORS<inactive>) => $src
+            ], :%meta;
+          }
+          next;
+        }
+
+        # Display header for valid cells
         if $cell.cell-type eq 'auto' {
           $pane.put: [ t.color(%COLORS<cell-type>) => '╌'.indent(4) ], :%meta;
-       } else {
+        } else {
           my $lead = "┌── ".indent(4);
           my $post = ' (' ~ $cell.ext ~ ')';
           $pane.put: [
             t.color(%COLORS<cell-type>) => $lead ~ ($cell.cell-type ~ $post).fmt('%-20s'),
             |@actions,
-           ], :%meta;
+          ], :%meta;
         }
 
-        my $leadchar = '│';
-        $leadchar =  '╎' if $cell.cell-type eq 'auto';
         for $cell.conf.list -> $conf {
-          $pane.put: [ t.color(%COLORS<cell-type>) => "$leadchar ".indent(4) ~ $conf.raku ];
+          $pane.put: [ t.color(%COLORS<cell-type>) => "$leadchar ".indent(4) ~ $conf.raku ], :%meta;
         }
+
         try {
            CATCH {
              default {
-               $pane.put: [ t.red => "Error displaying cell: $_" ], meta => %( :$cell, :self, error => $_ );
+               $pane.put: [ t.red => "Error displaying cell: $_" ], :%meta;
              }
            }
            my $*page = self;
            my $out = $cell.get-content(:$mode, page => self);
            if $cell.errors {
-             $pane.put( [ t.color(%COLORS<error>) => "▶ $_".indent(4) ] ) for $cell.errors.lines;
+             for $cell.errors.lines -> $err {
+               $pane.put: [
+                 col('cell-type') => "$leadchar ".indent(4),
+                 t.color(%COLORS<error>) => "▶ $err"
+               ], :%meta;
+             }
            }
            for $out.lines.kv -> $n, $txt {
-             my %meta = $cell.line-meta($txt);
+             my %line-meta = $cell.line-meta($txt);
              my $line = $cell.line-format($txt);
              my Pair $l = ($line.isa(Pair) ?? $line !! t.color(%COLORS<text>) => $line);
              $pane.put: [
                col('line')      => $n.fmt('%3d '),
                col('cell-type') => ( $n == $out.lines.elems - 1 && $cell.cell-type ne 'auto' ?? '└ ' !! "$leadchar "),
                $l
-             ], meta => %( :$cell, :self, |%meta );
+             ], meta => %( :$cell, :self, |%line-meta );
            }
          }
       }
