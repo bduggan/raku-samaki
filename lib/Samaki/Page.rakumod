@@ -60,6 +60,67 @@ class Samaki::Page {
 
   method title-height { 1 }
 
+  method show-invalid-cell(:$cell!, :$pane!, :$leadchar!, :%meta!) {
+    # Display simpler header for invalid cells
+    my $lead = "┌── ".indent(4);
+    my $error-msg = $cell.cell-type ?? " [invalid: no plugin found]" !! " [invalid]";
+    $pane.put: [
+      t.color(%COLORS<error>) => $lead ~ ($cell.cell-type ~ $error-msg).fmt('%-20s'),
+    ], :%meta;
+    with $cell.errors {
+      for .lines -> $err {
+        $pane.put: [ col('cell-type') => "$leadchar ".indent(4), t.color(%COLORS<error>) => $err ], :%meta;
+      }
+    }
+    my $line = 0;
+    for $cell.source.lines -> $src {
+      $pane.put: [ col('line') => ($line++).fmt('%3d '), col('cell-type') => "$leadchar ", t.color(%COLORS<inactive>) => $src ], :%meta;
+    }
+  }
+
+  method show-valid-cell(:$cell!, :$pane!, :$mode!, :@actions!, :$leadchar!, :%meta!) {
+    # Display header for valid cells
+    if $cell.cell-type eq 'auto' {
+      $pane.put: [ t.color(%COLORS<cell-type>) => '╌'.indent(4) ], :%meta;
+    } else {
+      my $lead = "┌── ".indent(4);
+      my $post = ' (' ~ $cell.ext ~ ')';
+      $pane.put: [ t.color(%COLORS<cell-type>) => $lead ~ ($cell.cell-type ~ $post).fmt('%-20s'), |@actions, ], :%meta;
+    }
+
+    for $cell.conf.list -> $conf {
+      $pane.put: [ t.color(%COLORS<cell-type>) => "$leadchar ".indent(4) ~ $conf.raku ], :%meta;
+    }
+
+    try {
+       CATCH {
+         default {
+           $pane.put: [ t.red => "Error displaying cell: $_" ], :%meta;
+         }
+       }
+       my $*page = self;
+       my $out = $cell.get-content(:$mode, page => self);
+       if $cell.errors {
+         for $cell.errors.lines -> $err {
+           $pane.put: [
+             col('cell-type') => "$leadchar ".indent(4),
+             t.color(%COLORS<error>) => "▶ $err"
+           ], :%meta;
+         }
+       }
+       for $out.lines.kv -> $n, $txt {
+         my %line-meta = $cell.line-meta($txt);
+         my $line = $cell.line-format($txt);
+         my Pair $l = ($line.isa(Pair) ?? $line !! t.color(%COLORS<text>) => $line);
+         $pane.put: [
+           col('line')      => $n.fmt('%3d '),
+           col('cell-type') => ( $n == $out.lines.elems - 1 && $cell.cell-type ne 'auto' ?? '└ ' !! "$leadchar "),
+           $l
+         ], meta => %( :$cell, :self, |%line-meta );
+       }
+     }
+  }
+
   method maybe-load(:$plugins!) {
     return True if @!cells;
     self.load(:$plugins);
@@ -109,75 +170,11 @@ class Samaki::Page {
         my $leadchar = '│';
         $leadchar =  '╎' if $cell.cell-type eq 'auto';
 
-        unless $cell.is-valid {
-          # Display simpler header for invalid cells
-          my $lead = "┌── ".indent(4);
-          my $error-msg = $cell.cell-type ?? " [invalid: no plugin found]" !! " [invalid]";
-          $pane.put: [
-            t.color(%COLORS<error>) => $lead ~ ($cell.cell-type ~ $error-msg).fmt('%-20s'),
-          ], :%meta;
-          with $cell.errors {
-            for .lines -> $err {
-              $pane.put: [
-                col('cell-type') => "$leadchar ".indent(4),
-                t.color(%COLORS<error>) => $err
-              ], :%meta;
-            }
-          }
-          my $line = 0;
-          for $cell.source.lines -> $src {
-            $pane.put: [
-              col('line')      => ($line++).fmt('%3d '),
-              col('cell-type') => "$leadchar ",
-              t.color(%COLORS<inactive>) => $src
-            ], :%meta;
-          }
-          next;
-        }
-
-        # Display header for valid cells
-        if $cell.cell-type eq 'auto' {
-          $pane.put: [ t.color(%COLORS<cell-type>) => '╌'.indent(4) ], :%meta;
+        if $cell.is-valid {
+          self.show-valid-cell(:$cell, :$pane, :$mode, :@actions, :$leadchar, :%meta);
         } else {
-          my $lead = "┌── ".indent(4);
-          my $post = ' (' ~ $cell.ext ~ ')';
-          $pane.put: [
-            t.color(%COLORS<cell-type>) => $lead ~ ($cell.cell-type ~ $post).fmt('%-20s'),
-            |@actions,
-          ], :%meta;
+          self.show-invalid-cell(:$cell, :$pane, :$leadchar, :%meta);
         }
-
-        for $cell.conf.list -> $conf {
-          $pane.put: [ t.color(%COLORS<cell-type>) => "$leadchar ".indent(4) ~ $conf.raku ], :%meta;
-        }
-
-        try {
-           CATCH {
-             default {
-               $pane.put: [ t.red => "Error displaying cell: $_" ], :%meta;
-             }
-           }
-           my $*page = self;
-           my $out = $cell.get-content(:$mode, page => self);
-           if $cell.errors {
-             for $cell.errors.lines -> $err {
-               $pane.put: [
-                 col('cell-type') => "$leadchar ".indent(4),
-                 t.color(%COLORS<error>) => "▶ $err"
-               ], :%meta;
-             }
-           }
-           for $out.lines.kv -> $n, $txt {
-             my %line-meta = $cell.line-meta($txt);
-             my $line = $cell.line-format($txt);
-             my Pair $l = ($line.isa(Pair) ?? $line !! t.color(%COLORS<text>) => $line);
-             $pane.put: [
-               col('line')      => $n.fmt('%3d '),
-               col('cell-type') => ( $n == $out.lines.elems - 1 && $cell.cell-type ne 'auto' ?? '└ ' !! "$leadchar "),
-               $l
-             ], meta => %( :$cell, :self, |%line-meta );
-           }
-         }
       }
     } else {
       $pane.put: [ t.color('#666666') => "(blank page)" ], meta => %( :self );
