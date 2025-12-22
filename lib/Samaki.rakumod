@@ -524,6 +524,10 @@ Send the contents of the cell to an llm which will be evaluted using L<LLM::DWIM
 
 Send the contents to a separate process that is running raku.
 
+=head2 Samaki::Plugin::Code
+
+Evaluate code in the current raku process, in the context of the rest of the code blocks.
+
 =head2 Samaki::Plugin::Text
 
 Write the contents of a cell to a text file.

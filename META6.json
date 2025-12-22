@@ -15,6 +15,7 @@
     "Samaki::Importer::Jupyter" : "lib/Samaki/Importer/Jupyter.rakumod",
     "Samaki::Plugins" : "lib/Samaki/Plugins.rakumod",
     "Samaki::Plugin" : "lib/Samaki/Plugin.rakumod",
+    "Samaki::Plugin::Code" : "lib/Samaki/Plugin/Code.rakumod",
     "Samaki::Plugin::Duck" : "lib/Samaki/Plugin/Duck.rakumod",
     "Samaki::Plugin::Duckie" : "lib/Samaki/Plugin/Duckie.rakumod",
     "Samaki::Plugin::LLM" : "lib/Samaki/Plugin/LLM.rakumod",

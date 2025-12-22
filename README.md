@@ -247,6 +247,11 @@ Samaki::Plugin::Raku
 
 Send the contents to a separate process that is running raku.
 
+Samaki::Plugin::Code
+--------------------
+
+Evaluate code in the current raku process, in the context of the rest of the code blocks.
+
 Samaki::Plugin::Text
 --------------------
 
