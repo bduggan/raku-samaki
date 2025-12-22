@@ -1,3 +1,11 @@
+0.0.16 2025-12-22
+  - add markdown plugin
+  - better error handling
+  - fix line navigation in eval mode and with errors
+  - improve import from jupyter
+  - fixes for new auto blocks
+  - switch to using CodeUnit for evaling
+
 0.0.15 2025-12-19
    - new export option to export HTML
    - new import design for importing jupyter notebooks
