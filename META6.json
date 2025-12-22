@@ -21,6 +21,7 @@
     "Samaki::Plugin::Postgres" : "lib/Samaki/Plugin/Postgres.rakumod",
     "Samaki::Plugin::Text" : "lib/Samaki/Plugin/Text.rakumod",
     "Samaki::Plugin::HTML" : "lib/Samaki/Plugin/HTML.rakumod",
+    "Samaki::Plugin::HTML" : "lib/Samaki/Plugin/Markdown.rakumod",
     "Samaki::Plugin::Auto" : "lib/Samaki/Plugin/Auto.rakumod",
     "Samaki::Plugin::Bash" : "lib/Samaki/Plugin/Bash.rakumod",
     "Samaki::Plugin::Repl::Raku" : "lib/Samaki/Plugin/Repl/Raku.rakumod",
