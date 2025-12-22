@@ -2,7 +2,7 @@
 
 use Test;
 
-plan 31;
+plan 32;
 
 use-ok 'Samaki';
 use-ok 'Samaki::Cell';
@@ -17,6 +17,7 @@ use-ok 'Samaki::Plugin::Duck';
 use-ok 'Samaki::Plugin::Duckie';
 use-ok 'Samaki::Plugin::HTML';
 use-ok 'Samaki::Plugin::LLM';
+use-ok 'Samaki::Plugin::Markdown';
 use-ok 'Samaki::Plugin::Postgres';
 use-ok 'Samaki::Plugin::Process';
 use-ok 'Samaki::Plugin::Raku';
