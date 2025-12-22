@@ -540,6 +540,14 @@ Ditto, but for python.
 
 Execute the contents as a bash program.
 
+=head2 Samaki::Plugin::HTML
+
+Generate HTML from the contents.
+
+=head2 Samaki::Plugin::Markdown
+
+Generate HTML from markdown.
+
 =head2 Samaki::Plugin::Postgres
 
 Execute SQL queries against a Postgres database by sending queries to the psql command-line tool.

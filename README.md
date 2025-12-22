@@ -267,6 +267,16 @@ Samaki::Plugin::Bash
 
 Execute the contents as a bash program.
 
+Samaki::Plugin::HTML
+--------------------
+
+Generate HTML from the contents.
+
+Samaki::Plugin::Markdown
+------------------------
+
+Generate HTML from markdown.
+
 Samaki::Plugin::Postgres
 ------------------------
 
