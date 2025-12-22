@@ -103,5 +103,17 @@ is $eval-result.lines.elems, 3, 'eval mode shows 3 lines (Before, empty line, Af
 nok $eval-result.contains('〈'), 'eval mode does not show snippet markers';
 ok $eval-result ne $raw-content, 'eval mode differs from raw mode';
 
+# Test auto cell with errors
+my $auto-error-content = q:to/SAMAKI/;
+--
+my $x = no-such-thing;
+SAMAKI
+
+my $auto-error-page = Samaki::Page.new(name => 'auto-error-test', wkdir => $*CWD);
+ok $auto-error-page.load($auto-error-content, :$plugins), 'loaded page with error in auto cell';
+is $auto-error-page.cells.elems, 1, 'has one auto cell';
+is $auto-error-page.cells[0].cell-type, 'auto', 'cell is auto';
+ok $auto-error-page.cells[0].content.contains('sorry'), 'auto cell content shows error message';
+
 done-testing;
 
