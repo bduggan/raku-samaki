@@ -252,27 +252,6 @@ method html-header() {
                     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
                 \}
 
-                .cell-container::before \{
-                    content: '┌';
-                    position: absolute;
-                    top: -1px;
-                    left: -1px;
-                    color: #d1d5db;
-                    background: white;
-                    line-height: 1;
-                    font-size: 0.9rem;
-                \}
-
-                .cell-container::after \{
-                    content: '┐';
-                    position: absolute;
-                    top: -1px;
-                    right: -1px;
-                    color: #d1d5db;
-                    background: white;
-                    line-height: 1;
-                    font-size: 0.9rem;
-                \}
 
                 .cell-header-tabs \{
                     padding: 0.25rem 0.5rem;
@@ -364,30 +343,6 @@ method html-header() {
 
                 .tab-contents \{
                     position: relative;
-                \}
-
-                .tab-contents::before \{
-                    content: '└';
-                    position: absolute;
-                    bottom: -1px;
-                    left: -1px;
-                    color: #d1d5db;
-                    background: white;
-                    line-height: 1;
-                    font-size: 0.9rem;
-                    z-index: 10;
-                \}
-
-                .tab-contents::after \{
-                    content: '┘';
-                    position: absolute;
-                    bottom: -1px;
-                    right: -1px;
-                    color: #d1d5db;
-                    background: white;
-                    line-height: 1;
-                    font-size: 0.9rem;
-                    z-index: 10;
                 \}
 
                 .tab-content \{
