@@ -6,10 +6,7 @@ use Samaki::Page;
 use Samaki::Plugins;
 use Samaki::Conf;
 
-plan 8;
-
-# Test 1: Module loads
-use-ok 'Samaki::Exporter::HTML';
+plan 7;
 
 # Setup test environment
 my $test-dir = $*TMPDIR.child("samaki-test-{time}");
@@ -32,7 +29,7 @@ my $data-dir = $test-dir.child('test');
 $data-dir.mkdir;
 spurt $data-dir.child('cell-0.txt'), 'test output';
 
-# Test 2: Create Samaki::Exporter::HTML instance
+# Create Samaki::Exporter::HTML instance
 my $conf-file = $*CWD.child('resources').child('samaki-conf-default.raku');
 my $conf = Samaki::Conf.new(:file($conf-file));
 my $plugins = Samaki::Plugins.new;
@@ -44,18 +41,14 @@ ok $page.load(:$plugins), 'page loads';
 my $exporter = Samaki::Exporter::HTML.new(:$page, :$plugins);
 ok $exporter, 'Samaki::Exporter::HTML instance created';
 
-# Test 3: Generate HTML
+# Generate HTML
 my $html;
 lives-ok { $html = $exporter.generate-html() }, 'generate-html runs without error';
 
-# Test 4: HTML contains basic structure
+# HTML contains basic structure
 ok $html ~~ /'<!DOCTYPE html>'/, 'HTML has DOCTYPE';
 ok $html ~~ /'<title>test - Samaki</title>'/, 'HTML has title';
-
-# Test 5: HTML contains cell type
 ok $html ~~ /'cell-type'/, 'HTML contains cell-type class';
-
-# Test 6: HTML contains tab functionality
 ok $html ~~ /'openTab'/, 'HTML contains tab JavaScript';
 
 # Cleanup

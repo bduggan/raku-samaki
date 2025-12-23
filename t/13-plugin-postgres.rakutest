@@ -1,0 +1,23 @@
+use Test;
+use Samaki::Plugin::Postgres;
+use Samaki::Conf;
+
+my $plugin = Samaki::Plugin::Postgres.new;
+
+# Check if psql is available
+my $psql-available = try {
+  my $version = qqx[psql --version 2>/dev/null];
+  $version.chars > 0;
+}
+
+if $psql-available {
+  my $conf-file = $*CWD.child('resources').child('samaki-conf-default.raku');
+  my $conf = Samaki::Conf.new(:file($conf-file));
+  lives-ok { $plugin.setup(:$conf) }, 'setup succeeds when psql is available';
+  ok $plugin.version-info, 'version info is set';
+  ok $plugin.version-info.contains('psql'), 'version info contains psql';
+} else {
+  skip 'psql not available', 3;
+}
+
+done-testing;

@@ -1,0 +1,32 @@
+use Test;
+use Samaki::Utils;
+use Samaki::Plugin::Markdown;
+
+# Mock shell-open to avoid opening browser
+&shell-open.wrap: -> $path { }
+
+my $plugin = Samaki::Plugin::Markdown.new;
+
+my $cell = Samaki::Cell.new:
+  page-name => 'test',
+  content => '# Hello World',
+  cell-type => 'markdown',
+  name => 'test-md',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+
+my $page = Samaki::Page.new:
+  wkdir => $*TMPDIR,
+  name => 'test',
+  cells => [$cell];
+
+$plugin.execute(:$cell, :$page, :mode<content>);
+
+my $output = $cell.output-file.slurp;
+ok $output.contains('Hello World'), 'markdown was converted';
+ok $output.contains('<'), 'output contains HTML tags';
+
+$cell.output-file.unlink;
+
+done-testing;

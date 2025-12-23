@@ -1,0 +1,36 @@
+use Test;
+use Samaki::Plugin::LLM;
+use LLM::DWIM;
+
+my $plugin = Samaki::Plugin::LLM.new;
+
+my $cell = Samaki::Cell.new:
+  page-name => 'test',
+  content => 'What is 2+2?',
+  cell-type => 'llm',
+  name => 'test-llm',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+
+my $page = Samaki::Page.new:
+  wkdir => $*TMPDIR,
+  name => 'test',
+  cells => [$cell];
+
+# Mock dwim to avoid making actual API calls
+&dwim.wrap: -> $content {
+  "Mocked LLM response for: $content"
+}
+
+my $out-file = $*TMPDIR.child('test-llm-output.txt');
+my $out = $out-file.open(:w);
+$plugin.execute(:$cell, :$page, :mode<content>, :$out);
+$out.close;
+
+ok $plugin.output, 'plugin output was set';
+ok $plugin.output.contains('Mocked'), 'output contains mocked response';
+
+$out-file.unlink;
+
+done-testing;

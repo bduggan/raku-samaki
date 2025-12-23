@@ -1,0 +1,30 @@
+use Test;
+use Samaki::Plugin::Code;
+
+my $cell = Samaki::Cell.new:
+  page-name => 'test',
+  content => 'say 42',
+  cell-type => 'code',
+  name => 'test-code',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR;
+
+my $page = Samaki::Page.new:
+  wkdir => $*TMPDIR,
+  name => 'test',
+  cells => [$cell];
+
+my $plugin = Samaki::Plugin::Code.new;
+
+my $out-file = $*TMPDIR.child('test-code-output.txt');
+my $out = $out-file.open(:w);
+$plugin.execute(:$cell, :$page, :mode<content>, :$out);
+$out.close;
+
+ok $out-file.e, 'output file was created';
+my $content = $out-file.slurp;
+ok $content.contains('42'), 'output contains 42';
+
+$out-file.unlink;
+
+done-testing;

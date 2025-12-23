@@ -1,0 +1,23 @@
+use Test;
+use Samaki::Plugin::Duck;
+use Samaki::Conf;
+
+my $plugin = Samaki::Plugin::Duck.new;
+
+# Check if duckdb is available
+my $duck-available = try {
+  my $version = qqx[duckdb --version 2>/dev/null];
+  $version.chars > 0;
+}
+
+if $duck-available {
+  my $conf-file = $*CWD.child('resources').child('samaki-conf-default.raku');
+  my $conf = Samaki::Conf.new(:file($conf-file));
+  lives-ok { $plugin.setup(:$conf) }, 'setup succeeds when duckdb is available';
+  ok $plugin.version-info, 'version info is set';
+  ok $plugin.version-info.contains('v'), 'version info contains version number';
+} else {
+  skip 'duckdb not available', 3;
+}
+
+done-testing;

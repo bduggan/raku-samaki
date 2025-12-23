@@ -1,0 +1,31 @@
+use Test;
+use Samaki::Plugin::Text;
+
+my $plugin = Samaki::Plugin::Text.new;
+
+my $cell = Samaki::Cell.new:
+  page-name => 'test',
+  content => 'Some text with [link:otherpage] here',
+  cell-type => 'text',
+  name => 'test-text',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+
+my $page = Samaki::Page.new:
+  wkdir => $*TMPDIR,
+  name => 'test',
+  cells => [$cell];
+
+$plugin.execute(:$cell, :$page, :mode<content>);
+
+my $output = $cell.output-file.slurp;
+ok $output.contains('[link:otherpage]'), 'text was saved to output file';
+
+my $meta = $plugin.line-meta('[link:otherpage]', :$cell);
+is $meta<action>, 'load_page', 'link meta action is correct';
+is $meta<page_name>, 'otherpage', 'link page name is extracted';
+
+$cell.output-file.unlink;
+
+done-testing;

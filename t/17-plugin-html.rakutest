@@ -1,0 +1,31 @@
+use Test;
+use Samaki::Utils;
+use Samaki::Plugin::HTML;
+
+# Mock shell-open to avoid opening browser
+&shell-open.wrap: -> $path { }
+
+my $plugin = Samaki::Plugin::HTML.new;
+
+my $cell = Samaki::Cell.new:
+  page-name => 'test',
+  content => '<h1>Hello World</h1>',
+  cell-type => 'html',
+  name => 'test-html',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+
+my $page = Samaki::Page.new:
+  wkdir => $*TMPDIR,
+  name => 'test',
+  cells => [$cell];
+
+$plugin.execute(:$cell, :$page, :mode<content>);
+
+my $output = $cell.output-file.slurp;
+is $output, '<h1>Hello World</h1>', 'HTML content was saved to output file';
+
+$cell.output-file.unlink;
+
+done-testing;

@@ -1,0 +1,31 @@
+use Test;
+use Samaki::Plugin::Raku;
+
+my $plugin = Samaki::Plugin::Raku.new;
+
+my $cell = Samaki::Cell.new:
+  page-name => 'test',
+  content => 'say 42',
+  cell-type => 'raku',
+  name => 'test-raku',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+
+my $page = Samaki::Page.new:
+  wkdir => $*TMPDIR,
+  name => 'test',
+  cells => [$cell];
+
+my $out-file = $cell.output-file;
+my $out = $out-file.open(:w);
+$plugin.execute(:$cell, :$page, :mode<content>, :$out);
+$out.close;
+
+my $output = $out-file.slurp;
+ok $output.contains('42'), 'raku code was executed';
+
+$out-file.unlink;
+$plugin.tmpfile.unlink if $plugin.tmpfile.e;
+
+done-testing;
