@@ -231,7 +231,7 @@ method html-header() {
 
                 .page-header \{
                     text-align: center;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    background: #667eea;
                     color: white;
                     padding: 0.4rem;
                     margin-bottom: 0.5rem;
@@ -439,7 +439,7 @@ method html-header() {
                 \}
 
                 .csv-table thead \{
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                    background: #667eea;
                     color: white;
                     position: sticky;
                     top: 0;
@@ -484,7 +484,6 @@ method html-header() {
                     border: 1px solid #ffc107;
                     color: #856404;
                     font-size: 0.7rem;
-                    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
                 \}
 
                 .geojson-popup \{

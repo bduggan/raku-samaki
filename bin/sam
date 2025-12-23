@@ -7,6 +7,7 @@ use Samaki::Page;
 use Samaki::Plugins;
 use Log::Async;
 use Terminal::ANSI::OO;
+use Terminal::ANSI;
 use JSON::Fast;
 
 logger.untapped-ok = True;
@@ -14,6 +15,13 @@ logger.send-to("samaki.log") if %*ENV<SAMAKI_DEBUG>;
 my %*SUB-MAIN-OPTS = :named-anywhere;
 
 my $editor = $*ENV<EDITOR> //  "vim";
+
+# Mock pane for running cells without UI
+class MockPane {
+  method put(*@args, *%opts) { }
+  method clear() { }
+  method lines() { [] }
+}
 
 sub edit(IO::Path $path) {
   put t.text-reset;
@@ -151,4 +159,69 @@ multi MAIN('export', $target, :$wkdir = $*CWD, :$output, :$format = 'html') {
       exit note "Unknown export format: $format (supported: html)";
     }
   }
+}
+
+#| Run all cells in a samaki file
+multi MAIN('run', $target, :$wkdir = $*CWD) {
+  my $page-path = $target.IO;
+  unless $page-path.e {
+    exit note "File not found: $target";
+  }
+
+  # Determine page name and working directory
+  my $page-name;
+  my $actual-wkdir;
+  if $target.contains('/') {
+    $page-name = $page-path.basename.subst(/'.samaki'$/, '');
+    $actual-wkdir = $page-path.dirname.IO;
+  } else {
+    $page-name = $target.subst(/'.samaki'$/, '');
+    $actual-wkdir = $wkdir.IO;
+  }
+
+  # Initialize Samaki to get plugins configured
+  my $q = Samaki.new(:wkdir($actual-wkdir), :$editor);
+
+  # Load the page
+  my $page = Samaki::Page.new(name => $page-name, wkdir => $actual-wkdir);
+  my $loaded = $page.load(plugins => $q.plugins);
+
+  unless $loaded {
+    exit note "Failed to load page: " ~ ($page.errors // "unknown error");
+  }
+
+  # Disable terminal output for streaming
+  disable-output;
+
+  # Disable shell-open to prevent browser windows
+  my $*SAMAKI-NO-SHELL-OPEN = True;
+
+  # Create mock panes for cell execution
+  my $mock-pane = MockPane.new;
+
+  note "Running all cells in $page-name...";
+
+  # Run each cell in order
+  for $page.cells -> $cell {
+    next if $cell.cell-type eq 'auto'; # Skip auto cells
+    note "→ Running cell: { $cell.name }";
+
+    try {
+      my $action = $cell.select-action // 'run';
+      $page.run-cell($cell, btm => $mock-pane, top => $mock-pane, :$action);
+      CATCH {
+        default {
+          note "  ✗ Error: $_";
+        }
+      }
+    }
+
+    if $cell.errors {
+      note "  ✗ Error: { $cell.errors }";
+    } else {
+      note "  ✓ Complete";
+    }
+  }
+
+  note "✓ All cells executed";
 }

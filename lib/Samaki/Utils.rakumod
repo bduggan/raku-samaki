@@ -2,6 +2,12 @@ unit module Samaki::Utils;
 use Log::Async;
 
 sub shell-open(IO::Path(Str) $rel) is export {
+  # Check if shell-open is disabled (e.g., during batch runs)
+  if $*SAMAKI-NO-SHELL-OPEN {
+    info "shell-open disabled, skipping open for $rel";
+    return 0;
+  }
+
   my $file = $rel.resolve.absolute;
   info "calling open $file, in $*CWD";
   my $proc;
