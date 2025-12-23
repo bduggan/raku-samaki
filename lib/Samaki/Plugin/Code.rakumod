@@ -4,6 +4,7 @@ unit class Samaki::Plugin::Code does Samaki::Plugin;
 
 has $.name = 'code';
 has $.description = 'Evaluate code in the same context as auto evaluated blocks';
+has $.ext = 'text';
 
 method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane, Str :$action) {
   my $plug = self;

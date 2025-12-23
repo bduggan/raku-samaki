@@ -532,7 +532,7 @@ method html-footer() {
                     \}
 
                     // Remove active class from all tab buttons in this container
-                    var tabButtons = container.querySelectorAll('.tab-button');
+                    var tabButtons = container.querySelectorAll('.tab-link');
                     for (var i = 0; i < tabButtons.length; i++) \{
                         tabButtons[i].classList.remove('active');
                     \}
