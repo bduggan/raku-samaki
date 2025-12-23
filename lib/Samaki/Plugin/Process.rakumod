@@ -50,7 +50,7 @@ method do-react-loop($proc, :$cell, :$out) {
   }
 }
 
-method execute(:$cell, :$mode, :$page, :$out) {
+method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane, Str :$action) {
   my @cmd = self.command;
   info "executing process {@cmd.join(' ')}";
   $cell.get-content(:$mode, :$page) ==> spurt self.tmpfile;

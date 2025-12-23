@@ -10,7 +10,7 @@ has $.description = 'Text cell, with optional links to other pages';
 
 method select-action { 'save' }
 
-method execute(:$cell, :$mode, :$page) {
+method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane, Str :$action) {
   $cell.output-file.spurt: $cell.get-content(:$mode, :$page);
   self.info: "Wrote text to " ~ $cell.output-file;
 }

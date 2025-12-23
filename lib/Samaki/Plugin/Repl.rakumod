@@ -94,7 +94,7 @@ method start-react-loop($proc, :$cell, :$out) {
   }
 }
 
-method execute(:$cell, :$mode, :$page, :$out) {
+method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane, Str :$action) {
   my @cmd = self.command;
   my $content = $cell.get-content(:$mode, :$page).trim;
   if defined($.promise) || defined($!proc) {

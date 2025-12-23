@@ -11,7 +11,7 @@ has $.description = 'Execute text using LLM::DWIM';
 
 has $.wrap = 'word';
 
-method execute(:$cell, :$mode, :$page, :$out) {
+method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane, Str :$action) {
  info "Executing LLM cell";
  my Str $content = $cell.get-content(:$mode, :$page);
  my $h = &warn.wrap: -> |c {

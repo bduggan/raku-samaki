@@ -19,7 +19,7 @@ method setup(Samaki::Conf :$conf) {
   info "version $!version-info";
 }
 
-method execute(:$cell!, :$page!, :$mode!, :$out) {
+method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane, Str :$action) {
   my $db = $cell.get-conf('db');
   info "Executing duck cell";
   self.info: "Executing duckdb with db {$db // '<memory>'}";

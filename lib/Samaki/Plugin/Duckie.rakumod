@@ -8,7 +8,7 @@ has $.name = 'duckie';
 has $.description = 'Use in-line duckdb driver for queries';
 has $.output-ext = 'csv';
 
-method execute(:$cell, :$mode, :$page) {
+method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane, Str :$action) {
  my $db = $cell.get-conf('db');
  self.info: "Executing duckie cell with db { $db // '<memory>' }";
  my $content = $cell.get-content(:$mode, :$page);
