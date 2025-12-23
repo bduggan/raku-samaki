@@ -354,7 +354,7 @@ method html-header() {
                 \}
 
                 .cell-content \{
-                    padding: 0.5rem;
+                    padding: 0.5rem 0.5rem 0.5rem 1.5rem;
                     background: #fafbfc;
                     overflow-x: auto;
                     max-height: 300px;
@@ -369,7 +369,7 @@ method html-header() {
                 \}
 
                 .output-content \{
-                    padding: 0.5rem;
+                    padding: 0.5rem 0.5rem 0.5rem 1.5rem;
                     max-height: 400px;
                     overflow-y: auto;
                 \}
@@ -423,7 +423,7 @@ method html-header() {
 
                 .text-output, .json-output \{
                     background: #fafbfc;
-                    padding: 0.5rem;
+                    padding: 0.5rem 0.5rem 0.5rem 1.5rem;
                     overflow-x: auto;
                     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
                     font-size: 0.7rem;
