@@ -19,37 +19,43 @@ method generate-html() {
 }
 
 method render-cell($cell, $idx) {
-    my $cell-html = qq:to/HTML/;
-        <div class="cell-container">
-            <div class="cell-header">
-                <span class="cell-type">{$cell.cell-type}</span>
-                {$cell.name ne "cell-$idx" ?? qq[<span class="cell-name">: {$cell.name}</span>] !! ''}
-            </div>
-    HTML
-
     # Find output files for this cell
     my @outputs = self.find-outputs($cell);
 
-    # Create tabs for input and outputs
-    $cell-html ~= qq:to/HTML/;
-            <div class="tab-headers">
-                <button class="tab-button active" onclick="openTab(event, 'cell{$idx}_input')">Input</button>
+    # Determine if first output should be active by default
+    my $show-output-first = @outputs.elems > 0;
+
+    my $is-auto = $cell.cell-type eq 'auto';
+    my $cell-type-class = $is-auto ?? 'cell-type-auto' !! 'cell-type';
+
+    my $cell-html = qq:to/HTML/;
+        <div class="cell-container">
+            <div class="cell-header-tabs">
+                <span class="cell-meta">
+                    <span class="{$cell-type-class}">{$cell.cell-type}</span>
+                    {$cell.name ne "cell-$idx" ?? qq[<span class="cell-name">{$cell.name}</span>] !! ''}
+                </span>
+                <div class="tab-nav">
+                    <button class="tab-link {$show-output-first ?? '' !! 'active'}" onclick="openTab(event, 'cell{$idx}_input')">source</button>
     HTML
 
     for @outputs.kv -> $out-idx, $output {
-        $cell-html ~= qq[        <button class="tab-button" onclick="openTab(event, 'cell{$idx}_out{$out-idx}')">{$output<name>}</button>\n];
+        my $active-class = ($show-output-first && $out-idx == 0) ?? 'active' !! '';
+        $cell-html ~= qq[                    <button class="tab-link {$active-class}" onclick="openTab(event, 'cell{$idx}_out{$out-idx}')">{$output<name>}</button>\n];
     }
 
     $cell-html ~= qq:to/HTML/;
+                </div>
             </div>
             <div class="tab-contents">
-                <div id="cell{$idx}_input" class="tab-content active">
+                <div id="cell{$idx}_input" class="tab-content {$show-output-first ?? '' !! 'active'}">
                     <pre class="cell-content"><code>{self.escape-html($cell.content)}</code></pre>
                 </div>
     HTML
 
     for @outputs.kv -> $out-idx, $output {
-        $cell-html ~= qq[        <div id="cell{$idx}_out{$out-idx}" class="tab-content">\n];
+        my $active-class = ($show-output-first && $out-idx == 0) ?? 'active' !! '';
+        $cell-html ~= qq[        <div id="cell{$idx}_out{$out-idx}" class="tab-content {$active-class}">\n];
         $cell-html ~= qq[            <div class="output-content">\n];
         $cell-html ~= self.render-output($output, $idx, $out-idx);
         $cell-html ~= qq[            </div>\n];
@@ -240,67 +246,148 @@ method html-header() {
 
                 .cell-container \{
                     background: white;
-                    border-radius: 4px;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-                    margin-bottom: 0.5rem;
-                    overflow: hidden;
+                    border: 1px solid #d1d5db;
+                    margin-bottom: 0.75rem;
+                    position: relative;
+                    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
                 \}
 
-                .cell-header \{
-                    padding: 0.3rem 0.5rem;
-                    background: #f8f9fa;
-                    border-bottom: 1px solid #e9ecef;
+                .cell-container::before \{
+                    content: '┌';
+                    position: absolute;
+                    top: -1px;
+                    left: -1px;
+                    color: #d1d5db;
+                    background: white;
+                    line-height: 1;
+                    font-size: 0.9rem;
+                \}
+
+                .cell-container::after \{
+                    content: '┐';
+                    position: absolute;
+                    top: -1px;
+                    right: -1px;
+                    color: #d1d5db;
+                    background: white;
+                    line-height: 1;
+                    font-size: 0.9rem;
+                \}
+
+                .cell-header-tabs \{
+                    padding: 0.25rem 0.5rem;
+                    background: #fafbfc;
+                    border-bottom: 1px solid #d1d5db;
                     display: flex;
                     align-items: center;
+                    justify-content: space-between;
                     gap: 0.5rem;
+                    min-height: 1.8rem;
+                \}
+
+                .cell-meta \{
+                    display: flex;
+                    align-items: center;
+                    gap: 0.4rem;
+                    flex-shrink: 0;
                 \}
 
                 .cell-type \{
                     display: inline-block;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    color: white;
-                    padding: 0.15rem 0.4rem;
-                    border-radius: 3px;
-                    font-size: 0.75rem;
-                    text-transform: uppercase;
-                    letter-spacing: 0.3px;
-                    font-weight: 600;
+                    color: #9ca3af;
+                    padding: 0.1rem 0.3rem;
+                    border-radius: 2px;
+                    font-size: 0.65rem;
+                    text-transform: lowercase;
+                    letter-spacing: 0.02em;
+                    font-weight: 500;
+                    border: 1px solid #e5e7eb;
+                \}
+
+                .cell-type-auto \{
+                    display: inline-block;
+                    color: #9ca3af;
+                    padding: 0.1rem 0.3rem;
+                    border-radius: 2px;
+                    font-size: 0.65rem;
+                    text-transform: lowercase;
+                    letter-spacing: 0.02em;
+                    font-weight: 500;
+                    border: 1px dashed #d1d5db;
                 \}
 
                 .cell-name \{
-                    color: #495057;
-                    font-size: 0.75rem;
+                    color: #6b7280;
+                    font-size: 0.7rem;
                     font-style: italic;
                 \}
 
-                .tab-headers \{
+                .tab-nav \{
                     display: flex;
-                    gap: 2px;
-                    background: #e9ecef;
-                    padding: 2px;
+                    gap: 0;
+                    align-items: center;
                 \}
 
-                .tab-button \{
-                    background: #f8f9fa;
+                .tab-link \{
+                    background: none;
                     border: none;
-                    padding: 0.3rem 0.6rem;
+                    padding: 0.2rem 0.5rem;
                     cursor: pointer;
-                    font-size: 0.75rem;
-                    font-weight: 500;
-                    color: #6c757d;
+                    font-size: 0.7rem;
+                    font-weight: 400;
+                    color: #9ca3af;
                     transition: all 0.15s ease;
-                    border-radius: 2px;
+                    text-decoration: none;
+                    position: relative;
                 \}
 
-                .tab-button:hover \{
-                    background: #dee2e6;
-                    color: #495057;
+                .tab-link:not(:last-child)::after \{
+                    content: '│';
+                    position: absolute;
+                    right: 0;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    color: #e5e7eb;
+                    pointer-events: none;
                 \}
 
-                .tab-button.active \{
-                    background: white;
+                .tab-link:hover \{
+                    color: #4b5563;
+                    background: #f3f4f6;
+                \}
+
+                .tab-link.active \{
                     color: #667eea;
-                    font-weight: 600;
+                    font-weight: 500;
+                    background: #eef2ff;
+                \}
+
+                .tab-contents \{
+                    position: relative;
+                \}
+
+                .tab-contents::before \{
+                    content: '└';
+                    position: absolute;
+                    bottom: -1px;
+                    left: -1px;
+                    color: #d1d5db;
+                    background: white;
+                    line-height: 1;
+                    font-size: 0.9rem;
+                    z-index: 10;
+                \}
+
+                .tab-contents::after \{
+                    content: '┘';
+                    position: absolute;
+                    bottom: -1px;
+                    right: -1px;
+                    color: #d1d5db;
+                    background: white;
+                    line-height: 1;
+                    font-size: 0.9rem;
+                    z-index: 10;
                 \}
 
                 .tab-content \{
@@ -314,7 +401,6 @@ method html-header() {
                 .cell-content \{
                     padding: 0.5rem;
                     background: #fafbfc;
-                    border-left: 2px solid #667eea;
                     overflow-x: auto;
                     max-height: 300px;
                     overflow-y: auto;
@@ -383,7 +469,6 @@ method html-header() {
                 .text-output, .json-output \{
                     background: #fafbfc;
                     padding: 0.5rem;
-                    border-left: 2px solid #28a745;
                     overflow-x: auto;
                     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
                     font-size: 0.7rem;
@@ -396,9 +481,10 @@ method html-header() {
                     margin-top: 0.3rem;
                     padding: 0.3rem;
                     background: #fff3cd;
-                    border-left: 2px solid #ffc107;
+                    border: 1px solid #ffc107;
                     color: #856404;
                     font-size: 0.7rem;
+                    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
                 \}
 
                 .geojson-popup \{
