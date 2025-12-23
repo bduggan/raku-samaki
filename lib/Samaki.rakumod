@@ -443,6 +443,10 @@ for the actual contents) :
       ]
     ;
 
+=head1 RELOADING
+
+Starting sam with "--watch" will autoreload the page when the file is changed.
+
 =head1 INIT BLOCKS
 
 A special type of cell that has no type can be used to run Raku code when the
