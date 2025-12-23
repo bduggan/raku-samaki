@@ -255,10 +255,11 @@ class Samaki::Page {
         $cell-name = $n.Str.trim;
       }
       my %args;
+      my @conf;
       with $<cell-header><cell-ext> -> $ext {
         %args<default-ext> = $ext.Str;
+        @conf.push: ( 'ext' => $ext.Str );
       }
-      my @conf;
       while @lines[0] && @lines[0] ~~ &confline {
         @conf.push: ( $<confkey>.Str => $<confvalue>.Str );
         @lines.shift;
