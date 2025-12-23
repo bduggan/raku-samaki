@@ -40,6 +40,7 @@
     "Samaki::Plugout::Plain" : "lib/Samaki/Plugout/Plain.rakumod",
     "Samaki::Plugout::Raw" : "lib/Samaki/Plugout/Raw.rakumod",
     "Samaki::Plugout::TJLess" : "lib/Samaki/Plugout/TJLess.rakumod",
+    "Samaki::Watcher" : "lib/Samaki/Watcher.rakumod",
     "sam" : "bin/sam"
   },
   "resources" : [ "samaki-conf-default.raku" ],
