@@ -11,6 +11,7 @@ use JSON::Fast;
 
 logger.untapped-ok = True;
 logger.send-to("samaki.log") if %*ENV<SAMAKI_DEBUG>;
+my %*SUB-MAIN-OPTS = :named-anywhere;
 
 my $editor = $*ENV<EDITOR> //  "vim";
 
@@ -52,12 +53,16 @@ multi MAIN('new', :$wkdir = $*CWD) {
 }
 
 #| Edit an existing page
-multi MAIN(Str $target, :$wkdir = $*CWD) {
+multi MAIN(
+  Str $target,     #= filename or directory
+  :$wkdir = $*CWD, #= working directory (parent of the data directory)
+  Bool :$watch     #= watch for changes and autoreload
+) {
   if $target.contains('/') && !$target.ends-with('/') {
     my $page = $target.IO.basename.subst( /'.'samaki$/,'');
     my $wkdir = $target.IO.dirname.IO;
     my $q = Samaki.new(:$wkdir, :$editor);
-    $q.start-ui: :$page;
+    $q.start-ui: :$page, :$watch;
     exit;
   }
 
@@ -69,7 +74,7 @@ multi MAIN(Str $target, :$wkdir = $*CWD) {
   my $q = Samaki.new(:$wkdir, :$editor);
   my $page = $target;
   $page .= subst('.samaki','') if $page.ends-with('samaki');
-  $q.start-ui: :$page;
+  $q.start-ui: :$page, :$watch;
 }
 
 #| Reset the configuration to the default

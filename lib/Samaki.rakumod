@@ -10,6 +10,7 @@ use Samaki::Plugins;
 use Samaki::Plugouts;
 use Samaki::Conf;
 use Samaki::Utils;
+use Samaki::Watcher;
 
 unit class Samaki:ver<0.0.17>:api<1>:auth<zef:bduggan> does Samaki::Events;
 
@@ -30,6 +31,9 @@ has $.plugins = Samaki::Plugins.new;
 has $.plugouts = Samaki::Plugouts.new;
 has Str $.config-file;
 has $.conf-errors;
+has $.watcher;
+
+
 my $base = %*ENV<XDG_CONFIG_HOME>.?IO // $*HOME.child('.config');
 my $samaki-home = %*ENV<SAMAKI_HOME>.?IO // $base.child('samaki');
 my $config-location = %*ENV<SAMAKI_CONFIG>.?IO // $samaki-home.child('samaki-conf.raku');
@@ -103,12 +107,12 @@ submethod TWEAK {
   }
 }
 
-multi method start-ui(Str :$page) {
+multi method start-ui(Str :$page, Bool :$watch) {
   info "starting ui";
-  self.start-ui: page => Samaki::Page.new(name => $page, :$.wkdir);
+  self.start-ui: page => Samaki::Page.new(name => $page, :$.wkdir), :$watch;
 }
 
-multi method start-ui(Samaki::Page :$page!) {
+multi method start-ui(Samaki::Page :$page!, Bool :$watch) {
   $!current-page = $page;
   unless self.data-dir.IO.d {
     @!startup-log.push: "Creating data dir: " ~ self.data-dir;
@@ -125,6 +129,17 @@ multi method start-ui(Samaki::Page :$page!) {
     @!startup-log = ();
   }
   self.show-dir(self.data-dir, pane => btm, header => False);
+  if $watch {
+    $!watcher = Samaki::Watcher.new: :$page, on-change =>
+      -> $page {
+          my $line = top.current-line-index;
+          $page.reload(:$!plugins);
+          info "file change detected, reloading page";
+          self.show-page: $page;
+          top.select: $line;
+        };
+    $!watcher.start;
+  }
   $.ui.interact;
   $.ui.shutdown;
   .shutdown with self.current-page;
