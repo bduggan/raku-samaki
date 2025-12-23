@@ -1,3 +1,10 @@
+0.0.17 2025-12-23
+  - add "o" to open the output for the current cell
+  - improve tests
+  - make signatures consistent for 'execute'
+  - add code plugin
+  - swap markdown engine from Text::Markdown to Markdown::Grammar
+
 0.0.16 2025-12-22
   - add markdown plugin
   - better error handling
