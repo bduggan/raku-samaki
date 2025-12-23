@@ -157,6 +157,11 @@ Samaki comes with a default configuration file and some default plugins. The def
       ]
     ;
 
+RELOADING
+=========
+
+Starting sam with "--watch" will autoreload the page when the file is changed.
+
 INIT BLOCKS
 ===========
 
