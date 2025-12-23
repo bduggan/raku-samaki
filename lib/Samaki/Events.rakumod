@@ -14,6 +14,23 @@ method set-events {
   my (\ui) = $.ui;
   my (\top,\btm) = $.ui.panes;
 
+  ui.bind: 'pane', 'o' => 'open-cell-output';
+  top.on: open-cell-output => -> :%meta {
+    btm.clear;
+    my $page = %meta<page> // self.current-page;
+    my $cell = %meta<cell> // $page.current-cell;
+    with $cell.output-file -> $file {
+      if $file.IO.e {
+        btm.put: [ col('info') => "Opening output file ", col('link') => "[" ~ $file.IO.relative ~ "]" ];
+        $.plugouts.dispatch($file, pane => btm, data-dir => self.data-dir, name => $cell.name );
+      } else {
+        btm.put: [ col('error') => "Output file " ~ col('link') ~ "[" ~ $file.IO.relative ~ "]" ~ col('error') ~ " does not exist.  Run the cell first." ];
+      }
+    } else {
+      btm.put: "Cell has no output.";
+    }
+  };
+
   ui.bind: 'pane', 'e' => 'edit';
 
   ui.bind: 'v' => 'verbose-toggle';

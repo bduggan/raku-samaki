@@ -162,6 +162,8 @@ class Samaki::Cell {
   }
 
   method execute(:$mode = 'eval', :$page!, :$pane!, :$action) {
+    # $pane.put: "Executing cell { $.name } of type { $.cell-type }";
+    $pane.put: [ col('info') => "Executing cell ", col('cell-name') => $.name, col('info') => " of type ", col('cell-type') => $.cell-type ];
     return without $!plugin;
     info "Executing cell of type { $.cell-type }";
     indir self.cell-dir, {
@@ -171,8 +173,7 @@ class Samaki::Cell {
         if $.plugin.write-output {
           if $.plugin.clear-stream-before {
             $.plugin.stream:  txt => [ t.color(%COLORS<info>) => "Writing to ", t.color(%COLORS<link>) => "[" ~ self.output-file.IO.relative ~ "]" ],
-                              meta => %( action => 'do_output', path => self.output-file ),
-                              level => 'info';
+                              meta => %( action => 'do_output', path => self.output-file );
           }
           $out = self.output-file.open(:w) 
         } else {
