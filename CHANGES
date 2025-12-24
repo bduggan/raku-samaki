@@ -1,3 +1,11 @@
+0.0.18 2025-12-24
+  - improve handling of warnings
+  - add 'code' to default config file
+  - set default extentsion to 'text' for code and fix extension logic
+  - improve html export
+  - add --watch for watching and autoreloading
+  - add opts anywhere to CLI
+
 0.0.17 2025-12-23
   - add "o" to open the output for the current cell
   - improve tests
