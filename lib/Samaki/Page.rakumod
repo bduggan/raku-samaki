@@ -235,7 +235,11 @@ class Samaki::Page {
       } else {
         # this is an auto-eval cell, run it as we go
         debug "evaluating block " ~ @lines.join("\n");
+        my $h = &warn.wrap: -> |q {
+          warning "got a warning from code " ~ q.raku
+        }
         $.cu.eval: @lines.join("\n");
+        $h.restore;
         my $content = @lines.join("\n") ~ "\n";
         with $.cu.exception {
           $content = "--▶ sorry! something went wrong --\n{.message }\n----\n$content";
@@ -309,10 +313,10 @@ class Samaki::Page {
           last unless $line.defined;
           if $line.isa(Hash) {
             next unless log-visible($line<level>);
-            my $txt = $line<txt>;
+            my $txt = $line<txt> // '';
             btm.put: $txt, meta => ($line<meta> // {}), wrap => ($cell.wrap // 'none');
           } else {
-            btm.put: $line, wrap => $cell.wrap // 'none';
+            btm.put: ($line // ''), wrap => $cell.wrap // 'none';
           }
         }
       }

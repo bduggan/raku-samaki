@@ -10,6 +10,7 @@ use Samaki::Plugin::Process;
     / html /   => 'Samaki::Plugin::HTML',
     / markdown / => 'Samaki::Plugin::Markdown',
     / raku /   => 'Samaki::Plugin::Raku',
+    / code /   => 'Samaki::Plugin::Code',
     / python / => class SamakiPython does Samaki::Plugin::Process[
                        name => 'python',
                        cmd => 'python3' ] {

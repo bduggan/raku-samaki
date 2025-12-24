@@ -1,4 +1,5 @@
 use Samaki::Plugin;
+use Log::Async;
 
 unit class Samaki::Plugin::Code does Samaki::Plugin;
 
@@ -15,7 +16,13 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
     }
   }
   my $content = $cell.get-content(:$page, :$mode);
+  info "evaluating " ~ $content.raku;
+  my $h = &warn.wrap: -> |q {
+    warning "got a warning from code " ~ q.raku;
+    self.warn('warning -> ' ~ q.Str);
+  };
   my $res = $page.cu.eval: $content;
+  info "done";
   with $res {
     $out.put($_);
     $plug.stream: $_;
@@ -24,5 +31,9 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
     self.warn("error -> $_") for .message.lines;
     $page.cu.exception = Nil;
   }
+  for $page.cu.warnings -> $w {
+    info "got warnings from code " ~ $w.raku;
+  }
+  $h.restore;
 }
 
