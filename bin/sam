@@ -32,8 +32,7 @@ sub edit(IO::Path $path) {
 #| Browse pages
 multi MAIN(:$dir = $*CWD) {
   my $wkdir = $dir;
-  my $q = Samaki.new(:wkdir($wkdir.IO), :$editor);
-  $q.start-ui: 'browse';
+  Samaki.new(:wkdir($wkdir.IO), :$editor).start-ui: 'browse';
 }
 
 #| Import from another format to a samaki file (default: jupyter)
@@ -53,11 +52,11 @@ multi MAIN('import', $target, :$format = 'jupyter') {
 
 #| Make a new page and edit
 multi MAIN('new', :$wkdir = $*CWD) {
-  my $q = Samaki.new(:$wkdir, :$editor);
+  my $samaki = Samaki.new(:$wkdir, :$editor);
   my $name = prompt "Please enter a name for the new Samaki page: ";
   my $page = "$name.samaki".IO;
   edit $page;
-  $q.start-ui: :page($name);
+  $samaki.start-ui: :page($name);
 }
 
 #| Edit an existing page
@@ -66,23 +65,12 @@ multi MAIN(
   :$wkdir = $*CWD, #= working directory (parent of the data directory)
   Bool :$watch     #= watch for changes and autoreload
 ) {
-  if $target.contains('/') && !$target.ends-with('/') {
-    my $page = $target.IO.basename.subst( /'.'samaki$/,'');
-    my $wkdir = $target.IO.dirname.IO;
-    my $q = Samaki.new(:$wkdir, :$editor);
-    $q.start-ui: :$page, :$watch;
-    exit;
-  }
-
   if $target.IO.d && !("{$target}.samaki".IO.e) {
     MAIN(dir => $target);
     return;
   }
-
-  my $q = Samaki.new(:$wkdir, :$editor);
-  my $page = $target;
-  $page .= subst('.samaki','') if $page.ends-with('samaki');
-  $q.start-ui: :$page, :$watch;
+  my (:$samaki, :$page, :$page-name) := resolve-target $target, :$wkdir;
+  $samaki.start-ui( :$page, :$watch );
 }
 
 #| Reset the configuration to the default
@@ -108,14 +96,9 @@ multi MAIN('conf') {
   note "Done editing config file at $path";
 }
 
-#| Export a samaki file to another format (default: HTML)
-multi MAIN('export', $target, :$wkdir = $*CWD, :$output, :$format = 'html') {
+sub resolve-target($target, :$wkdir!) {
   my $page-path = $target.IO;
-  unless $page-path.e {
-    exit note "File not found: $target";
-  }
-
-  # Determine page name and working directory
+  exit note "File not found: $target" unless $page-path.e;
   my $page-name;
   my $actual-wkdir;
   if $target.contains('/') {
@@ -125,33 +108,24 @@ multi MAIN('export', $target, :$wkdir = $*CWD, :$output, :$format = 'html') {
     $page-name = $target.subst(/'.samaki'$/, '');
     $actual-wkdir = $wkdir.IO;
   }
+   my $samaki = Samaki.new(:wkdir($actual-wkdir), :$editor);
+   my $page = Samaki::Page.new(name => $page-name, wkdir => $samaki.wkdir);
+   $page.load(plugins => $samaki.plugins) or
+     exit note "Failed to load page: " ~ ($page.errors // "unknown error");
+   %( :$samaki, :$page-name, :$page);
+}
 
-  # Initialize Samaki to get plugins configured
-  my $q = Samaki.new(:wkdir($actual-wkdir), :$editor);
-
-  # Load the page
-  my $page = Samaki::Page.new(name => $page-name, wkdir => $actual-wkdir);
-  my $loaded = $page.load(plugins => $q.plugins);
-
-  unless $loaded {
-    exit note "Failed to load page: " ~ ($page.errors // "unknown error");
-  }
-
-  # Export based on format
+#| Export a samaki file to another format (default: HTML)
+multi MAIN('export', $target, :$wkdir = $*CWD, :$output, :$format = 'html') {
+  my (:$samaki, :$page-name, :$page) := resolve-target $target, :$wkdir;
+ 
   given $format.lc {
     when 'html' {
-      my $exporter = Samaki::Exporter::HTML.new(:$page, plugins => $q.plugins);
+      my $exporter = Samaki::Exporter::HTML.new(:$page, plugins => $samaki.plugins);
       my $html = $exporter.generate-html();
-
-      # Determine output path
-      my $output-path = $output ?? $output.IO !! $actual-wkdir.child("$page-name.html");
-
-      # Write HTML to file
+      my $output-path = $output ?? $output.IO !! $samaki.wkdir.child("$page-name.html");
       spurt $output-path, $html;
-
-      note "✓ Exported to HTML: $output-path";
-
-      # Open in browser
+      note "Exported to HTML: $output-path";
       my $open-cmd = $*DISTRO.is-win ?? 'start' !! ($*KERNEL.name eq 'darwin' ?? 'open' !! 'xdg-open');
       shell "$open-cmd $output-path";
     }
@@ -163,65 +137,32 @@ multi MAIN('export', $target, :$wkdir = $*CWD, :$output, :$format = 'html') {
 
 #| Run all cells in a samaki file
 multi MAIN('run', $target, :$wkdir = $*CWD) {
-  my $page-path = $target.IO;
-  unless $page-path.e {
-    exit note "File not found: $target";
-  }
-
-  # Determine page name and working directory
-  my $page-name;
-  my $actual-wkdir;
-  if $target.contains('/') {
-    $page-name = $page-path.basename.subst(/'.samaki'$/, '');
-    $actual-wkdir = $page-path.dirname.IO;
-  } else {
-    $page-name = $target.subst(/'.samaki'$/, '');
-    $actual-wkdir = $wkdir.IO;
-  }
-
-  # Initialize Samaki to get plugins configured
-  my $q = Samaki.new(:wkdir($actual-wkdir), :$editor);
-
-  # Load the page
-  my $page = Samaki::Page.new(name => $page-name, wkdir => $actual-wkdir);
-  my $loaded = $page.load(plugins => $q.plugins);
-
-  unless $loaded {
-    exit note "Failed to load page: " ~ ($page.errors // "unknown error");
-  }
-
-  # Disable terminal output for streaming
+  my (:$samaki, :$page-name, :$page) := resolve-target $target, :$wkdir;
   disable-output;
-
-  # Disable shell-open to prevent browser windows
   my $*SAMAKI-NO-SHELL-OPEN = True;
-
-  # Create mock panes for cell execution
   my $mock-pane = MockPane.new;
 
-  note "Running all cells in $page-name...";
-
-  # Run each cell in order
+  note "Running all cells in $page-name.";
   for $page.cells -> $cell {
     next if $cell.cell-type eq 'auto'; # Skip auto cells
-    note "→ Running cell: { $cell.name }";
+    print " cell { $cell.name }...";
 
     try {
       my $action = $cell.select-action // 'run';
       $page.run-cell($cell, btm => $mock-pane, top => $mock-pane, :$action);
       CATCH {
         default {
-          note "  ✗ Error: $_";
+          say "# Error: $_";
         }
       }
     }
 
     if $cell.errors {
-      note "  ✗ Error: { $cell.errors }";
+      say "# Error: { $cell.errors }";
     } else {
-      note "  ✓ Complete";
+      say "ok";
     }
   }
 
-  note "✓ All cells executed";
+  say "All cells executed";
 }
