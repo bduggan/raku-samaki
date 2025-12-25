@@ -205,55 +205,55 @@ method escape-html(Str $text) {
 
 method html-header() {
     my $page-name = $.page.name;
-    return qq:to/HTML/;
+    return Q:s:to/HTML/;
         <!DOCTYPE html>
         <html lang="en">
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>{$page-name} - Samaki</title>
+            <title>$page-name\</title>
             <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
             <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
             <style>
-                * \{
+                * {
                     margin: 0;
                     padding: 0;
                     box-sizing: border-box;
-                \}
+                }
 
-                body \{
+                body {
                     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
                     background: #f5f5f7;
                     padding: 0.5rem;
                     line-height: 1.4;
                     font-size: 13px;
-                \}
+                }
 
-                .page-header \{
+                .page-header {
                     text-align: center;
                     background: #667eea;
                     color: white;
                     padding: 0.4rem;
                     margin-bottom: 0.5rem;
                     border-radius: 4px;
-                \}
+                }
 
-                .page-header h1 \{
+                .page-header h1 {
                     font-size: 1.4rem;
                     font-weight: 600;
                     margin: 0;
-                \}
+                }
 
-                .cell-container \{
+                .cell-container {
                     background: white;
                     border: 1px solid #d1d5db;
                     margin-bottom: 0.75rem;
                     position: relative;
                     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-                \}
+                }
 
 
-                .cell-header-tabs \{
+                .cell-header-tabs {
                     padding: 0.25rem 0.5rem;
                     background: #fafbfc;
                     border-bottom: 1px solid #d1d5db;
@@ -262,16 +262,16 @@ method html-header() {
                     justify-content: space-between;
                     gap: 0.5rem;
                     min-height: 1.8rem;
-                \}
+                }
 
-                .cell-meta \{
+                .cell-meta {
                     display: flex;
                     align-items: center;
                     gap: 0.4rem;
                     flex-shrink: 0;
-                \}
+                }
 
-                .cell-type \{
+                .cell-type {
                     display: inline-block;
                     color: #9ca3af;
                     padding: 0.1rem 0.3rem;
@@ -281,9 +281,9 @@ method html-header() {
                     letter-spacing: 0.02em;
                     font-weight: 500;
                     border: 1px solid #e5e7eb;
-                \}
+                }
 
-                .cell-type-auto \{
+                .cell-type-auto {
                     display: inline-block;
                     color: #9ca3af;
                     padding: 0.1rem 0.3rem;
@@ -293,21 +293,21 @@ method html-header() {
                     letter-spacing: 0.02em;
                     font-weight: 500;
                     border: 1px dashed #d1d5db;
-                \}
+                }
 
-                .cell-name \{
+                .cell-name {
                     color: #6b7280;
                     font-size: 0.7rem;
                     font-style: italic;
-                \}
+                }
 
-                .tab-nav \{
+                .tab-nav {
                     display: flex;
                     gap: 0;
                     align-items: center;
-                \}
+                }
 
-                .tab-link \{
+                .tab-link {
                     background: none;
                     border: none;
                     padding: 0.2rem 0.5rem;
@@ -318,9 +318,9 @@ method html-header() {
                     transition: all 0.15s ease;
                     text-decoration: none;
                     position: relative;
-                \}
+                }
 
-                .tab-link:not(:last-child)::after \{
+                .tab-link:not(:last-child)::after {
                     content: '│';
                     position: absolute;
                     right: 0;
@@ -328,100 +328,100 @@ method html-header() {
                     transform: translateY(-50%);
                     color: #e5e7eb;
                     pointer-events: none;
-                \}
+                }
 
-                .tab-link:hover \{
+                .tab-link:hover {
                     color: #4b5563;
                     background: #f3f4f6;
-                \}
+                }
 
-                .tab-link.active \{
+                .tab-link.active {
                     color: #667eea;
                     font-weight: 500;
                     background: #eef2ff;
-                \}
+                }
 
-                .tab-contents \{
+                .tab-contents {
                     position: relative;
-                \}
+                }
 
-                .tab-content \{
+                .tab-content {
                     display: none;
-                \}
+                }
 
-                .tab-content.active \{
+                .tab-content.active {
                     display: block;
-                \}
+                }
 
-                .cell-content \{
+                .cell-content {
                     padding: 0.5rem 0.5rem 0.5rem 1.5rem;
                     background: #fafbfc;
                     overflow-x: auto;
                     max-height: 300px;
                     overflow-y: auto;
-                \}
+                }
 
-                .cell-content code \{
+                .cell-content code {
                     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
                     font-size: 0.75rem;
                     line-height: 1.3;
                     color: #2d3748;
-                \}
+                }
 
-                .output-content \{
+                .output-content {
                     padding: 0.5rem 0.5rem 0.5rem 1.5rem;
                     max-height: 400px;
                     overflow-y: auto;
-                \}
+                }
 
-                .geojson-map \{
+                .geojson-map {
                     width: 100%;
                     height: 350px;
                     border-radius: 3px;
-                \}
+                }
 
-                .table-container \{
+                .table-container {
                     overflow-x: auto;
                     max-height: 400px;
                     overflow-y: auto;
-                \}
+                }
 
-                .csv-table \{
+                .csv-table {
                     width: 100%;
                     border-collapse: collapse;
                     background: white;
                     font-size: 0.7rem;
-                \}
+                }
 
-                .csv-table thead \{
+                .csv-table thead {
                     background: #667eea;
                     color: white;
                     position: sticky;
                     top: 0;
                     z-index: 10;
-                \}
+                }
 
-                .csv-table th \{
+                .csv-table th {
                     padding: 0.3rem 0.4rem;
                     text-align: left;
                     font-weight: 600;
                     font-size: 0.7rem;
                     text-transform: uppercase;
                     letter-spacing: 0.3px;
-                \}
+                }
 
-                .csv-table td \{
+                .csv-table td {
                     padding: 0.25rem 0.4rem;
                     border-bottom: 1px solid #e9ecef;
                     font-size: 0.7rem;
                     white-space: nowrap;
-                \}
+                }
 
-                .csv-table tbody tr:hover \{
+                .csv-table tbody tr:hover {
                     background: #f8f9fa;
-                \}
+                }
 
-                .text-output, .json-output \{
+                .text-output, .json-output {
                     background: #fafbfc;
                     padding: 0.5rem 0.5rem 0.5rem 1.5rem;
                     overflow-x: auto;
@@ -430,72 +430,72 @@ method html-header() {
                     line-height: 1.3;
                     max-height: 400px;
                     overflow-y: auto;
-                \}
+                }
 
-                .truncation-note \{
+                .truncation-note {
                     margin-top: 0.3rem;
                     padding: 0.3rem;
                     background: #fff3cd;
                     border: 1px solid #ffc107;
                     color: #856404;
                     font-size: 0.7rem;
-                \}
+                }
 
-                .geojson-popup \{
+                .geojson-popup {
                     font-size: 0.75rem;
                     line-height: 1.4;
-                \}
+                }
 
-                footer \{
+                footer {
                     text-align: center;
                     color: #6c757d;
                     margin-top: 0.5rem;
                     font-size: 0.7rem;
-                \}
+                }
 
-                footer a \{
+                footer a {
                     color: #667eea;
                     text-decoration: none;
-                \}
+                }
 
-                footer a:hover \{
+                footer a:hover {
                     text-decoration: underline;
-                \}
+                }
             </style>
         </head>
         <body>
             <div class="page-header">
-                <h1>〜 {$page-name} 〜</h1>
+                <h1>〜 $page-name 〜</h1>
             </div>
     HTML
 }
 
 method html-footer() {
-    return qq:to/HTML/;
+    return Q:s:to/HTML/;
             <footer>
                 <a href="https://github.com/bduggan/raku-samaki">Samaki</a>
             </footer>
             <script>
-                function openTab(evt, tabId) \{
+                function openTab(evt, tabId) {
                     // Get the clicked button's parent container to scope tab switching
                     var container = evt.currentTarget.closest('.cell-container');
 
                     // Hide all tab contents in this container
                     var tabContents = container.querySelectorAll('.tab-content');
-                    for (var i = 0; i < tabContents.length; i++) \{
+                    for (var i = 0; i < tabContents.length; i++) {
                         tabContents[i].classList.remove('active');
-                    \}
+                    }
 
                     // Remove active class from all tab buttons in this container
                     var tabButtons = container.querySelectorAll('.tab-link');
-                    for (var i = 0; i < tabButtons.length; i++) \{
+                    for (var i = 0; i < tabButtons.length; i++) {
                         tabButtons[i].classList.remove('active');
-                    \}
+                    }
 
                     // Show the selected tab content and mark button as active
                     document.getElementById(tabId).classList.add('active');
                     evt.currentTarget.classList.add('active');
-                \}
+                }
             </script>
         </body>
         </html>
