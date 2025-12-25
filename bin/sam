@@ -5,6 +5,7 @@ use Samaki::Exporter::HTML;
 use Samaki::Importer::Jupyter;
 use Samaki::Page;
 use Samaki::Plugins;
+use Samaki::Utils;
 use Log::Async;
 use Terminal::ANSI::OO;
 use Terminal::ANSI;
@@ -116,7 +117,7 @@ sub resolve-target($target, :$wkdir!) {
 }
 
 #| Export a samaki file to another format (default: HTML)
-multi MAIN('export', $target, :$wkdir = $*CWD, :$output, :$format = 'html') {
+multi MAIN('export', $target, :$wkdir = $*CWD, :$output, :$format = 'html', Bool :$open) {
   my (:$samaki, :$page-name, :$page) := resolve-target $target, :$wkdir;
  
   given $format.lc {
@@ -126,8 +127,7 @@ multi MAIN('export', $target, :$wkdir = $*CWD, :$output, :$format = 'html') {
       my $output-path = $output ?? $output.IO !! $samaki.wkdir.child("$page-name.html");
       spurt $output-path, $html;
       note "Exported to HTML: $output-path";
-      my $open-cmd = $*DISTRO.is-win ?? 'start' !! ($*KERNEL.name eq 'darwin' ?? 'open' !! 'xdg-open');
-      shell "$open-cmd $output-path";
+      shell-open($output-path) if $open;
     }
     default {
       exit note "Unknown export format: $format (supported: html)";
