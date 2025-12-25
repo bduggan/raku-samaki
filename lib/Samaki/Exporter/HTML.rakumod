@@ -113,31 +113,31 @@ method render-output($output, $cell-idx, $out-idx) {
 
 method render-geojson($path, $cell-idx, $out-idx) {
     my $geojson-content = $path.slurp;
-    return qq:to/HTML/;
+    return Q:s:to/HTML/;
         <div id="map_cell{$cell-idx}_out{$out-idx}" class="geojson-map"></div>
         <script>
-        (function() \{
+        (function() {
             var map = L.map('map_cell{$cell-idx}_out{$out-idx}').setView([37.7749, -122.4194], 13);
-            L.tileLayer('https://\{s\}.tile.openstreetmap.org/\{z\}/\{x\}/\{y\}.png', \{
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            \}).addTo(map);
+            }).addTo(map);
 
-            var geojsonData = {$geojson-content};
-            var geojsonLayer = L.geoJSON(geojsonData, \{
-                onEachFeature: function(feature, layer) \{
-                    if (feature.properties) \{
+            var geojsonData = $geojson-content;
+            var geojsonLayer = L.geoJSON(geojsonData, {
+                onEachFeature: function(feature, layer) {
+                    if (feature.properties) {
                         var popupContent = '<div class="geojson-popup">';
-                        for (var key in feature.properties) \{
+                        for (var key in feature.properties) {
                             popupContent += '<strong>' + key + ':</strong> ' + feature.properties[key] + '<br>';
-                        \}
+                        }
                         popupContent += '</div>';
                         layer.bindPopup(popupContent);
-                    \}
-                \}
-            \}).addTo(map);
+                    }
+                }
+            }).addTo(map);
 
             map.fitBounds(geojsonLayer.getBounds());
-        \})();
+        })();
         </script>
     HTML
 }
