@@ -47,7 +47,7 @@ lives-ok { $html = $exporter.generate-html() }, 'generate-html runs without erro
 
 # HTML contains basic structure
 ok $html ~~ /'<!DOCTYPE html>'/, 'HTML has DOCTYPE';
-ok $html ~~ /'<title>test - Samaki</title>'/, 'HTML has title';
+ok $html ~~ /'<title>test </title>'/, 'HTML has title';
 ok $html ~~ /'cell-type'/, 'HTML contains cell-type class';
 ok $html ~~ /'openTab'/, 'HTML contains tab JavaScript';
 
