@@ -30,39 +30,42 @@ method render-cell($cell, $idx) {
 
     my $cell-html = qq:to/HTML/;
         <div class="cell-container">
-            <div class="cell-header-tabs">
-                <span class="cell-meta">
-                    <span class="{$cell-type-class}">{$cell.cell-type}</span>
-                    {$cell.name ne "cell-$idx" ?? qq[<span class="cell-name">{$cell.name}</span>] !! ''}
-                </span>
-                <div class="tab-nav">
-                    <button class="tab-link {$show-output-first ?? '' !! 'active'}" onclick="openTab(event, 'cell{$idx}_input')">source</button>
+            <div class="cell-main">
+                <div class="tab-contents">
+                    <div id="cell{$idx}_input" class="tab-content {$show-output-first ?? '' !! 'active'}">
+                        <pre class="cell-content"><code>{self.escape-html($cell.content)}</code></pre>
+                    </div>
     HTML
 
     for @outputs.kv -> $out-idx, $output {
         my $active-class = ($show-output-first && $out-idx == 0) ?? 'active' !! '';
-        $cell-html ~= qq[                    <button class="tab-link {$active-class}" onclick="openTab(event, 'cell{$idx}_out{$out-idx}')">{$output<name>}</button>\n];
+        $cell-html ~= qq[            <div id="cell{$idx}_out{$out-idx}" class="tab-content {$active-class}">\n];
+        $cell-html ~= qq[                <div class="output-content">\n];
+        $cell-html ~= self.render-output($output, $idx, $out-idx);
+        $cell-html ~= qq[                </div>\n];
+        $cell-html ~= qq[            </div>\n];
     }
 
     $cell-html ~= qq:to/HTML/;
                 </div>
             </div>
-            <div class="tab-contents">
-                <div id="cell{$idx}_input" class="tab-content {$show-output-first ?? '' !! 'active'}">
-                    <pre class="cell-content"><code>{self.escape-html($cell.content)}</code></pre>
+            <div class="cell-sidebar">
+                <div class="cell-meta">
+                    <span class="{$cell-type-class}">{$cell.cell-type}</span>
+                    {$cell.name ne "cell-$idx" ?? qq[<div class="cell-name">{$cell.name}</div>] !! ''}
                 </div>
+                <div class="tab-nav">
+                    <button class="tab-link {$show-output-first ?? '' !! 'active'}" onclick="openTab(event, 'cell{$idx}_input')">src</button>
     HTML
 
     for @outputs.kv -> $out-idx, $output {
         my $active-class = ($show-output-first && $out-idx == 0) ?? 'active' !! '';
-        $cell-html ~= qq[        <div id="cell{$idx}_out{$out-idx}" class="tab-content {$active-class}">\n];
-        $cell-html ~= qq[            <div class="output-content">\n];
-        $cell-html ~= self.render-output($output, $idx, $out-idx);
-        $cell-html ~= qq[            </div>\n];
-        $cell-html ~= qq[        </div>\n];
+        my $output-label = $output<ext> // 'out';
+        $cell-html ~= qq[                <button class="tab-link {$active-class}" onclick="openTab(event, 'cell{$idx}_out{$out-idx}')">{$output-label}</button>\n];
     }
 
     $cell-html ~= qq:to/HTML/;
+                </div>
             </div>
         </div>
     HTML
@@ -246,99 +249,107 @@ method html-header() {
 
                 .cell-container {
                     background: white;
-                    border: 1px solid #d1d5db;
-                    margin-bottom: 0.75rem;
+                    border-bottom: 1px solid #e5e7eb;
+                    border-left: 1px solid #d1d5db;
+                    border-right: 1px solid #d1d5db;
                     position: relative;
                     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+                    display: flex;
                 }
 
+                .cell-container:first-of-type {
+                    border-top: 1px solid #d1d5db;
+                }
 
-                .cell-header-tabs {
-                    padding: 0.25rem 0.5rem;
+                .cell-main {
+                    flex: 1;
+                    min-width: 0;
+                }
+
+                .cell-sidebar {
+                    width: 85px;
                     background: #fafbfc;
-                    border-bottom: 1px solid #d1d5db;
+                    border-left: 1px solid #e5e7eb;
+                    padding: 0.4rem 0.3rem;
                     display: flex;
-                    align-items: center;
-                    justify-content: space-between;
-                    gap: 0.5rem;
-                    min-height: 1.8rem;
+                    flex-direction: column;
+                    gap: 0.4rem;
+                    flex-shrink: 0;
                 }
 
                 .cell-meta {
                     display: flex;
-                    align-items: center;
-                    gap: 0.4rem;
-                    flex-shrink: 0;
+                    flex-direction: column;
+                    gap: 0.2rem;
+                    margin-bottom: 0.2rem;
                 }
 
                 .cell-type {
                     display: inline-block;
                     color: #9ca3af;
-                    padding: 0.1rem 0.3rem;
+                    padding: 0.15rem 0.25rem;
                     border-radius: 2px;
-                    font-size: 0.65rem;
+                    font-size: 0.6rem;
                     text-transform: lowercase;
                     letter-spacing: 0.02em;
                     font-weight: 500;
                     border: 1px solid #e5e7eb;
+                    text-align: center;
                 }
 
                 .cell-type-auto {
                     display: inline-block;
                     color: #9ca3af;
-                    padding: 0.1rem 0.3rem;
+                    padding: 0.15rem 0.25rem;
                     border-radius: 2px;
-                    font-size: 0.65rem;
+                    font-size: 0.6rem;
                     text-transform: lowercase;
                     letter-spacing: 0.02em;
                     font-weight: 500;
                     border: 1px dashed #d1d5db;
+                    text-align: center;
                 }
 
                 .cell-name {
                     color: #6b7280;
-                    font-size: 0.7rem;
+                    font-size: 0.6rem;
                     font-style: italic;
+                    text-align: center;
+                    word-break: break-word;
                 }
 
                 .tab-nav {
                     display: flex;
-                    gap: 0;
-                    align-items: center;
+                    flex-direction: column;
+                    gap: 0.15rem;
                 }
 
                 .tab-link {
-                    background: none;
-                    border: none;
-                    padding: 0.2rem 0.5rem;
+                    background: white;
+                    border: 1px solid #e5e7eb;
+                    border-radius: 3px;
+                    padding: 0.25rem 0.3rem;
                     cursor: pointer;
-                    font-size: 0.7rem;
+                    font-size: 0.65rem;
                     font-weight: 400;
-                    color: #9ca3af;
+                    color: #6b7280;
                     transition: all 0.15s ease;
                     text-decoration: none;
-                    position: relative;
-                }
-
-                .tab-link:not(:last-child)::after {
-                    content: '│';
-                    position: absolute;
-                    right: 0;
-                    top: 50%;
-                    transform: translateY(-50%);
-                    color: #e5e7eb;
-                    pointer-events: none;
+                    text-align: center;
+                    width: 100%;
                 }
 
                 .tab-link:hover {
-                    color: #4b5563;
-                    background: #f3f4f6;
+                    color: #374151;
+                    background: #f9fafb;
+                    border-color: #d1d5db;
                 }
 
                 .tab-link.active {
-                    color: #162461;
+                    color: white;
                     font-weight: 500;
-                    background: #eef2ff;
+                    background: #162461;
+                    border-color: #162461;
                 }
 
                 .tab-contents {
