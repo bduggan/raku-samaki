@@ -51,8 +51,8 @@ method render-cell($cell, $idx) {
             </div>
             <div class="cell-sidebar">
                 <div class="cell-meta">
+                    <span class="cell-name">{$cell.name}</span>
                     <span class="{$cell-type-class}">{$cell.cell-type}</span>
-                    {$cell.name ne "cell-$idx" ?? qq[<div class="cell-name">{$cell.name}</div>] !! ''}
                 </div>
                 <div class="tab-nav">
                     <button class="tab-link {$show-output-first ?? '' !! 'active'}" onclick="openTab(event, 'cell{$idx}_input')">src</button>
@@ -214,7 +214,7 @@ method html-header() {
         <head>
             <meta charset="UTF-8">
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>$page-name\</title>
+            <title>$page-name </title>
             <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
             <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
             <style>
@@ -255,6 +255,7 @@ method html-header() {
                     position: relative;
                     font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
                     display: flex;
+                    align-items: flex-start;
                 }
 
                 .cell-container:first-of-type {
@@ -267,76 +268,80 @@ method html-header() {
                 }
 
                 .cell-sidebar {
-                    width: 85px;
                     background: #fafbfc;
                     border-left: 1px solid #e5e7eb;
-                    padding: 0.4rem 0.3rem;
+                    padding: 0.3rem 0.4rem;
+                    flex-shrink: 0;
                     display: flex;
                     flex-direction: column;
-                    gap: 0.4rem;
-                    flex-shrink: 0;
+                    gap: 0.25rem;
+                    min-width: 140px;
                 }
 
                 .cell-meta {
                     display: flex;
-                    flex-direction: column;
-                    gap: 0.2rem;
-                    margin-bottom: 0.2rem;
+                    align-items: center;
+                    gap: 0.3rem;
+                    flex-wrap: nowrap;
                 }
 
                 .cell-type {
                     display: inline-block;
                     color: #9ca3af;
-                    padding: 0.15rem 0.25rem;
+                    padding: 0.1rem 0.25rem;
                     border-radius: 2px;
                     font-size: 0.6rem;
                     text-transform: lowercase;
                     letter-spacing: 0.02em;
                     font-weight: 500;
                     border: 1px solid #e5e7eb;
-                    text-align: center;
+                    white-space: nowrap;
+                    flex-shrink: 0;
                 }
 
                 .cell-type-auto {
                     display: inline-block;
                     color: #9ca3af;
-                    padding: 0.15rem 0.25rem;
+                    padding: 0.1rem 0.25rem;
                     border-radius: 2px;
                     font-size: 0.6rem;
                     text-transform: lowercase;
                     letter-spacing: 0.02em;
                     font-weight: 500;
                     border: 1px dashed #d1d5db;
-                    text-align: center;
+                    white-space: nowrap;
+                    flex-shrink: 0;
                 }
 
                 .cell-name {
                     color: #6b7280;
                     font-size: 0.6rem;
                     font-style: italic;
-                    text-align: center;
-                    word-break: break-word;
+                    white-space: nowrap;
+                    overflow: hidden;
+                    text-overflow: ellipsis;
+                    flex: 1;
+                    min-width: 0;
                 }
 
                 .tab-nav {
                     display: flex;
-                    flex-direction: column;
-                    gap: 0.15rem;
+                    gap: 0.2rem;
+                    align-items: center;
                 }
 
                 .tab-link {
                     background: white;
                     border: 1px solid #e5e7eb;
                     border-radius: 3px;
-                    padding: 0.25rem 0.3rem;
+                    padding: 0.2rem 0.4rem;
                     cursor: pointer;
-                    font-size: 0.65rem;
+                    font-size: 0.6rem;
                     font-weight: 400;
                     color: #6b7280;
                     transition: all 0.15s ease;
                     text-decoration: none;
-                    text-align: center;
-                    width: 100%;
+                    white-space: nowrap;
                 }
 
                 .tab-link:hover {
