@@ -231,7 +231,7 @@ method html-header() {
 
                 .page-header {
                     text-align: center;
-                    background: #667eea;
+                    background: #162461;
                     color: white;
                     padding: 0.4rem;
                     margin-bottom: 0.5rem;
@@ -336,7 +336,7 @@ method html-header() {
                 }
 
                 .tab-link.active {
-                    color: #667eea;
+                    color: #162461;
                     font-weight: 500;
                     background: #eef2ff;
                 }
@@ -394,7 +394,7 @@ method html-header() {
                 }
 
                 .csv-table thead {
-                    background: #667eea;
+                    background: #142368;
                     color: white;
                     position: sticky;
                     top: 0;
@@ -454,7 +454,7 @@ method html-header() {
                 }
 
                 footer a {
-                    color: #667eea;
+                    color: #162461;
                     text-decoration: none;
                 }
 
