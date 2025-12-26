@@ -3,5 +3,8 @@
 curl -s \
 'https://nominatim.openstreetmap.org/search?q=Golden%20Gate%20Park%2C%20San%20Francisco&format=geojson&polygon_geojson=1&limit=1'
 
--- raku
-say 1 + 1
+-- llm
+| ext: text
+improve this curl command so that it is more readable
+curl -s \
+'https://nominatim.openstreetmap.org/search?q=Golden%20Gate%20Park%2C%20San%20Francisco&format=geojson&polygon_geojson=1&limit=1'
