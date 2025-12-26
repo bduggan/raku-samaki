@@ -15,12 +15,21 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
  info "Executing LLM cell";
  my Str $content = $cell.get-content(:$mode, :$page);
  my $h = &warn.wrap: -> |c {
+   self.warn($_) for c.Str.lines;
    warning "LLM warning: {c.raku}";
  }
 
  with dwim($content) -> $res {
    $!output = $res;
    $out.put($res) if $out;
+ } else {
+   self.warn: "errors, could not reach llm: ";
+   with (.?exception) {
+      self.warn($_) for .gist.lines
+   } else {
+     self.warn: "error " ~ .raku;
+   }
+
  }
 
  self.info: 'done';
