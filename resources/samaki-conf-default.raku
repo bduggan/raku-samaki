@@ -8,6 +8,7 @@ use Samaki::Plugin::Process;
     / text /   => 'Samaki::Plugin::Text',
     / bash /   => 'Samaki::Plugin::Bash',
     / html /   => 'Samaki::Plugin::HTML',
+    / file /   => 'Samaki::Plugin::File',
     / markdown / => 'Samaki::Plugin::Markdown',
     / raku /   => 'Samaki::Plugin::Raku',
     / code /   => 'Samaki::Plugin::Code',

@@ -169,7 +169,7 @@ class Samaki::Cell {
     indir self.cell-dir, {
       info "In directory {self.cell-dir}";
       try {
-        my $out;
+        my IO::Handle $out;
         if $.plugin.write-output {
           if $.plugin.clear-stream-before {
             $.plugin.stream:  txt => [ t.color(%COLORS<info>) => "Writing to ", t.color(%COLORS<link>) => "[" ~ self.output-file.IO.relative ~ "]" ],
