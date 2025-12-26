@@ -1,0 +1,119 @@
+use Test;
+use Samaki::Plugin::File;
+use JSON::Fast;
+
+# Create a test file
+my $test-file = $*TMPDIR.child('test-file.txt');
+$test-file.spurt('Hello, world!');
+
+# Capture output stream
+my @messages;
+my $output-channel = Channel.new;
+
+my $plugin = Samaki::Plugin::File.new(:output-stream($output-channel));
+
+# Create a cell that references the test file
+my $cell = Samaki::Cell.new:
+  page-name => 'test',
+  content => '',
+  cell-type => 'file',
+  name => 'test-file',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+
+# Override output-file to point to our test file
+$cell does role {
+  method output-file { $test-file }
+};
+
+my $page = Samaki::Page.new:
+  wkdir => $*TMPDIR,
+  name => 'test',
+  cells => [$cell];
+
+# Tap the channel in the background
+start react whenever $output-channel -> $msg {
+  @messages.push: $msg;
+}
+
+$plugin.execute(:$cell, :$page, :mode<content>);
+
+# Give it a moment to process
+sleep 0.1;
+
+ok @messages.elems > 0, 'plugin produced output';
+my $output = @messages.map(*<txt>).grep(*.defined).map(*.map(*.value).join).join("\n");
+ok $output.contains('test-file.txt'), 'output contains filename';
+ok $output.contains('B'), 'output contains file size';
+
+# Test GeoJSON parsing
+my $geojson-file = $*TMPDIR.child('test.geojson');
+my %geojson =
+  type => 'FeatureCollection',
+  features => [
+    {
+      type => 'Feature',
+      geometry => {
+        type => 'Point',
+        coordinates => [-73.9857, 40.7484]
+      },
+      properties => {
+        name => 'New York',
+        population => 8000000
+      }
+    },
+    {
+      type => 'Feature',
+      geometry => {
+        type => 'Point',
+        coordinates => [-118.2437, 34.0522]
+      },
+      properties => {
+        name => 'Los Angeles',
+        population => 4000000
+      }
+    }
+  ];
+
+$geojson-file.spurt(to-json(%geojson));
+
+my $geojson-cell = Samaki::Cell.new:
+  page-name => 'test',
+  content => '',
+  cell-type => 'file',
+  name => 'test-geojson',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+
+$geojson-cell does role {
+  method output-file { $geojson-file }
+};
+
+my @geo-messages;
+my $geo-channel = Channel.new;
+my $geo-plugin = Samaki::Plugin::File.new(:output-stream($geo-channel));
+
+start react whenever $geo-channel -> $msg {
+  @geo-messages.push: $msg;
+}
+
+$geo-plugin.execute(:cell($geojson-cell), :$page, :mode<content>);
+
+# Give it a moment to process
+sleep 0.1;
+
+ok @geo-messages.elems > 0, 'geojson plugin produced output';
+my $geo-output = @geo-messages.map(*<txt>).grep(*.defined).map(*.map(*.value).join).join("\n");
+ok $geo-output.contains('FeatureCollection'), 'output contains GeoJSON type';
+ok $geo-output.contains('Point'), 'output contains geometry type';
+ok $geo-output.contains('name'), 'output contains property names';
+ok $geo-output.contains('population'), 'output contains property names';
+ok $geo-output.contains('lon:'), 'output contains bounding box';
+
+# Cleanup
+$test-file.unlink;
+$geojson-file.unlink;
+
+done-testing;
