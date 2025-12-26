@@ -106,11 +106,11 @@ sub analyze-geojson($path) {
 }
 
 method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane, Str :$action) {
-  my IO::Path $filename = $cell.output-file;
-  if $filename.IO.e {
-    my $path = $filename.IO;
+  my IO::Path $path = $cell.output-file;
+  if $path.e {
     my @lines;
-    @lines.push: [ col('inactive') => 'File:'.fmt('%10s'), col('title') => ' ', col('text') => $path.relative ];
+    self.stream:  txt => [ t.color(%COLORS<info>) => "file:".fmt('%10s'), t.color(%COLORS<link>) => "[" ~ $path.relative ~ "]" ],
+                  meta => %( action => 'do_output', :$path  );
     @lines.push: [ col('inactive') => 'Size:'.fmt('%10s'), col('title') => ' ', col('data') => format-size($path.s) ];
     @lines.push: [ col('inactive') => 'Modified:'.fmt('%10s'), col('title') => ' ', col('data') => format-datetime($path.modified) ];
     @lines.push: [ col('inactive') => 'Accessed:'.fmt('%10s'), col('title') => ' ', col('data') => format-datetime($path.accessed) ];
@@ -162,6 +162,6 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
       $.output-stream.send: %( txt => $line );
     }
   } else {
-    $.output-stream.send: %( txt => [ col('error') => "file $filename not found" ] );
+    $.output-stream.send: %( txt => [ col('error') => "file $path not found" ] );
   }
 }
