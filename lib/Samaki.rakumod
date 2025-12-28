@@ -539,7 +539,7 @@ File                    | Display file metadata and info
 HTML                    | Generate HTML from contents
 LLM                     | Send contents to LLM (via L<LLM::DWIM>)
 Markdown                | Generate HTML from markdown
-Postgres                | Execute SQL via psql command-line tool
+Postgres                | Execute SQL via psql process
 Raku                    | Run raku in a separate process
 Repl::Raku              | Interactive raku REPL (persistent session)
 Repl::Python            | Interactive python REPL (persistent session)
