@@ -180,9 +180,35 @@ PLUGINS
 
 Plugin classes should do the `Samaki::Plugin` role, and at a minimum should implement the `execute` method and have `name` and `description` attributes. The usual `RAKULIB` directories are searched for plugins, so adding local plugins is a matter of adding a new calss and placing it into this search path.
 
-In addition to the strings above, a class definition may be placed directly into the configuration file, and this definition can reference other plugins.
+When interacting with external programs, there are three (and probably more) distinct ways to do this. There is some redundancy in the plugins because we offer more than one way to interact with external programs. The three ways that are currently abstracted across plugins are are
 
-For instance, this defines a plugin called `python` for executing python code:
+    - using a native driver.  For instance, `Duckie` offers bindings to the C API
+      for duckdb.
+
+    - by spawning an external process and using stdin/stdout/stderr to communicate.
+      For instance, `duck` does this -- it runs the `duckdb` command, sends data on stdin
+      and captures stdout/stderr.  This is abstracted in `Samaki::Plugin::Process`.
+
+    - by interacting with a command line REPL provided by another program and setting up
+      a Pseudo-TTY to show what would go to the screen.   `Samaki::Plugin::Repl` does this,
+        and `Samaki::Plugin::Repl::Python` is an example.
+
+Of these methods, there are a few functional differences.
+
+    1. persistence: currently only the last one offers persistence -- i.e. definitions between
+       cells will persist within the REPL process.  e.g. if one cell has `x=12`
+       and another has `print(x)` then the second will print 12 if it is run after the first.
+       The other plugins are executed once and are stateless.
+
+    2. output shown vs output saved: for native drivers the output that is shown on the screen
+       is precisely what is stored.  The second one stores output in a file, but does not
+       necessarily display it all.  This can be useful running programs that create large
+       datasets.  There may be some inconsistency depending on the plugin, so consult the
+       individual plugin's implementation to see what it does.
+
+In addition to classes defined in code, class definitions may be placed directly into the configuration file.
+
+For instance, this snippet below is sufficient to implement a plugin called `python` for executing python code, saving the result to a file for that cell:
 
     / python / => class SamakiPython does Samaki::Plugin {
                     has $.name = 'samaki-python';
@@ -194,21 +220,30 @@ For instance, this defines a plugin called `python` for executing python code:
                        $out.put: slurp "out.py";
                     }
 
-Alternatively, the `Process` plugin provides a convenient way to run external processes, and stream the results, so this will also work, and instead of temp files, it will send code to stdin for python and put unbuffered output from stdout into the bottom pane:
+An even simpler version could make use of the Process base class described above:
 
     use Samaki::Plugin::Process;
 
     %*samaki-conf =
-      plugins => [
-      ...
         / python / => class SamakiPython does Samaki::Plugin::Process[
                        name => 'python',
                        cmd => 'python3' ] {
            has %.add-env = PYTHONUNBUFFERED => '1';
           },
-      ...
 
-See below for a list of plugins that come with samaki.
+INCLUDED PLUGINS
+================
+
+The following plugins are included with samaki:
+
+<table class="pod-table">
+<thead><tr>
+<th>Plugin</th> <th>Description</th>
+</tr></thead>
+<tbody>
+<tr> <td>Bash</td> <td>Execute contents as a bash program</td> </tr> <tr> <td>Code</td> <td>Evaluate raku code in the current process</td> </tr> <tr> <td>Duck</td> <td>Run SQL queries via duckdb executable</td> </tr> <tr> <td>Duckie</td> <td>Run SQL queries via inline duckdb driver</td> </tr> <tr> <td>File</td> <td>Display file metadata and info</td> </tr> <tr> <td>HTML</td> <td>Generate HTML from contents</td> </tr> <tr> <td>LLM</td> <td>Send contents to LLM (via L&lt;LLM::DWIM&gt;)</td> </tr> <tr> <td>Markdown</td> <td>Generate HTML from markdown</td> </tr> <tr> <td>Postgres</td> <td>Execute SQL via psql command-line tool</td> </tr> <tr> <td>Raku</td> <td>Run raku in a separate process</td> </tr> <tr> <td>Repl::Raku</td> <td>Interactive raku REPL (persistent session)</td> </tr> <tr> <td>Repl::Python</td> <td>Interactive python REPL (persistent session)</td> </tr> <tr> <td>Repl::R</td> <td>Interactive R REPL (persistent session)</td> </tr> <tr> <td>Text</td> <td>Write contents to a text file</td> </tr>
+</tbody>
+</table>
 
 PLUGOUTS
 ========
@@ -224,22 +259,6 @@ Plugouts are intended to either visualize or export data. The plugout for viewin
     method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
       shell <<open $path>>;
     }
-
-See below for a list of plugouts that come with samaki.
-
-INCLUDED PLUGINS
-================
-
-The following plugins are included with samaki:
-
-<table class="pod-table">
-<thead><tr>
-<th>Plugin</th> <th>Description</th>
-</tr></thead>
-<tbody>
-<tr> <td>Bash</td> <td>Execute contents as a bash program</td> </tr> <tr> <td>Code</td> <td>Evaluate raku code in the current process</td> </tr> <tr> <td>Duck</td> <td>Run SQL queries via duckdb executable</td> </tr> <tr> <td>Duckie</td> <td>Run SQL queries via inline duckdb driver</td> </tr> <tr> <td>File</td> <td>Display file metadata and info</td> </tr> <tr> <td>HTML</td> <td>Generate HTML from contents</td> </tr> <tr> <td>LLM</td> <td>Send contents to LLM (via L&lt;LLM::DWIM&gt;)</td> </tr> <tr> <td>Markdown</td> <td>Generate HTML from markdown</td> </tr> <tr> <td>Postgres</td> <td>Execute SQL via psql command-line tool</td> </tr> <tr> <td>Raku</td> <td>Run raku in a separate process</td> </tr> <tr> <td>Repl::Raku</td> <td>Interactive raku REPL (persistent session)</td> </tr> <tr> <td>Repl::Python</td> <td>Interactive python REPL (persistent session)</td> </tr> <tr> <td>Repl::R</td> <td>Interactive R REPL (persistent session)</td> </tr> <tr> <td>Text</td> <td>Write contents to a text file</td> </tr>
-</tbody>
-</table>
 
 INCLUDED PLUGOUTS
 =================
