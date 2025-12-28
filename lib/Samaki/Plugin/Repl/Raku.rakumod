@@ -8,9 +8,11 @@ method name { "repl-raku" }
 method description { "Run the raku repl, and interact using a pty" }
 
 has Proc::Async $!proc;
-has Promise $!proc-promise;
+has Promise $.proc-promise;
 has $!pid;
 has $!line-delay-seconds = 1;
+
+has $.command = 'raku';
 
 method start-repl($pane) {
   self.stream: [col('info') => "starting repl for {$.name}"];
@@ -30,22 +32,30 @@ method start-repl($pane) {
 }
 
 method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane, Str :$action) {
-  info "launching raku repl";
-  $!proc //= Proc::Async.new: :pty(:rows($pane.height), :cols($pane.width)), 'raku';
+  info "launching {$.name} repl";
+  $!proc //= Proc::Async.new: :pty(:rows($pane.height), :cols($pane.width)), $.command;
   unless $!pid {
     self.start-repl($pane);
   }
   my $input = $cell.get-content(:$mode, :$page).trim;
   for $input.lines -> $line {
     sleep $!line-delay-seconds;
-    info "sending line " ~ $line.raku;
+    debug "sending line " ~ $line.raku;
     $!proc.put: $line;
   }
 }
 
 method shutdown {
-  $!proc.put: "exit";
-  sleep 0.1;
-  info "kill proc $!pid";
-  $!proc.kill;
+  $!proc.close-stdin;
+  with $.proc-promise {
+    await Promise.anyof($_, Promise.in(2));
+  }
+  if $.proc-promise.status ~~ PromiseStatus::Planned {
+    $!proc.kill(SIGTERM);
+    await Promise.anyof($.proc-promise, Promise.in(1));
+  }
+  if $.proc-promise.status ~~ PromiseStatus::Planned {
+    $!proc-promise.kill(SIGKILL);
+    await Promise.anyof($.proc-promise, Promise.in(0.5));
+  }
 }
