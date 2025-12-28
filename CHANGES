@@ -1,3 +1,14 @@
+0.0.19 2025-12-28
+  - simplify startup logic
+  - improve docs, explain categories of plugins
+  - add pty-based repl plugins, remove use of unbuffer
+  - add R plugin
+  - make python plugin use pty
+  - no arrows for cells that do not write output
+  - new File plugin for simple files, and geojson stats
+  - better LLM error handling
+  - style, color changes
+
 0.0.18 2025-12-24
   - improve handling of warnings
   - add 'code' to default config file
