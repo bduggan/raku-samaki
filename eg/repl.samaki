@@ -1,22 +1,25 @@
--- raku-repl
+-- repl-raku
 
 say "hello";
+my $x = 12;
+my $y = DateTime.now;
+$y;
 
--- raku-repl
+-- repl-raku
 
 say DateTime.now;
 my $x = 12;
 
--- raku-repl
+-- repl-raku
 $x++
 say $x;
 
--- raku-repl
+-- repl-raku
 use WebService::Nominatim 'nom';
 say nom.search: "Rhode Island";
 
--- raku-repl
+-- repl-raku
 say nom.search: "California";
 
--- raku-repl
+-- repl-raku
 say π

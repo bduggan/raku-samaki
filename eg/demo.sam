@@ -1,0 +1,9 @@
+{
+  use Grammar::Duck;
+  select 'hello' as world;
+}
+{
+   use Grammar::LLM;
+   Which planet from the sun is 〈 cells(1).rows[0]<planet> 〉?
+}
+
