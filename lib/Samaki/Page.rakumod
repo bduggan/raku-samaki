@@ -96,7 +96,7 @@ class Samaki::Page {
 
   method show-valid-cell(:$cell!, :$pane!, :$mode!, :@actions!, :$leadchar!, :%meta!) {
     my $lead = "┌── ".indent(4);
-    my $post = ' (' ~ $cell.ext ~ ')';
+    my $post = $cell.write-output ?? (' (' ~ $cell.ext ~ ')') !! "";
     $pane.put: [ col('cell-type') => $lead ~ ($cell.cell-type ~ $post).fmt('%-20s'), |@actions ], :%meta;
     $pane.put([ col('cell-type') => "$leadchar ".indent(4) ~ $_.raku ], :%meta) for $cell.conf.list;
     try {
@@ -156,7 +156,9 @@ class Samaki::Page {
           my $select-action = $cell.select-action;
           if $select-action -> $action {
             @actions.push: t.color(%COLORS<button>) => " [$action]",
-                           t.color(%COLORS<cell-name>) => " ➞  { $cell.name }.{ $cell.ext }";
+                            $cell.write-output ??
+                                (t.color(%COLORS<cell-name>) => " ➞  { $cell.name }.{ $cell.ext }")
+                             !! (t.color(%COLORS<cell-name>) => " { $cell.name }");
             %meta = ( :$action, cell => $cell );
           }
         }
