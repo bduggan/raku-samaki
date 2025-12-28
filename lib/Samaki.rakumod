@@ -529,22 +529,22 @@ An even simpler version could make use of the Process base class described above
 The following plugins are included with samaki:
 
 =begin table
-Plugin                  | Description
-========================|============================================
-Bash                    | Execute contents as a bash program
-Code                    | Evaluate raku code in the current process
-Duck                    | Run SQL queries via duckdb executable
-Duckie                  | Run SQL queries via inline duckdb driver
-File                    | Display file metadata and info
-HTML                    | Generate HTML from contents
-LLM                     | Send contents to LLM (via L<LLM::DWIM>)
-Markdown                | Generate HTML from markdown
-Postgres                | Execute SQL via psql process
-Raku                    | Run raku in a separate process
-Repl::Raku              | Interactive raku REPL (persistent session)
-Repl::Python            | Interactive python REPL (persistent session)
-Repl::R                 | Interactive R REPL (persistent session)
-Text                    | Write contents to a text file
+Plugin                  | Type     | Description
+========================|==========|============================================
+Bash                    | Process  | Execute contents as a bash program
+Code                    |          | Evaluate raku code in the current process
+Duck                    | Process  | Run SQL queries via duckdb executable
+Duckie                  | inline   | Run SQL queries via L<Duckie> inline driver
+File                    |          | Display file metadata and info
+HTML                    |          | Generate HTML from contents
+LLM                     | inline   | Send contents to LLM via L<LLM::DWIM>
+Markdown                | inline   | Generate HTML from markdown via L<Markdown::Grammar>
+Postgres                | Process  | Execute SQL via psql process
+Raku                    | Process  | Run raku in a separate process
+Repl::Raku              | Repl     | Interactive raku REPL (persistent session)
+Repl::Python            | Repl     | Interactive python REPL (persistent session)
+Repl::R                 | Repl     | Interactive R REPL (persistent session)
+Text                    |          | Write contents to a text file
 =end table
 
 =head1 PLUGOUTS
