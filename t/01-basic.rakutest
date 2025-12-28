@@ -2,7 +2,13 @@
 
 use Test;
 
-plan 33;
+plan 39;
+
+# Check Rakudo version
+my $rakudo-version = $*RAKU.compiler.version;
+my $min-version = v2025.12;
+ok $rakudo-version >= $min-version, "Rakudo version $rakudo-version >= $min-version"
+  or diag "Rakudo 2025.12 or later is required for PTY support in REPL plugins";
 
 use-ok 'Samaki';
 use-ok 'Samaki::Cell';
@@ -12,10 +18,12 @@ use-ok 'Samaki::Page';
 use-ok 'Samaki::Plugin';
 use-ok 'Samaki::Exporter::HTML';
 use-ok 'Samaki::Importer::Jupyter';
+use-ok 'Samaki::Plugin::Auto';
 use-ok 'Samaki::Plugin::Bash';
 use-ok 'Samaki::Plugin::Code';
 use-ok 'Samaki::Plugin::Duck';
 use-ok 'Samaki::Plugin::Duckie';
+use-ok 'Samaki::Plugin::File';
 use-ok 'Samaki::Plugin::HTML';
 use-ok 'Samaki::Plugin::LLM';
 use-ok 'Samaki::Plugin::Markdown';
@@ -24,6 +32,7 @@ use-ok 'Samaki::Plugin::Process';
 use-ok 'Samaki::Plugin::Raku';
 use-ok 'Samaki::Plugin::Repl';
 use-ok 'Samaki::Plugin::Repl::Python';
+use-ok 'Samaki::Plugin::Repl::R';
 use-ok 'Samaki::Plugin::Repl::Raku';
 use-ok 'Samaki::Plugin::Text';
 use-ok 'Samaki::Plugins';
@@ -35,5 +44,7 @@ use-ok 'Samaki::Plugout::HTML';
 use-ok 'Samaki::Plugout::JSON';
 use-ok 'Samaki::Plugout::Plain';
 use-ok 'Samaki::Plugout::Raw';
+use-ok 'Samaki::Plugout::TJLess';
 use-ok 'Samaki::Plugouts';
 use-ok 'Samaki::Utils';
+use-ok 'Samaki::Watcher';
