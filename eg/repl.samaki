@@ -5,6 +5,10 @@ my $x = 12;
 my $y = DateTime.now;
 $y;
 
+-- repl-python
+
+print("HELLO PYTHON")
+
 -- repl-raku
 
 say DateTime.now;

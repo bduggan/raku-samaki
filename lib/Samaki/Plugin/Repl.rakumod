@@ -8,12 +8,16 @@ unit class Samaki::Plugin::Repl does Samaki::Plugin;
 method name { ... }
 method description { ... }
 
-has Proc::Async $!proc;
+has Proc::Async $.proc;
 has Promise $.proc-promise;
 has $!pid;
 has $!line-delay-seconds = 1;
 
 has $.command = 'raku';
+
+method write-output {
+  False
+}
 
 method start-repl($pane) {
   self.stream: [col('info') => "starting repl for {$.name}"];
@@ -47,7 +51,8 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
 }
 
 method shutdown {
-  $!proc.close-stdin;
+  .close-stdin with $.proc;
+  return without $.proc-promise;
   with $.proc-promise {
     await Promise.anyof($_, Promise.in(2));
   }
