@@ -230,112 +230,30 @@ See below for a list of plugouts that come with samaki.
 INCLUDED PLUGINS
 ================
 
-The list below are plugins that come with samaki.
+The following plugins are included with samaki:
 
-Samaki::Plugin::Duck
---------------------
+<table class="pod-table">
+<thead><tr>
+<th>Plugin</th> <th>Description</th>
+</tr></thead>
+<tbody>
+<tr> <td>Bash</td> <td>Execute contents as a bash program</td> </tr> <tr> <td>Code</td> <td>Evaluate raku code in the current process</td> </tr> <tr> <td>Duck</td> <td>Run SQL queries via duckdb executable</td> </tr> <tr> <td>Duckie</td> <td>Run SQL queries via inline duckdb driver</td> </tr> <tr> <td>File</td> <td>Display file metadata and info</td> </tr> <tr> <td>HTML</td> <td>Generate HTML from contents</td> </tr> <tr> <td>LLM</td> <td>Send contents to LLM (via L&lt;LLM::DWIM&gt;)</td> </tr> <tr> <td>Markdown</td> <td>Generate HTML from markdown</td> </tr> <tr> <td>Postgres</td> <td>Execute SQL via psql command-line tool</td> </tr> <tr> <td>Raku</td> <td>Run raku in a separate process</td> </tr> <tr> <td>Repl::Raku</td> <td>Interactive raku REPL (persistent session)</td> </tr> <tr> <td>Repl::Python</td> <td>Interactive python REPL (persistent session)</td> </tr> <tr> <td>Repl::R</td> <td>Interactive R REPL (persistent session)</td> </tr> <tr> <td>Text</td> <td>Write contents to a text file</td> </tr>
+</tbody>
+</table>
 
-Run SQL queries using the duckdb executable. i.e. the cell is sent to stdin of the `duckdb` executable, and stdout is saved to a file.
-
-Samaki::Plugin::Duckie
-----------------------
-
-Send the contents of the cell to an inline duckdb driver. For this and the above, the first 100 rows are placed in the bottom row, and selecting them will show that row in the top pane.
-
-Samaki::Plugin::LLM
--------------------
-
-Send the contents of the cell to an llm which will be evaluted using [LLM::DWIM](LLM::DWIM).
-
-Samaki::Plugin::Raku
---------------------
-
-Send the contents to a separate process that is running raku.
-
-Samaki::Plugin::Code
---------------------
-
-Evaluate code in the current raku process, in the context of the rest of the code blocks.
-
-Samaki::Plugin::Text
---------------------
-
-Write the contents of a cell to a text file.
-
-Samaki::Plugin::Repl::Raku
---------------------------
-
-Write the contents to a running version of the raku repl, and keep it running.
-
-Samaki::Plugin::Repl::Python
-----------------------------
-
-Ditto, but for python.
-
-Samaki::Plugin::Bash
---------------------
-
-Execute the contents as a bash program.
-
-Samaki::Plugin::HTML
---------------------
-
-Generate HTML from the contents.
-
-Samaki::Plugin::Markdown
-------------------------
-
-Generate HTML from markdown.
-
-Samaki::Plugin::Postgres
-------------------------
-
-Execute SQL queries against a Postgres database by sending queries to the psql command-line tool.
-
-Included Plugouts
+INCLUDED PLUGOUTS
 =================
 
-These plugouts are available by default, and included in the Samaki distribution:
+The following plugouts are included with samaki:
 
-Samaki::Plugout::DataTable
---------------------------
-
-Show a csv in a web browser with column-sorting, pagination, and searching.
-
-Samaki::Plugout::Duckview
--------------------------
-
-Use the built-in summarization of duckdb to show a csv in the bottom pane.
-
-Samaki::Plugout::HTML
----------------------
-
-Open a webbrowser with the content.
-
-Samaki::Plugout::JSON
----------------------
-
-Show the (prettified) json in the bottom pane.
-
-Samaki::Plugout::Plain
-----------------------
-
-Display plain text in a web browser.
-
-Samaki::Plugout::Geojson
-------------------------
-
-Use leafpad to create an HTML page with the content, and open a web browser.
-
-Samaki::Plugout::Raw
---------------------
-
-Call the system `open` or `xdg-open` whhch will open the file based on system settings, and the file extension.
-
-Samaki::Plugout::TJLess
------------------------
-
-Use `jless` to view json in a new `tmux` window. (requires jless and tmux)
+<table class="pod-table">
+<thead><tr>
+<th>Plugout</th> <th>Description</th>
+</tr></thead>
+<tbody>
+<tr> <td>DataTable</td> <td>Display CSV in browser with sorting/pagination/search</td> </tr> <tr> <td>Duckview</td> <td>Show CSV summary in bottom pane (via duckdb)</td> </tr> <tr> <td>Geojson</td> <td>Display GeoJSON on map in browser (via leaflet)</td> </tr> <tr> <td>HTML</td> <td>Open HTML content in browser</td> </tr> <tr> <td>JSON</td> <td>Display prettified JSON in bottom pane</td> </tr> <tr> <td>Plain</td> <td>Display plain text in browser</td> </tr> <tr> <td>Raw</td> <td>Open file with system default application</td> </tr> <tr> <td>TJLess</td> <td>View JSON in new tmux window (requires jless)</td> </tr>
+</tbody>
+</table>
 
 IMPORTS/EXPORTS
 ===============

@@ -522,95 +522,43 @@ See below for a list of plugouts that come with samaki.
 
 =head1 INCLUDED PLUGINS
 
-The list below are plugins that come with samaki.
+The following plugins are included with samaki:
 
-=head2 Samaki::Plugin::Duck
+=begin table
+Plugin                  | Description
+========================|============================================
+Bash                    | Execute contents as a bash program
+Code                    | Evaluate raku code in the current process
+Duck                    | Run SQL queries via duckdb executable
+Duckie                  | Run SQL queries via inline duckdb driver
+File                    | Display file metadata and info
+HTML                    | Generate HTML from contents
+LLM                     | Send contents to LLM (via L<LLM::DWIM>)
+Markdown                | Generate HTML from markdown
+Postgres                | Execute SQL via psql command-line tool
+Raku                    | Run raku in a separate process
+Repl::Raku              | Interactive raku REPL (persistent session)
+Repl::Python            | Interactive python REPL (persistent session)
+Repl::R                 | Interactive R REPL (persistent session)
+Text                    | Write contents to a text file
+=end table
 
-Run SQL queries using the duckdb executable.  i.e. the cell is sent to stdin
-of the `duckdb` executable, and stdout is saved to a file.
+=head1 INCLUDED PLUGOUTS
 
-=head2 Samaki::Plugin::Duckie
+The following plugouts are included with samaki:
 
-Send the contents of the cell to an inline duckdb driver.  For this and the
-above, the first 100 rows are placed in the bottom row, and selecting
-them will show that row in the top pane.
-
-=head2 Samaki::Plugin::LLM
-
-Send the contents of the cell to an llm which will be evaluted using L<LLM::DWIM>.
-
-=head2 Samaki::Plugin::Raku
-
-Send the contents to a separate process that is running raku.
-
-=head2 Samaki::Plugin::Code
-
-Evaluate code in the current raku process, in the context of the rest of the code blocks.
-
-=head2 Samaki::Plugin::Text
-
-Write the contents of a cell to a text file.
-
-=head2 Samaki::Plugin::Repl::Raku
-
-Write the contents to a running version of the raku repl, and keep it running.
-
-=head2 Samaki::Plugin::Repl::Python
-
-Ditto, but for python.
-
-=head2 Samaki::Plugin::Bash
-
-Execute the contents as a bash program.
-
-=head2 Samaki::Plugin::HTML
-
-Generate HTML from the contents.
-
-=head2 Samaki::Plugin::Markdown
-
-Generate HTML from markdown.
-
-=head2 Samaki::Plugin::Postgres
-
-Execute SQL queries against a Postgres database by sending queries to the psql command-line tool.
-
-=head1 Included Plugouts
-
-These plugouts are available by default, and included in the Samaki distribution:
-
-=head2 Samaki::Plugout::DataTable
-
-Show a csv in a web browser with column-sorting, pagination, and searching.
-
-=head2 Samaki::Plugout::Duckview
-
-Use the built-in summarization of duckdb to show a csv in the bottom pane.
-
-=head2 Samaki::Plugout::HTML
-
-Open a webbrowser with the content.
-
-=head2 Samaki::Plugout::JSON
-
-Show the (prettified) json in the bottom pane.
-
-=head2 Samaki::Plugout::Plain
-
-Display plain text in a web browser.
-
-=head2 Samaki::Plugout::Geojson
-
-Use leafpad to create an HTML page with the content, and open a web browser.
-
-=head2 Samaki::Plugout::Raw
-
-Call the system `open` or `xdg-open` whhch will open the file based on system
-settings, and the file extension.
-
-=head2 Samaki::Plugout::TJLess
-
-Use `jless` to view json in a new `tmux` window.  (requires jless and tmux)
+=begin table
+Plugout                 | Description
+========================|============================================
+DataTable               | Display CSV in browser with sorting/pagination/search
+Duckview                | Show CSV summary in bottom pane (via duckdb)
+Geojson                 | Display GeoJSON on map in browser (via leaflet)
+HTML                    | Open HTML content in browser
+JSON                    | Display prettified JSON in bottom pane
+Plain                   | Display plain text in browser
+Raw                     | Open file with system default application
+TJLess                  | View JSON in new tmux window (requires jless)
+=end table
 
 =head1 IMPORTS/EXPORTS
 
