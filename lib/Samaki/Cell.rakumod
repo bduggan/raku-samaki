@@ -25,7 +25,7 @@ class Samaki::Cell {
   has $.start-line;   #= line number in page where cell starts
   has $.display-line is rw; #= line number in displayed pane where cell starts
   has $.timeout = 60; #= default execution timeout in seconds
-  has $.plugin handles <wrap stream-output output-stream output-ext clear-stream-before select-action>;
+  has $.plugin handles <wrap stream-output output-stream output-ext clear-stream-before select-action write-output>;
 
   has $.default-ext = 'csv';
   has @.conf;
