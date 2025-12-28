@@ -27,6 +27,7 @@
     "Samaki::Plugin::Bash" : "lib/Samaki/Plugin/Bash.rakumod",
     "Samaki::Plugin::File" : "lib/Samaki/Plugin/File.rakumod",
     "Samaki::Plugin::Repl::Raku" : "lib/Samaki/Plugin/Repl/Raku.rakumod",
+    "Samaki::Plugin::Repl::R" : "lib/Samaki/Plugin/Repl/R.rakumod",
     "Samaki::Plugin::Repl::Python" : "lib/Samaki/Plugin/Repl/Python.rakumod",
     "Samaki::Plugin::Repl" : "lib/Samaki/Plugin/Repl.rakumod",
     "Samaki::Plugin::Raku" : "lib/Samaki/Plugin/Raku.rakumod",
