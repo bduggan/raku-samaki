@@ -10,11 +10,21 @@ if %*ENV<TEST_VERBOSE> {
   logger.add-tap: -> $m { diag $m<msg>; };
 }
 
-if %*ENV<SAMAKI_TEST_REPL> {
-  plan 5;
-} else {
+unless %*ENV<SAMAKI_TEST_REPL> {
   plan :skip-all<Set SAMAKI_TEST_REPL environment variable to run this test>;
 }
+
+# Check if R is available
+my $r-available = try {
+  my $proc = run 'R', '--version', :out, :err;
+  $proc.exitcode == 0;
+}
+
+unless $r-available {
+  plan :skip-all<R executable not found>;
+}
+
+plan 5;
 
 my $p = Samaki::Plugin::Repl::R.new;
 my $pane = MockPane.new;
