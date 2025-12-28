@@ -1,148 +1,62 @@
-use Samaki::Plugin;
-use Terminal::ANSI::OO 't';
-use Samaki::Conf;
-use Time::Duration;
 use Log::Async;
+
+use Samaki::Conf;
+use Samaki::Plugin;
 
 unit class Samaki::Plugin::Repl does Samaki::Plugin;
 
-has $.start-time;
+method name { ... }
+method description { ... }
 
-method name { !!! }
-method description { !!! }
-method command( --> List) { !!! }
+has Proc::Async $!proc;
+has Promise $.proc-promise;
+has $!pid;
+has $!line-delay-seconds = 1;
 
-method script-command($cmd, *@args --> List) {
-  if $*DISTRO.is-win {
-    die "REPL not supported on Windows";
-  } elsif $*DISTRO ~~ /macos/ {
-    # On macOS, use unbuffer instead of script to avoid TTY issues
-    # unbuffer is from the expect package and handles pseudo-TTY better
-    ('unbuffer', '-p', $cmd, |@args)
-  } else {
-    # GNU script syntax: script -qefc command file
-    ('script', '-qefc', "$cmd @args[]", '/dev/null')
-  }
-}
+has $.command = 'raku';
 
-method stream-output { True };
-method add-env { %( NO_COLOR => 1, TERM => 'dumb' ) }
-method output-ext { 'txt' }
-method wrap { 'word' }
-
-has $.promise;
-has $.input-supplier = Supplier.new;
-has Promise $!prompt;
-has Promise $!ready .= new;
-has $!ready-vow = $!ready.vow;
-has $!proc;
-has $!out;
-
-method do-ready($pid, $proc, $timeout = Nil) {
-  self.info: "started pid $pid " ~ ($timeout ?? "with timeout $timeout seconds" !! "");
-  $!start-time = DateTime.now;
-  sleep 0.01;
-  $.output-stream.send: %( txt => [t.color(%COLORS<button>) => "[cancel]" ], meta => { action => 'kill_proc', :$proc } );
-  $!ready-vow.keep(True);
-  return $pid;
-}
-
-method do-done($res) {
-  self.info: "-- done in " ~ duration( (DateTime.now - $!start-time).Int ) ~ ' --';
-  given $res {
-    if .signal { self.warn: "Process terminated with signal $^code" }
-    if .exitcode { self.warn: "Process exited with code $^code" }
-  }
-}
-
-method start-react-loop($proc, :$cell, :$out) {
-  info "starting react loop";
-  my $cwd = $cell.data-dir;
-  my $env = %*ENV.clone;
-  my $supply = $.input-supplier.Supply;
-  for self.add-env.kv -> $k, $v { $env{$k} = $v; }
-  $!promise = start react {
-    whenever $proc.ready {
-      info "proc is ready";
-      self.do-ready($_, $proc);
-    }
-    whenever $proc.stdout.lines {
-      self.stream: $_;
-      $out.put($_) if $out;
-    }
-    whenever $proc.stderr.lines {
-      warning "stderr from proc: $_";
-      $.output-stream.send: "ERR: $_";
-      sleep 0.01;
-    }
-    whenever $proc.start(:$cwd,:ENV($env)) {
-      info "proc is done, exit code: {.exitcode // 'none'}, signal: {.signal // 'none'}";
-      if .exitcode != 0 || .signal {
-        warning "Process failed - exit code: {.exitcode // 'N/A'}, signal: {.signal // 'N/A'}";
-        warning "Command was: {$proc.command.join(' ')}";
-        warning "Working directory: $cwd";
+method start-repl($pane) {
+  self.stream: [col('info') => "starting repl for {$.name}"];
+  $pane.stream: $!proc.stdout(:bin);
+  $!proc-promise = start {
+    react {
+      whenever $!proc.ready {
+        $!pid = $_;
       }
-      self.do-done($_);
-      done;
-    }
-    whenever $supply {
-      trace "sending to proc stdin: $_";
-      $.output-stream.send: [ t.color(%COLORS<input>) => "[sending] $_" ],;
-      $proc.put($_);
-      trace "sent to proc stdin";
+      whenever $!proc.start {
+        $pane.put: "done";
+        $!pid = Nil;
+        $pane.enable-selection;
+      }
     }
   }
 }
 
 method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane, Str :$action) {
-  my @cmd = self.command;
-  my $content = $cell.get-content(:$mode, :$page).trim;
-  if defined($.promise) || defined($!proc) {
-    info "reusing existing REPL process";
-  } else {
-    info "executing process {@cmd.join(' ')}";
-    # stream forever
-    $!out = $cell.output-file.open(:a);
-    $!proc = Proc::Async.new: |@cmd, :out, :err, :w;
-    self.start-react-loop($!proc, :$cell, :out($!out));
-    await $!ready; # wait for react loop to be ready
+  info "launching {$.name} repl";
+  $!proc //= Proc::Async.new: :pty(:rows($pane.height), :cols($pane.width)), $.command;
+  unless $!pid {
+    self.start-repl($pane);
   }
-  trace "Sending content to REPL:\n$content";
-  for $content.trim.lines {
-    $.input-supplier.emit("$_\n");
-    sleep 0.5;
+  my $input = $cell.get-content(:$mode, :$page).trim;
+  for $input.lines -> $line {
+    sleep $!line-delay-seconds;
+    debug "sending line " ~ $line.raku;
+    $!proc.put: $line;
   }
 }
 
 method shutdown {
-  if $!proc {
-    info "shutting down REPL process";
-    $!input-supplier.done;
-    try {
-      # Close stdin to signal EOF
-      $!proc.close-stdin;
-      with $.promise {
-        await Promise.anyof($_, Promise.in(2));
-      }
-      # If still running, send TERM signal
-      if $.promise.status ~~ PromiseStatus::Planned {
-        $!proc.kill(SIGTERM);
-        await Promise.anyof($.promise, Promise.in(1));
-      }
-      # Last resort: SIGKILL
-      if $.promise.status ~~ PromiseStatus::Planned {
-        $!proc.kill(SIGKILL);
-        await Promise.anyof($.promise, Promise.in(0.5));
-      }
-      # Ensure the react loop promise is fully resolved
-      if $.promise.defined && $.promise.status ~~ PromiseStatus::Kept {
-        try { await $.promise; }
-      }
-    }
-    # Close output file
-    if $!out {
-      $!out.close;
-    }
-    $!proc = Nil;
+  $!proc.close-stdin;
+  with $.proc-promise {
+    await Promise.anyof($_, Promise.in(2));
+  }
+  if $.proc-promise.status ~~ PromiseStatus::Planned {
+    $!proc.kill(SIGTERM);
+    await Promise.anyof($.proc-promise, Promise.in(1));
+  }
+  if $.proc-promise.status ~~ PromiseStatus::Planned {
+    $!proc-promise.kill(SIGKILL);
+    await Promise.anyof($.proc-promise, Promise.in(0.5));
   }
 }
