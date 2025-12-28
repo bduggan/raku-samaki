@@ -2,7 +2,7 @@
 
 use Test;
 use Log::Async;
-use Samaki::Plugin::Repl::Raku;
+use Samaki::Plugin::Repl::R;
 use lib $?FILE.IO.parent;
 use helpers;
 
@@ -11,38 +11,38 @@ if %*ENV<TEST_VERBOSE> {
 }
 
 if %*ENV<SAMAKI_TEST_REPL> {
-  plan 6;
+  plan 5;
 } else {
   plan :skip-all<Set SAMAKI_TEST_REPL environment variable to run this test>;
 }
 
-my $p = Samaki::Plugin::Repl::Raku.new;
+my $p = Samaki::Plugin::Repl::R.new;
 my $pane = MockPane.new;
 
 my $cell = Samaki::Cell.new:
   page-name => 'test', cell-type => 'test', name => 'test', data-dir => $*TMPDIR, wkdir => $*TMPDIR,
-  content => "say 'hello world';",
+  content => "print('hello R')",
   plugin => $p;
 
 $p.execute(:$cell, :mode<raw>, :$pane);
 
-# Wait for REPL to start, process input, and produce output
+# Wait for R REPL to start and produce output
 my $max-wait = 10;
 my $waited = 0;
 my $found = False;
 while !$found && $waited < $max-wait {
   sleep 0.5;
   $waited += 0.5;
-  $found = $pane.output.join.contains('hello world');
+  $found = $pane.output.join.contains('hello R');
 }
 
 diag "Output 1: " ~ $pane.output.join.raku if %*ENV<TEST_VERBOSE>;
-ok $found, 'found hello world in output';
+ok $found, 'R print statement executed';
 
 # Test 2: Execute another command in the same REPL session
 my $cell2 = Samaki::Cell.new:
   page-name => 'test', cell-type => 'test', name => 'test2', data-dir => $*TMPDIR, wkdir => $*TMPDIR,
-  content => "my \$x = 42; say \$x;",
+  content => "x <- 42\nprint(x)",
   plugin => $p;
 $pane.clear;
 $p.execute(:cell($cell2), :mode<raw>, :$pane);
@@ -56,12 +56,12 @@ while !$found && $waited < $max-wait {
 }
 
 diag "Output 2: " ~ $pane.output.join.raku if %*ENV<TEST_VERBOSE>;
-ok $found, 'second command executed in same session';
+ok $found, 'variable assignment and print works';
 
 # Test 3: Variable persists across executions
 my $cell3 = Samaki::Cell.new:
   page-name => 'test', cell-type => 'test', name => 'test3', data-dir => $*TMPDIR, wkdir => $*TMPDIR,
-  content => "say \$x * 2;",
+  content => "print(x * 2)",
   plugin => $p;
 $pane.clear;
 $p.execute(:cell($cell3), :mode<raw>, :$pane);
@@ -77,48 +77,25 @@ while !$found && $waited < $max-wait {
 diag "Output 3: " ~ $pane.output.join.raku if %*ENV<TEST_VERBOSE>;
 ok $found, 'variables persist across executions';
 
-# Test 4: Multi-line input
+# Test 4: Expression evaluation
 my $cell4 = Samaki::Cell.new:
   page-name => 'test', cell-type => 'test', name => 'test4', data-dir => $*TMPDIR, wkdir => $*TMPDIR,
-  content => "for 1..3 -> \$i \{\n  say \"line \$i\";\n}",
+  content => "2 + 2",
   plugin => $p;
 $pane.clear;
 $p.execute(:cell($cell4), :mode<raw>, :$pane);
 
 $waited = 0;
-my $count = 0;
-while $count < 3 && $waited < $max-wait {
+$found = False;
+while !$found && $waited < $max-wait {
   sleep 0.5;
   $waited += 0.5;
-  my $output = $pane.output.join;
-  $count = 0;
-  for 1..3 -> $i {
-    $count++ if $output.contains("line $i");
-  }
+  $found = $pane.output.join.contains('4');
 }
 
 diag "Output 4: " ~ $pane.output.join.raku if %*ENV<TEST_VERBOSE>;
-ok $count >= 3, 'multi-line input produces multiple outputs';
-
-# Test 5: Expression evaluation
-my $cell5 = Samaki::Cell.new:
-  page-name => 'test', cell-type => 'test', name => 'test5', data-dir => $*TMPDIR, wkdir => $*TMPDIR,
-  content => "2 + 2",
-  plugin => $p;
-$pane.clear;
-$p.execute(:cell($cell5), :mode<raw>, :$pane);
-
-$waited = 0;
-while $pane.output.elems < 1 && $waited < $max-wait {
-  sleep 0.5;
-  $waited += 0.5;
-}
-
-$found = $pane.output.join.contains('4');
 ok $found, 'expression evaluation works';
 
 $p.shutdown;
 
 ok 1, 'process exited';
-
-
