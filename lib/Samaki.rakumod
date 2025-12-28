@@ -141,8 +141,8 @@ multi method start-ui(Samaki::Page :$page!, Bool :$watch) {
     $!watcher.start;
   }
   $.ui.interact;
-  $.ui.shutdown;
   .shutdown with self.current-page;
+  $.ui.shutdown;
 }
 
 multi method start-ui('browse') {
