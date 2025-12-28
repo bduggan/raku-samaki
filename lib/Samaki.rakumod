@@ -114,21 +114,28 @@ multi method start-ui(Str :$page, Bool :$watch) {
 
 multi method start-ui(Samaki::Page :$page!, Bool :$watch) {
   $!current-page = $page;
-  unless self.data-dir.IO.d {
-    @!startup-log.push: "Creating data dir: " ~ self.data-dir;
-    mkdir self.data-dir;
-  }
   $.ui.setup: :2panes;
   (top, btm) = $.ui.panes;
   top.auto-scroll = False;
   btm.auto-scroll = False;
   self.show-page: $page;
   self.set-events;
+  if self.data-dir.IO.d {
+    self.show-dir(self.data-dir, pane => btm, header => False);
+  } else {
+    @!startup-log.push: [ col('info') => "Creating directory : " ~ self.data-dir];
+    mkdir self.data-dir;
+  }
+  unless $page.path.e {
+    $page.path.spurt: "--\n# " ~ $page.name ~ "\n" ~ "# new page\n";
+    @!startup-log.push: [ col('info') => "       Create file : {$page.path}" ];
+    @!startup-log.push: "Use [e] to edit {$page.name}";
+    self.show-page: $page;
+  }
   if @!startup-log {
     btm.put: $_ for @!startup-log;
     @!startup-log = ();
   }
-  self.show-dir(self.data-dir, pane => btm, header => False);
   if $watch {
     $!watcher = Samaki::Watcher.new: :$page, on-change =>
       -> $page {

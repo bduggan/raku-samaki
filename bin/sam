@@ -99,7 +99,6 @@ multi MAIN('conf') {
 
 sub resolve-target($target, :$wkdir!) {
   my $page-path = $target.IO;
-  exit note "File not found: $target" unless $page-path.e;
   my $page-name;
   my $actual-wkdir;
   if $target.contains('/') {
@@ -111,8 +110,10 @@ sub resolve-target($target, :$wkdir!) {
   }
    my $samaki = Samaki.new(:wkdir($actual-wkdir), :$editor);
    my $page = Samaki::Page.new(name => $page-name, wkdir => $samaki.wkdir);
-   $page.load(plugins => $samaki.plugins) or
-     exit note "Failed to load page: " ~ ($page.errors // "unknown error");
+   if $page-path.e {
+     $page.load(plugins => $samaki.plugins) or
+       exit note "Failed to load page: " ~ ($page.errors // "unknown error");
+   }
    %( :$samaki, :$page-name, :$page);
 }
 
