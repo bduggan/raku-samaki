@@ -4,7 +4,7 @@ use Samaki::Conf;
 use Samaki::Plugin;
 
 unit role Samaki::Plugin::Repl[
-  :$name="unnamed",
+  :$name=Nil,
   :$cmd=Nil,
 ] does Samaki::Plugin;
 
@@ -15,8 +15,8 @@ has $!line-delay-seconds = 1;
 
 method command { $cmd }
 method write-output { False }
-method name { $name }
-method description { "Run a REPL for $name" }
+method name { $name // $cmd }
+method description { "Run a REPL for " ~ self.name }
 
 method start-repl($pane, :$cell) {
   self.stream: [col('info') => "starting repl for {$.name}"];
