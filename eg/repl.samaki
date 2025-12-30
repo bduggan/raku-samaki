@@ -1,4 +1,5 @@
 -- repl-raku
+| delay: 0.1
 
 say "hello";
 my $x = 12;
@@ -11,6 +12,17 @@ say "hello";
 my $x = 12;
 my $y = DateTime.now;
 say $y;
+
+-- repl-duck
+
+select 1 as one;
+
+-- repl-duck
+create table foo (x int );
+
+-- repl-duck
+insert into foo (x) values (12);
+select count(1) from foo;
 
 -- repl-python
 
