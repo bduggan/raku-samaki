@@ -11,7 +11,8 @@ sub kill(int32, int32 --> int32) is native {*};
 unit class Samaki::Plugin::Bash does Samaki::Plugin::Process;
 
 has $.name = 'bash';
-has $.description = 'Run bash with streaming output';
+has $.description = 'Run a bash script';
+has $.output-ext = 'txt';
 
 method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane, Str :$action) {
   info "executing bash cell";

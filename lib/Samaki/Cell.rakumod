@@ -165,7 +165,7 @@ class Samaki::Cell {
       info "In directory {self.cell-dir}";
       try {
         my IO::Handle $out;
-        if $.plugin.write-output {
+        if $.plugin.write-output && !(self.get-conf('out') // '' eq 'none') {
           if $.plugin.clear-stream-before {
             $.plugin.stream:  txt => [ t.color(%COLORS<info>) => "Writing to ", t.color(%COLORS<link>) => "[" ~ self.output-file.IO.relative ~ "]" ],
                               meta => %( action => 'do_output', path => self.output-file );
