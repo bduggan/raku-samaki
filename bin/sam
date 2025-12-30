@@ -14,8 +14,7 @@ use JSON::Fast;
 logger.untapped-ok = True;
 logger.send-to("samaki.log") if %*ENV<SAMAKI_DEBUG>;
 my %*SUB-MAIN-OPTS = :named-anywhere;
-
-my $editor = $*ENV<EDITOR> //  "vim";
+my $editor = %*ENV<EDITOR> // 'vim';
 
 # Mock pane for running cells without UI
 class MockPane {
