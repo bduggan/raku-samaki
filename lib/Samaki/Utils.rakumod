@@ -46,7 +46,7 @@ sub show-datum($d) is export {
   }
 }
 
-my $stream-log-level = 'quiet';
+my $stream-log-level = 'verbose';
 
 sub set-stream-log-level(Str $level) is export {
   info "Setting stream log level to $level";

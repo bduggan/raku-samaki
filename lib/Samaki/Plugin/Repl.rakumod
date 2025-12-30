@@ -19,7 +19,7 @@ method write-output {
   False
 }
 
-method start-repl($pane) {
+method start-repl($pane, :$cell) {
   self.stream: [col('info') => "starting repl for {$.name}"];
   $pane.stream: $!proc.stdout(:bin);
   $!proc-promise = start {
@@ -27,7 +27,7 @@ method start-repl($pane) {
       whenever $!proc.ready {
         $!pid = $_;
       }
-      whenever $!proc.start {
+      whenever $!proc.start(cwd => $cell.data-dir) {
         $pane.put: "done";
         $!pid = Nil;
         $pane.enable-selection;
@@ -40,7 +40,7 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
   info "launching {$.name} repl";
   $!proc //= Proc::Async.new: :pty(:rows($pane.height), :cols($pane.width)), $.command;
   unless $!pid {
-    self.start-repl($pane);
+    self.start-repl($pane, :$cell);
   }
   my $input = $cell.get-content(:$mode, :$page).trim;
   for $input.lines -> $line {
