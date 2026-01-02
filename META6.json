@@ -48,7 +48,7 @@
   "resources" : [ "samaki-conf-default.raku" ],
   "build-depends" : [ ],
   "depends" : [
-    "LLM::DWIM", "Log::Async", "Terminal::UI", "Color", "Duckie", "Prettier::Table",
+    "LLM::DWIM", "Log::Async", "Terminal::UI:ver<0.1.12>", "Color", "Duckie", "Prettier::Table",
     "Time::Duration", "Terminal::ANSI", "Duck::CSV", "Color", "Color::Scheme", "CodeUnit",
     "Markdown::Grammar"
   ],
