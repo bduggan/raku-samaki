@@ -198,7 +198,15 @@ class Samaki::Page {
 
     info "loading page: {self.path}";
     return False unless $content || self.path.IO.e;
-    $!content //= $content // self.path.IO.slurp;
+    without $!content {
+      with $content {
+        info "loading from provided content";
+        $!content = $content;
+      } else {
+        info "loading from file: {self.path}";
+        $!content = self.path.IO.slurp;
+      }
+    }
     @!cells = ();
     if $! {
       error "failed to load page file: {self.path} - $!";

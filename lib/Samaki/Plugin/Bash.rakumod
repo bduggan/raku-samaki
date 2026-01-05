@@ -15,6 +15,7 @@ has $.description = 'Run bash with streaming output';
 
 method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane, Str :$action) {
   info "executing bash cell";
+  my $quietly = $cell.get-conf('quietly') // False;
   my $cwd = $*CWD;
   my $proc = Proc::Async.new: 'bash', :out, :err, :w;
   my $input = $cell.get-content(:$mode, :$page);
@@ -28,7 +29,7 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
     whenever $proc.stdout.lines {
       info "got line $_";
       sleep 0.01;
-      $.output-stream.send: $_;
+      $.output-stream.send($_) unless $quietly;
       $out.put($_) if $out;
     }
     whenever $proc.start( :$cwd ) {
