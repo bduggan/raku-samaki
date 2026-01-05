@@ -1,0 +1,305 @@
+use Test;
+use Samaki::Plugin::Duckie;
+use Samaki::Page;
+use Samaki::Cell;
+
+# Test CSV writing with various edge cases and roundtrip functionality
+
+my $plugin = Samaki::Plugin::Duckie.new;
+
+# Test 1: Values with commas (should be quoted)
+my $comma-cell = Samaki::Cell.new:
+  page-name => 'test',
+  content => q{SELECT 'Smith, John' as name, 'New York, NY' as city},
+  cell-type => 'duckie',
+  name => 'test-comma',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+my $comma-page = Samaki::Page.new: wkdir => $*TMPDIR, name => 'test', cells => [$comma-cell];
+my $comma-out = $comma-cell.output-file;
+my $comma-handle = $comma-out.open(:w);
+$plugin.execute(:cell($comma-cell), :page($comma-page), :mode<content>, out => $comma-handle);
+$comma-handle.close;
+
+my $comma-csv = $comma-out.slurp;
+ok $comma-csv.contains('"Smith, John"'), 'comma in value triggers quoting';
+ok $comma-csv.contains('"New York, NY"'), 'comma in city triggers quoting';
+is $comma-csv.lines.elems, 2, 'comma CSV has 2 lines (header + data)';
+$comma-out.unlink;
+
+# Test 2: Values with quotes (should be escaped)
+my $quote-cell = Samaki::Cell.new:
+  page-name => 'test',
+  content => q{SELECT 'She said "hello"' as phrase},
+  cell-type => 'duckie',
+  name => 'test-quote',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+my $quote-page = Samaki::Page.new: wkdir => $*TMPDIR, name => 'test', cells => [$quote-cell];
+my $quote-out = $quote-cell.output-file;
+my $quote-handle = $quote-out.open(:w);
+$plugin.execute(:cell($quote-cell), :page($quote-page), :mode<content>, out => $quote-handle);
+$quote-handle.close;
+
+my $quote-csv = $quote-out.slurp;
+ok $quote-csv.contains('She said ""hello""'), 'quotes are escaped with double quotes';
+is $quote-csv.lines.elems, 2, 'quote CSV has 2 lines';
+$quote-out.unlink;
+
+# Test 3: Values with newlines (should be quoted)
+my $newline-cell = Samaki::Cell.new:
+  page-name => 'test',
+  content => Q{SELECT 'Line 1' || chr(10) || 'Line 2' as multiline},
+  cell-type => 'duckie',
+  name => 'test-newline',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+my $newline-page = Samaki::Page.new: wkdir => $*TMPDIR, name => 'test', cells => [$newline-cell];
+my $newline-out = $newline-cell.output-file;
+my $newline-handle = $newline-out.open(:w);
+$plugin.execute(:cell($newline-cell), :page($newline-page), :mode<content>, out => $newline-handle);
+$newline-handle.close;
+
+my $newline-csv = $newline-out.slurp;
+# The actual format will have the newline inside quoted field
+ok $newline-csv.lines.elems >= 2, 'newline CSV has multiple lines';
+ok $newline-csv.contains('Line 1'), 'contains first line of text';
+ok $newline-csv.contains('Line 2'), 'contains second line of text';
+ok $newline-csv.contains('"Line 1' ~ "\n" ~ 'Line 2"'), 'newline inside quotes preserved';
+$newline-out.unlink;
+
+# Test 4: Multiple rows with different data types
+my $multi-cell = Samaki::Cell.new:
+  page-name => 'test',
+  content => q{SELECT * FROM (VALUES ('Alice', 25, 'Engineer'), ('Bob', 30, 'Manager'), ('Charlie', 35, 'Director')) AS t(name, age, title)},
+  cell-type => 'duckie',
+  name => 'test-multi',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+my $multi-page = Samaki::Page.new: wkdir => $*TMPDIR, name => 'test', cells => [$multi-cell];
+my $multi-out = $multi-cell.output-file;
+my $multi-handle = $multi-out.open(:w);
+$plugin.execute(:cell($multi-cell), :page($multi-page), :mode<content>, out => $multi-handle);
+$multi-handle.close;
+
+my $multi-csv = $multi-out.slurp;
+is $multi-csv.lines.elems, 4, 'multi-row CSV has header + 3 data rows';
+ok $multi-csv.contains('Alice'), 'contains first name';
+ok $multi-csv.contains('Charlie'), 'contains last name';
+ok $multi-csv.contains('Engineer'), 'contains first title';
+ok $multi-csv.contains('Director'), 'contains last title';
+$multi-out.unlink;
+
+# Test 5: CSV Roundtrip - write CSV, read it back with duckie
+my $write-cell = Samaki::Cell.new:
+  page-name => 'test',
+  content => q{SELECT * FROM (VALUES
+    ('Mercury', 0.39, 0.330),
+    ('Venus', 0.72, 4.87),
+    ('Earth', 1.00, 5.97),
+    ('Mars', 1.52, 0.642)
+  ) AS planets(name, au_from_sun, mass_earth)},
+  cell-type => 'duckie',
+  name => 'planets-write',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+
+my $write-page = Samaki::Page.new: wkdir => $*TMPDIR, name => 'test', cells => [$write-cell];
+my $csv-file = $write-cell.output-file;
+my $write-handle = $csv-file.open(:w);
+$plugin.execute(:cell($write-cell), :page($write-page), :mode<content>, out => $write-handle);
+$write-handle.close;
+
+ok $csv-file.e, 'roundtrip CSV file was created';
+is $csv-file.slurp.lines.elems, 5, 'roundtrip CSV has header + 4 planet rows';
+
+# Read the CSV back using duckie
+my $csv-path = $csv-file.absolute;
+my $read-cell = Samaki::Cell.new:
+  page-name => 'test',
+  content => "SELECT * FROM read_csv('$csv-path')",
+  cell-type => 'duckie',
+  name => 'planets-read',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+
+my $read-page = Samaki::Page.new: wkdir => $*TMPDIR, name => 'test', cells => [$read-cell];
+my $read-out = $read-cell.output-file;
+my $read-handle = $read-out.open(:w);
+my $output = $plugin.execute(:cell($read-cell), :page($read-page), :mode<content>, out => $read-handle);
+$read-handle.close;
+
+ok $output, 'got output from reading CSV';
+ok $plugin.res, 'got result set from reading CSV';
+is $plugin.res.row-count, 4, 'read back 4 planets';
+
+my @rows = $plugin.res.rows(:arrays);
+is @rows[0][0], 'Mercury', 'first planet name is correct';
+is @rows[2][0], 'Earth', 'third planet name is correct';
+is @rows[3][0], 'Mars', 'fourth planet name is correct';
+
+# Check numeric values are preserved as strings
+ok @rows[2][1].contains('1'), 'Earth AU distance preserved';
+ok @rows[2][2].contains('5.97'), 'Earth mass preserved';
+
+$read-out.unlink;
+
+# Test 6: Roundtrip with special characters
+my $special-write = Samaki::Cell.new:
+  page-name => 'test',
+  content => q{SELECT * FROM (VALUES
+    ('O''Brien', 'Dublin, Ireland', 'Said "Hi"'),
+    ('Smith', 'New York', 'Normal text')
+  ) AS people(name, location, quote)},
+  cell-type => 'duckie',
+  name => 'special-write',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+
+my $special-page = Samaki::Page.new: wkdir => $*TMPDIR, name => 'test', cells => [$special-write];
+my $special-csv = $special-write.output-file;
+my $special-handle = $special-csv.open(:w);
+$plugin.execute(:cell($special-write), :page($special-page), :mode<content>, out => $special-handle);
+$special-handle.close;
+
+ok $special-csv.e, 'special characters CSV was created';
+is $special-csv.slurp.lines.elems, 3, 'special CSV has header + 2 data rows';
+
+# Read it back
+my $special-path = $special-csv.absolute;
+my $special-read = Samaki::Cell.new:
+  page-name => 'test',
+  content => "SELECT * FROM read_csv('$special-path')",
+  cell-type => 'duckie',
+  name => 'special-read',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+
+my $special-read-page = Samaki::Page.new: wkdir => $*TMPDIR, name => 'test', cells => [$special-read];
+my $special-read-out = $special-read.output-file;
+my $special-read-handle = $special-read-out.open(:w);
+$plugin.execute(:cell($special-read), :page($special-read-page), :mode<content>, out => $special-read-handle);
+$special-read-handle.close;
+
+my @special-rows = $plugin.res.rows(:arrays);
+is @special-rows[0][0], "O'Brien", 'apostrophe in name preserved in roundtrip';
+is @special-rows[0][1], "Dublin, Ireland", 'comma in location preserved in roundtrip';
+is @special-rows[0][2], 'Said "Hi"', 'quotes in text preserved in roundtrip';
+is @special-rows[1][0], 'Smith', 'normal text name preserved';
+
+# Clean up
+$csv-file.unlink;
+$special-csv.unlink;
+$special-read-out.unlink;
+
+# Test 7: NULL/missing values
+my $null-cell = Samaki::Cell.new:
+  page-name => 'test',
+  content => q{SELECT * FROM (VALUES
+    ('Alice', 25, 'Engineer'),
+    ('Bob', NULL, 'Manager'),
+    ('Charlie', 35, NULL),
+    ('Diana', NULL, NULL)
+  ) AS people(name, age, title)},
+  cell-type => 'duckie',
+  name => 'test-null',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+
+my $null-page = Samaki::Page.new: wkdir => $*TMPDIR, name => 'test', cells => [$null-cell];
+my $null-out = $null-cell.output-file;
+my $null-handle = $null-out.open(:w);
+$plugin.execute(:cell($null-cell), :page($null-page), :mode<content>, out => $null-handle);
+$null-handle.close;
+
+my $null-csv = $null-out.slurp;
+ok $null-csv, 'NULL value CSV was created';
+is $null-csv.lines.elems, 5, 'NULL CSV has header + 4 data rows';
+
+# Check that NULL values are represented as empty strings in CSV
+my @null-lines = $null-csv.lines;
+is @null-lines[0], 'name,age,title', 'NULL CSV header is correct';
+is @null-lines[1], 'Alice,25,Engineer', 'row with all values is correct';
+ok @null-lines[2].contains('Bob,,Manager'), 'NULL age becomes empty field';
+ok @null-lines[3].contains('Charlie,35,'), 'NULL title becomes empty field at end';
+ok @null-lines[4].contains('Diana,,'), 'multiple NULL values become empty fields';
+
+# Test 8: NULL roundtrip - write CSV with NULLs, read it back
+my $null-path = $null-out.absolute;
+my $null-read-cell = Samaki::Cell.new:
+  page-name => 'test',
+  content => "SELECT * FROM read_csv('$null-path')",
+  cell-type => 'duckie',
+  name => 'null-read',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+
+my $null-read-page = Samaki::Page.new: wkdir => $*TMPDIR, name => 'test', cells => [$null-read-cell];
+my $null-read-out = $null-read-cell.output-file;
+my $null-read-handle = $null-read-out.open(:w);
+$plugin.execute(:cell($null-read-cell), :page($null-read-page), :mode<content>, out => $null-read-handle);
+$null-read-handle.close;
+
+ok $plugin.res, 'got result from reading NULL CSV';
+is $plugin.res.row-count, 4, 'read back 4 rows with NULLs';
+
+my @null-rows = $plugin.res.rows(:arrays);
+is @null-rows[0][0], 'Alice', 'first name correct';
+is @null-rows[1][0], 'Bob', 'second name correct';
+# DuckDB reads empty CSV fields - check if they're empty or undefined
+my $empty-field = @null-rows[1][1];
+ok !$empty-field.defined || $empty-field eq '', 'empty field is undefined or empty string';
+
+# Clean up
+$null-out.unlink;
+$null-read-out.unlink;
+
+# Test 9: Mixed NULL and special characters
+my $mixed-cell = Samaki::Cell.new:
+  page-name => 'test',
+  content => q{SELECT * FROM (VALUES
+    ('O''Brien', NULL, 'Dublin, Ireland'),
+    (NULL, 42, 'Said "Hello"'),
+    ('Smith', 30, NULL)
+  ) AS mixed(name, num, text)},
+  cell-type => 'duckie',
+  name => 'test-mixed',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+
+my $mixed-page = Samaki::Page.new: wkdir => $*TMPDIR, name => 'test', cells => [$mixed-cell];
+my $mixed-out = $mixed-cell.output-file;
+my $mixed-handle = $mixed-out.open(:w);
+$plugin.execute(:cell($mixed-cell), :page($mixed-page), :mode<content>, out => $mixed-handle);
+$mixed-handle.close;
+
+my $mixed-csv = $mixed-out.slurp;
+ok $mixed-csv, 'mixed NULL and special chars CSV created';
+my @mixed-lines = $mixed-csv.lines;
+
+# First row: quoted name, empty num, quoted text with comma
+ok @mixed-lines[1].contains("O'Brien"), 'apostrophe preserved with NULL';
+ok @mixed-lines[1].contains(',"Dublin, Ireland"'), 'quoted comma field after NULL';
+
+# Second row: empty name, number, quoted text with quotes
+ok @mixed-lines[2].starts-with(','), 'NULL at start becomes leading comma';
+ok @mixed-lines[2].contains(',42,'), 'number between NULLs';
+ok @mixed-lines[2].contains('"Said ""Hello"""'), 'quoted value with escaped quotes';
+
+# Third row: name, number, trailing empty
+ok @mixed-lines[3].ends-with(','), 'NULL at end becomes trailing comma';
+
+$mixed-out.unlink;
+
+done-testing;
