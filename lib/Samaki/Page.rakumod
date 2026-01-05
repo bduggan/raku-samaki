@@ -22,7 +22,7 @@ class Samaki::Page {
   has $.mode is rw = 'eval'; # or 'raw'
   has $.current-cell is rw;
   has Str $.errors;
-  has $.cu = CodeUnit.new(:keep-warnings);
+  has $.cu;
 
   method data-dir {
     $!wkdir.child(self.name);
@@ -182,6 +182,17 @@ class Samaki::Page {
   }
 
   method load($content = Nil, :$plugins!) {
+
+    # declare these for codeunits
+    multi c(Str $name) { cells($name); }
+    multi c(Int $i) { cells($i); }
+    multi cell(Str $name) { cells($name); }
+    multi cell(Int $i) { cells($i); }
+    multi cells(Int $i) { self.get-cell($i); }
+    multi cells(Str $name) { self.get-cell($name); }
+
+    my $context = context;
+    $!cu = CodeUnit.new(:$context,:keep-warnings);
     info "loading page: {self.path}";
     return False unless $content || self.path.IO.e;
     $!content //= $content // self.path.IO.slurp;
