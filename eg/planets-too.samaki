@@ -1,0 +1,9 @@
+-- duckie:hello.txt
+select 'hello' as world;
+
+-- duckie:earth.csv
+select 'earth' as planet;
+
+-- llm:planet.txt
+Which planet from the sun is 〈 cells(1).rows[0]<planet> 〉?
+
