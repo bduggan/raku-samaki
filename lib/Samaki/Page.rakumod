@@ -24,7 +24,7 @@ class Samaki::Page {
   has Str $.errors;
   has $.cu;
 
-  submethod TWEAK {
+  method add-context {
     # declare these for codeunits
     multi c(Str $name) { cells($name); }
     multi c(Int $i) { cells($i); }
@@ -35,6 +35,10 @@ class Samaki::Page {
 
     my $context = context;
     $!cu = CodeUnit.new(:$context,:keep-warnings);
+  }
+
+  submethod TWEAK {
+    self.add-context;
   }
 
   method data-dir {
@@ -139,6 +143,7 @@ class Samaki::Page {
     $!content = Nil;
     @!cells = ();
     self.load(:$plugins);
+    self.add-context;
   }
 
   method show(:$pane, :$plugins!) {
