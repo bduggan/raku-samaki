@@ -19,5 +19,6 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
    return;
  }
  $!output = self.output-duckie($!res);
+ self.write-duckie($!res, :$out);
  $!output;
 }

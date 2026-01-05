@@ -146,3 +146,15 @@ multi method output-duckie(IO::Path $path) {
   return self.output-duckie($!res);
 }
 
+method write-duckie(Duckie::Result $result-set, IO::Handle :$out) {
+  my $cols = $result-set.column-names;
+  my sub esc($str) {
+    return $str unless $str.contains(','|'"'|"\n");
+    '"' ~ $str.subst(:g,'"','""') ~ '"';
+  }
+  $out.put: $cols.map({ esc($_) }).join(',');
+  for $result-set.rows(:arrays) -> @row {
+    $out.put: @row.map({ esc(($_ // Nil).Str) }).join(',');
+  }
+}
+
