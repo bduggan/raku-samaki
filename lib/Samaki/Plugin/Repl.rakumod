@@ -74,5 +74,15 @@ method shutdown {
     $!proc.kill(SIGKILL);
     await Promise.anyof($.proc-promise, Promise.in(0.5));
   }
+  # still not dead?  use kill -9 from the shell
+  if $.proc-promise.status ~~ PromiseStatus::Planned  && $!pid {
+    info "sending kill -9 for " ~ self.^name ~ " pid " ~ $!pid;
+    run "kill", "-9", $!pid.Str;
+    await Promise.anyof($.proc-promise, Promise.in(0.5));
+  }
+  # still not dead?
+  if $.proc-promise.status ~~ PromiseStatus::Planned  && $!proc {
+    warn "process for " ~ self.^name ~ " still not dead after all attempts";
+  }
   $!proc = Nil;
 }
