@@ -1,3 +1,16 @@
+0.0.20 2026-01-05
+  - kill repls with OS as a last resort
+  - add quietly option for bash plugin
+  - fix interpolation (codeunit needs context)
+  - fix sorting of files
+  - fix some deps
+  - fix use of env (% not $)
+  - start in verbose mode
+  - start repls in data dir
+  - add another sample config file using repl punning
+  - more examples
+  - fix startup options
+
 0.0.19 2025-12-28
   - simplify startup logic
   - improve docs, explain categories of plugins
