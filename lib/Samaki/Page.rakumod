@@ -91,7 +91,7 @@ class Samaki::Page {
   }
 
   method show-auto-cell(:$cell!, :$pane!, :$mode!, :$leadchar!, :%meta!) {
-    $pane.put: [ col('cell-type') => '╌'.indent(4) ], :%meta;
+    $pane.put: [ col('cell-type') => ' ╌╌'.indent(4) ], :%meta;
     $pane.put([ col('cell-type') => "$leadchar ".indent(4) ~ $_.raku ], :%meta) for $cell.conf.list;
     try {
        CATCH { default { $pane.put: [ t.red => "Error displaying cell: $_" ], :%meta } }
@@ -103,9 +103,11 @@ class Samaki::Page {
        }
        for $out.lines.kv -> $n, $txt {
          my %line-meta = $cell.line-meta($txt);
-         my $line = $cell.line-format($txt);
-         my Pair $l = ($line.isa(Pair) ?? $line !! col('text') => $line);
-         $pane.put: [ col('line') => $n.fmt('%3d '), col('cell-type') => "$leadchar ", $l ],
+         $pane.put: [
+           col('line') => $n.fmt('%3d '),
+           col('cell-type') => "$leadchar ",
+           col('text') => $txt.subst(/^ \| \s?/,'')
+         ],
                meta => %( :$cell, :self, |%line-meta );
        }
     }
