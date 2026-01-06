@@ -64,7 +64,7 @@ method warn(Str $what) {
 method shutdown {
 }
 
-has Str $.errors;
+has Str $.errors is rw;
 has $.res;
 
 method line-meta(Str $line) {

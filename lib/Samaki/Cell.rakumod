@@ -155,6 +155,8 @@ class Samaki::Cell {
   }
 
   method execute(:$mode = 'eval', :$page!, :$pane!, :$action) {
+    $!plugin.errors = Nil;
+    $!errors = Nil;
     # $pane.put: "Executing cell { $.name } of type { $.cell-type }";
     $pane.put: [ col('info') => "Executing cell ", col('cell-name') => $.name, col('info') => " of type ", col('cell-type') => $.cell-type ];
     return without $!plugin;
