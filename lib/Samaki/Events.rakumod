@@ -208,6 +208,12 @@ method set-events {
                  ],
                    meta => %( action => 'write_file', file => 'cols.txt', content => $cols.join(',') );
       }
+      when 'exit_proc' {
+        with %meta<proc> -> $proc {
+          info "Closing stdin for process";
+          $proc.put: "exit";
+        }
+      }
     }
   }
 

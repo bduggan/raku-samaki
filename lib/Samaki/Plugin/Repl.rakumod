@@ -20,6 +20,7 @@ method description { "Run a REPL for " ~ self.name }
 
 method start-repl($pane, :$cell) {
   self.stream: [col('info') => "starting repl for {$.name}"];
+  self.stream: txt => [col('button') => "[exit]"], meta => %( action => 'exit_proc', :$!proc );
   $pane.stream: $!proc.stdout(:bin);
   $!proc-promise = start {
     react {
