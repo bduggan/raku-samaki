@@ -120,6 +120,14 @@ sub resolve-target($target, :$wkdir!) {
 multi MAIN('export', $target, :$wkdir = $*CWD, :$output, :$format = 'html', Bool :$open) {
   my (:$samaki, :$page-name, :$page) := resolve-target $target, :$wkdir;
  
+  unless $page.cells.elems {
+    note "No cells to export in $page-name.";
+    unless $page.filename.IO.e {
+      note "Note: The file { $page.filename } does not exist.";
+    }
+    exit;
+  }
+
   given $format.lc {
     when 'html' {
       my $exporter = Samaki::Exporter::HTML.new(:$page, plugins => $samaki.plugins);
@@ -142,9 +150,16 @@ multi MAIN('run', $target, :$wkdir = $*CWD) {
   my $*SAMAKI-NO-SHELL-OPEN = True;
   my $mock-pane = MockPane.new;
 
-  note "Running all cells in $page-name.";
-  for $page.cells -> $cell {
-    next if $cell.cell-type eq 'auto'; # Skip auto cells
+  my @cells = $page.cells;
+  unless @cells {
+    note "No cells to run in $page-name.";
+    unless $page.filename.IO.e {
+      note "Note: The file { $page.filename } does not exist.";
+    }
+    return;
+  }
+  note "Running all cells in $page-name.  Cell count: { @cells.elems }";
+  for @cells -> $cell {
     print " cell { $cell.name }...";
 
     try {
