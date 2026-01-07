@@ -538,7 +538,7 @@ The following plugins are included with samaki:
 =begin table
 Plugin                  | Type     | Description
 ========================|==========|============================================
-Bash                    | Process  | Execute contents as a bash program
+[Bash](docs/lib/Samaki/Plugin/Bash.md)                    | Process  | Execute contents as a bash program
 Code                    |          | Evaluate raku code in the current process
 Duck                    | Process  | Run SQL queries via duckdb executable
 Duckie                  | inline   | Run SQL queries via L<Duckie> inline driver
