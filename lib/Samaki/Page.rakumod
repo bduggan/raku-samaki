@@ -141,6 +141,7 @@ class Samaki::Page {
     @!cells = ();
     self.load(:$plugins);
     self.add-context;
+    self.show(:pane, :$plugins);
   }
 
   method show(:$pane, :$plugins!) {
@@ -197,8 +198,8 @@ class Samaki::Page {
   }
 
   method load($content = Nil, :$plugins!) {
-
     info "loading page: {self.path}";
+    self.add-context;
     return False unless $content || self.path.IO.e;
     without $!content {
       with $content {
