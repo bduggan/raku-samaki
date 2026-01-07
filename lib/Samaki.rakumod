@@ -538,7 +538,7 @@ The following plugins are included with samaki:
 =begin table
 Plugin                  | Type     | Description
 ========================|==========|============================================
-[Bash](docs/lib/Samaki/Plugin/Bash.md)                    | Process  | Execute contents as a bash program
+Bash                    | Process  | Execute contents as a bash program
 Code                    |          | Evaluate raku code in the current process
 Duck                    | Process  | Run SQL queries via duckdb executable
 Duckie                  | inline   | Run SQL queries via L<Duckie> inline driver
@@ -553,6 +553,10 @@ Repl::Python            | Repl     | Interactive python REPL (persistent session
 Repl::R                 | Repl     | Interactive R REPL (persistent session)
 Text                    |          | Write contents to a text file
 =end table
+
+Plugin documentation:
+
+* L<Bash|docs/lib/Samaki/Plugin/Bash.md>
 
 =head1 PLUGIN OPTIONS
 
