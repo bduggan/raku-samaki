@@ -59,9 +59,7 @@ multi MAIN('docs') {
   shell qq:to/SH/;
     raku -Ilib --doc=Markdown $readme-src >> README.md
     SH
-  note 'recursing';
   sub recurse($dir) {
-    note "documenting $dir";
     recurse($_) for dir($dir, test => { $dir.IO.child($_).d && !.starts-with('.') });
     for dir($dir, test => { /\.rakumod$/ }) -> $f {
       my $path = $f.IO.relative($*PROGRAM.parent);

@@ -347,24 +347,24 @@ is create, when the cell is in raw mode:
 
 =begin code
 
-╔═════════════════════════════════════════════════════════════════════════════════════════════╗
-╢                                        -- planets --                                        ║
-║    ┌── duck (txt)           [run] ➞  hello.txt                                              ║
-║  0 │ select 'hello' as world;                                                               ║
-║  1 └                                                                                        ║
-║    ┌── duck (csv)           [run] ➞  earth.csv                                              ║
-║  0 │ select 'earth' as planet;                                                              ║
-║  1 └                                                                                        ║
-║    ┌── llm (txt)            [run] ➞  planet.txt                                             ║
-║  0 │ Which planet from the sun is 〈 cells(1).rows[0]<planet> 〉?                           ║
-║  1 └                                                                                        ║
-║                                                                                             ║
-╟─────────────────────────────────────────────────────────────────────────────────────────────╢
-║                                          planets/                                           ║
-║planet.txt                                         45 b         9 hours and 52 minutes ago   ║
-║hello.csv                                          12 b            7 days and 18 hours ago   ║
-║                                                                                             ║
-╚═════════════════════════════════════════════════════════════════════════════════════════════╝
+╔════════════════════════════════════════════════════════════════════════════╗
+╢                           -- planets --                                    ║
+║    ┌── duck (txt)           [run] ➞  hello.txt                             ║
+║  0 │ select 'hello' as world;                                              ║
+║  1 └                                                                       ║
+║    ┌── duck (csv)           [run] ➞  earth.csv                             ║
+║  0 │ select 'earth' as planet;                                             ║
+║  1 └                                                                       ║
+║    ┌── llm (txt)            [run] ➞  planet.txt                            ║
+║  0 │ Which planet from the sun is 〈 cells(1).rows[0]<planet> 〉?          ║
+║  1 └                                                                       ║
+║                                                                            ║
+╟────────────────────────────────────────────────────────────────────────────╢
+║                         planets/                                           ║
+║planet.txt                        45 b         9 hours and 52 minutes ago   ║
+║hello.csv                         12 b            7 days and 18 hours ago   ║
+║                                                                            ║
+╚════════════════════════════════════════════════════════════════════════════╝
 
 =end code
 
