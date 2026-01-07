@@ -62,3 +62,21 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
     self.info: "Process $pid has exited";
   }
 }
+
+=begin pod
+
+=head1 NAME
+
+Samaki::Plugin::Bash -- Run the cell as a bash script.
+
+=head1 DESCRIPTION
+
+The cell contents are piped to stdin.  Output is streamed to the pane and also sent to
+the output file.
+
+=head1 OPTIONS
+
+* `quietly`  -- do not send to the pane, if this is true.
+
+=end pod
+

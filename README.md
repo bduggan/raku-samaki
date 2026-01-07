@@ -233,6 +233,26 @@ The following plugins are included with samaki:
 </tbody>
 </table>
 
+PLUGIN OPTIONS
+==============
+
+When choosing a plugin, options may be given which are specific to the plugin, like
+
+    -- llm
+    | model: claude
+
+But there are some options that apply to all plugins. They are
+
+* ext -- choose an extension for the filename.
+
+    | ext: csv
+
+Equivalent to name.csv
+
+* out -- suppress output
+
+    | out: none
+
 PLUGOUTS
 ========
 

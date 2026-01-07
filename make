@@ -54,20 +54,25 @@ sub update-changes($version, $next) {
 }
 
 multi MAIN('docs') {
+  note "docs";
   "README.md".IO.spurt: $badges ~ "\n";
   shell qq:to/SH/;
     raku -Ilib --doc=Markdown $readme-src >> README.md
     SH
-  #sub recurse($dir) {
-  #  recurse($_) for dir($dir, test => { $dir.IO.child($_).d && !.starts-with('.') });
-  # for dir($dir, test => { /\.rakumod$/ }) -> $f {
-  #   my $path = $f.IO.relative($*PROGRAM.parent);
-  #   my $out = 'docs'.IO.child: $path.subst(/\.rakumod$/, '.md');
-  #   $out.dirname.IO.d or mkdir $out.dirname;
-  #   shell qq:x[raku -Ilib --doc=Markdown $f > $out];
-  # }
-  #
-  #recurse('lib');
+  note 'recursing';
+  sub recurse($dir) {
+    note "documenting $dir";
+    recurse($_) for dir($dir, test => { $dir.IO.child($_).d && !.starts-with('.') });
+    for dir($dir, test => { /\.rakumod$/ }) -> $f {
+      my $path = $f.IO.relative($*PROGRAM.parent);
+      my $out = 'docs'.IO.child: $path.subst(/\.rakumod$/, '.md');
+      $out.dirname.IO.d or mkdir $out.dirname;
+      next unless $f.contains('Plugin');
+      shell qq:x[raku -Ilib --doc=Markdown $f > $out];
+    }
+  }
+  
+  recurse('lib');
 }
 
 multi MAIN('bumpdist') {
