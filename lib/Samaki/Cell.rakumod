@@ -27,7 +27,7 @@ class Samaki::Cell {
   has $.timeout = 60; #= default execution timeout in seconds
   has $.plugin handles <wrap stream-output output-stream output-ext clear-stream-before select-action write-output>;
 
-  has $.default-ext = 'csv';
+  has $!ext;
   has @.conf;
 
   method TWEAK {
@@ -117,7 +117,8 @@ class Samaki::Cell {
   }
 
   method ext {
-    self.get-conf('ext') || $.output-ext || $.default-ext;
+    # either a configured ext or it comes from the plugin, or csv as a last resort
+    self.get-conf('_ext') || $!ext || $.output-ext || "csv";
   }
 
   method output-file {

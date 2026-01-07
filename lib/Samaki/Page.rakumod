@@ -86,38 +86,25 @@ class Samaki::Page {
             for .lines;
     }
     my $line = 0;
+    $pane.put([ col('cell-type') => "$leadchar ".indent(4) ~ $_.raku ], :%meta) for $cell.conf.list;
     $pane.put([ col('line') => ($line++).fmt('%3d '), col('cell-type') => "$leadchar ", col('inactive') => $_ ], :%meta)
           for $cell.source.lines;
   }
 
   method show-auto-cell(:$cell!, :$pane!, :$mode!, :$leadchar!, :%meta!) {
     $pane.put: [ col('cell-type') => ' ╌╌'.indent(4) ], :%meta;
-    $pane.put([ col('cell-type') => "$leadchar ".indent(4) ~ $_.raku ], :%meta) for $cell.conf.list;
-    try {
-       CATCH { default { $pane.put: [ t.red => "Error displaying cell: $_" ], :%meta } }
-       my $*page = self;
-       my $out = $cell.get-content(:$mode, page => self);
-       if $cell.errors {
-         $pane.put([ col('cell-type') => "$leadchar ".indent(4), col('error') => "▶ $_" ], :%meta)
-               for $cell.errors.lines;
-       }
-       for $out.lines.kv -> $n, $txt {
-         my %line-meta = $cell.line-meta($txt);
-         $pane.put: [
-           col('line') => $n.fmt('%3d '),
-           col('cell-type') => "$leadchar ",
-           col('text') => $txt.subst(/^ \| \s?/,'')
-         ],
-               meta => %( :$cell, :self, |%line-meta );
-       }
+    self.show-cell-conf(:$cell, :$pane, :$leadchar, :%meta);
+    self.show-cell-body(:$cell, :$pane, :$mode, :$leadchar, :%meta);
+  }
+
+  method show-cell-conf(:$cell!, :$pane!, :$leadchar!, :%meta!) {
+    for $cell.conf.list {
+      next if .key.starts-with('_');
+      $pane.put([ col('cell-type') => "$leadchar ".indent(4) ~ "$_" ], :%meta) 
     }
   }
 
-  method show-valid-cell(:$cell!, :$pane!, :$mode!, :@actions!, :$leadchar!, :%meta!) {
-    my $lead = "┌── ".indent(4);
-    my $post = $cell.write-output ?? (' (' ~ $cell.ext ~ ')') !! "";
-    $pane.put: [ col('cell-type') => $lead ~ ($cell.cell-type ~ $post).fmt('%-20s'), |@actions ], :%meta;
-    $pane.put([ col('cell-type') => "$leadchar ".indent(4) ~ $_.raku ], :%meta) for $cell.conf.list;
+  method show-cell-body(:$cell!, :$pane!, :$mode!, :$leadchar!, :%meta!) {
     try {
        CATCH { default { $pane.put: [ t.red => "Error displaying cell: $_" ], :%meta } }
        my $*page = self;
@@ -134,6 +121,14 @@ class Samaki::Page {
                     meta => %( :$cell, :self, |%line-meta );
        }
     }
+  }
+
+  method show-valid-cell(:$cell!, :$pane!, :$mode!, :@actions!, :$leadchar!, :%meta!) {
+    my $lead = "┌── ".indent(4);
+    my $post = $cell.write-output ?? (' (' ~ $cell.ext ~ ')') !! "";
+    $pane.put: [ col('cell-type') => $lead ~ ($cell.cell-type ~ $post).fmt('%-20s'), |@actions ], :%meta;
+    self.show-cell-conf(:$cell, :$pane, :$leadchar, :%meta);
+    self.show-cell-body(:$cell, :$pane, :$mode, :$leadchar, :%meta);
   }
 
   method maybe-load(:$plugins!) {
@@ -292,8 +287,8 @@ class Samaki::Page {
       my %args;
       my @conf;
       with $<cell-header><cell-ext> -> $ext {
-        %args<default-ext> = $ext.Str;
-        @conf.push: ( 'ext' => $ext.Str );
+        %args<ext> = $ext.Str;
+        @conf.push: ( '_ext' => $ext.Str );
       }
       while @lines[0] && @lines[0] ~~ &confline {
         @conf.push: ( $<confkey>.Str => $<confvalue>.Str );
@@ -308,11 +303,7 @@ class Samaki::Page {
       $names{$name} = True;
       @!cells.push: Samaki::Cell.new:
         source => $block,
-        :@conf,
-        :$!wkdir,
-        :$name,
-        :$data-dir,
-        :$cell-type,
+        :@conf, :$!wkdir, :$name, :$data-dir, :$cell-type,
         content => (@lines.join("\n") ~ "\n"),
         index => $index++,
         start-line => @ranges[ $block-index ][0],
