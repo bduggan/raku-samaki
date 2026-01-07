@@ -557,6 +557,19 @@ Text                    |          | Write contents to a text file
 Plugin documentation:
 
 * L<Bash|docs/lib/Samaki/Plugin/Bash.md>
+* L<Code|docs/lib/Samaki/Plugin/Code.md>
+* L<Duck|docs/lib/Samaki/Plugin/Duck.md>
+* L<Duckie|docs/lib/Samaki/Plugin/Duckie.md>
+* L<File|docs/lib/Samaki/Plugin/File.md>
+* L<HTML|docs/lib/Samaki/Plugin/HTML.md>
+* L<LLM|docs/lib/Samaki/Plugin/LLM.md>
+* L<Markdown|docs/lib/Samaki/Plugin/Markdown.md>
+* L<Postgres|docs/lib/Samaki/Plugin/Postgres.md>
+* L<Raku|docs/lib/Samaki/Plugin/Raku.md>
+* L<Repl::Raku|docs/lib/Samaki/Plugin/Repl/Raku.md>
+* L<Repl::Python|docs/lib/Samaki/Plugin/Repl/Python.md>
+* L<Repl::R|docs/lib/Samaki/Plugin/Repl/R.md>
+* L<Text|docs/lib/Samaki/Plugin/Text.md>
 
 =head1 PLUGIN OPTIONS
 

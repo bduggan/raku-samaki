@@ -37,3 +37,33 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
   $h.restore;
 }
 
+=begin pod
+
+=head1 NAME
+
+Samaki::Plugin::Code -- Evaluate Raku code in the current process
+
+=head1 DESCRIPTION
+
+Evaluate Raku code in the same context as the page's auto-evaluated blocks (cells starting with just `--`). Variables and functions defined in other code cells or init blocks are available.
+
+Unlike the Raku plugin which runs code in a separate process, this runs in the same process as Samaki itself, allowing shared state across code cells.
+
+=head1 OPTIONS
+
+No specific options.
+
+=head1 EXAMPLE
+
+    -- code
+    my $a = 12;
+
+    -- code
+    $a + 1;
+
+Output:
+
+    13
+
+=end pod
+

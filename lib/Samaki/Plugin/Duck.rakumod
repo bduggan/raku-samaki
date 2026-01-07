@@ -71,3 +71,38 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
    }
    $!output = self.output-duckie($cell.output-file);
 }
+
+=begin pod
+
+=head1 NAME
+
+Samaki::Plugin::Duck -- Execute SQL queries using the duckdb CLI
+
+=head1 DESCRIPTION
+
+Execute SQL queries by spawning the C<duckdb> command-line executable as a separate process. Input is piped to stdin and output is captured from stdout. This is a process-based plugin (uses L<Samaki::Plugin::Process>).
+
+For an inline driver alternative, see L<Samaki::Plugin::Duckie>.
+
+=head1 OPTIONS
+
+* `db` -- path to a duckdb database file. If not specified, an in-memory database is used.
+* `timeout` -- maximum time in seconds to wait for query execution (default: 300)
+
+=head1 EXAMPLE
+
+    -- duck
+    select 'hello' as greeting, 'world' as noun;
+
+Output (CSV):
+
+    greeting,noun
+    hello,world
+
+Example with a database file:
+
+    -- duck
+    | db: mydata.duckdb
+    select * from users limit 5;
+
+=end pod

@@ -19,5 +19,33 @@ my $output = $plugin.execute(:$cell, :mode('content'), :$page, out => $out-handl
 $out-handle.close;
 is $output[4]<meta><row_data>[0], 42, 'duckie query result should have answer 42';
 $out-file.unlink;
+
+# Test documentation example
+my $cell2 = Samaki::Cell.new:
+  page-name => 'test',
+  content => "select 'hello' as greeting, 'world' as noun;",
+  cell-type => 'duckie',
+  name => 'test-duckie-2',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+
+my $page2 = Samaki::Page.new:
+  wkdir => $*TMPDIR,
+  name => 'test',
+  cells => [$cell2];
+
+my $out-file2 = $cell2.output-file;
+my $out-handle2 = $out-file2.open(:w);
+$plugin.execute(:cell($cell2), :mode<content>, :page($page2), out => $out-handle2);
+$out-handle2.close;
+
+ok $out-file2.e, 'output file was created';
+my $content = $out-file2.slurp;
+ok $content.contains('greeting,noun'), 'output contains CSV headers';
+ok $content.contains('hello,world'), 'output contains data';
+
+$out-file2.unlink;
+
 done-testing;
 

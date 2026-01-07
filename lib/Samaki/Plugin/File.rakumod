@@ -165,3 +165,42 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
     $.output-stream.send: %( txt => [ col('error') => "file $path not found" ] );
   }
 }
+
+=begin pod
+
+=head1 NAME
+
+Samaki::Plugin::File -- Display file metadata and information
+
+=head1 DESCRIPTION
+
+Display metadata about a file that already exists in the data directory. For GeoJSON files, also displays geometry information.
+
+=head1 OPTIONS
+
+No specific options.
+
+=head1 EXAMPLE
+
+    -- file:mydata.csv
+
+Output displays file metadata:
+
+    file:      [mydata.csv]
+    Size:      1.2 KB
+    Modified:  3 hours ago
+    Accessed:  1 minute ago
+    Changed:   3 hours ago
+    Absolute:  /full/path/to/data/mydata.csv
+
+For GeoJSON files:
+
+    -- file:boundaries.geojson
+
+    GeoJSON:   FeatureCollection
+    Features:  42
+    Geometry:  Polygon (42)
+    Coords:    1234
+    Bounds:    lon: [-122.5, -122.3] lat: [37.7, 37.9]
+
+=end pod

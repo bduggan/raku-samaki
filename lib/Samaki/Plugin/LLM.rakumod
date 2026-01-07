@@ -35,3 +35,40 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
  self.info: 'done';
  $h.restore;
 }
+
+=begin pod
+
+=head1 NAME
+
+Samaki::Plugin::LLM -- Send prompts to an LLM
+
+=head1 DESCRIPTION
+
+Send cell content to a Large Language Model using L<LLM::DWIM>. The LLM provider and model are configured via environment variables (see LLM::DWIM documentation).
+
+=head1 OPTIONS
+
+No specific options.
+
+=head1 EXAMPLE
+
+    -- llm
+    How many roads must a man walk down, before you call him a man?
+
+Output:
+
+    The answer, my friend, is blowin' in the wind.
+
+Example with interpolation:
+
+    -- duck
+    select 'earth' as planet;
+
+    -- llm
+    Which planet from the sun is 〈 cells(0).rows[0]<planet> 〉?
+
+Output:
+
+    Earth is the third planet from the sun.
+
+=end pod

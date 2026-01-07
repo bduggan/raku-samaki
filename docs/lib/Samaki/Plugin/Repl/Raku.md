@@ -1,29 +1,20 @@
-use Samaki::Plugin::Repl;
-use Samaki::Conf;
-use Log::Async;
-
-unit class Samaki::Plugin::Repl::Raku is Samaki::Plugin::Repl;
-
-method name { "repl-raku" }
-method description { "Run the raku repl, and interact using a pty" }
-
-has $.command = 'raku';
-
-=begin pod
-
-=head1 NAME
+NAME
+====
 
 Samaki::Plugin::Repl::Raku -- Interactive Raku REPL
 
-=head1 DESCRIPTION
+DESCRIPTION
+===========
 
 Run an interactive Raku REPL in a persistent session. State persists across cells, so variables and functions defined in one cell are available in subsequent cells.
 
-=head1 OPTIONS
+OPTIONS
+=======
 
 * `delay` -- seconds to wait between sending lines (default: 1)
 
-=head1 EXAMPLE
+EXAMPLE
+=======
 
     -- raku-repl
     say "hello, world"
@@ -41,4 +32,3 @@ Output:
     170141183460469231731687303715884105727
     True
 
-=end pod

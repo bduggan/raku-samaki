@@ -20,4 +20,34 @@ if $duck-available {
   skip 'duckdb not available', 3;
 }
 
+# Test documentation example
+if $duck-available {
+  my $cell = Samaki::Cell.new:
+    page-name => 'test',
+    content => "select 'hello' as greeting, 'world' as noun;",
+    cell-type => 'duck',
+    name => 'test-duck',
+    data-dir => $*TMPDIR,
+    wkdir => $*TMPDIR,
+    :$plugin;
+
+  my $page = Samaki::Page.new:
+    wkdir => $*TMPDIR,
+    name => 'test',
+    cells => [$cell];
+
+  my $out-file = $*TMPDIR.child('test-duck-output.csv');
+  my $out = $out-file.open(:w);
+  $plugin.execute(:$cell, :$page, :mode<content>, :$out);
+
+  ok $out-file.e, 'output file was created';
+  my $content = $out-file.slurp;
+  ok $content.contains('greeting,noun'), 'output contains CSV headers';
+  ok $content.contains('hello,world'), 'output contains data';
+
+  $out-file.unlink;
+} else {
+  skip 'duckdb not available', 3;
+}
+
 done-testing;

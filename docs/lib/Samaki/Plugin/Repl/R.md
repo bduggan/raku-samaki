@@ -1,27 +1,20 @@
-use Samaki::Plugin::Repl;
-
-unit class Samaki::Plugin::Repl::R is Samaki::Plugin::Repl;
-
-method name { "repl-R" }
-method description { "Run the R repl and interact with it" }
-
-has $.command = 'R';
-
-=begin pod
-
-=head1 NAME
+NAME
+====
 
 Samaki::Plugin::Repl::R -- Interactive R REPL
 
-=head1 DESCRIPTION
+DESCRIPTION
+===========
 
 Run an interactive R REPL in a persistent session. State persists across cells, so variables and functions defined in one cell are available in subsequent cells.
 
-=head1 OPTIONS
+OPTIONS
+=======
 
 * `delay` -- seconds to wait between sending lines (default: 1)
 
-=head1 EXAMPLE
+EXAMPLE
+=======
 
     -- R-repl
     x <- c(1, 2, 3, 4, 5)
@@ -36,4 +29,3 @@ Output:
     [1] 3
     [1] 30
 
-=end pod

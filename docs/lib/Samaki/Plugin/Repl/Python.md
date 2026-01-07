@@ -1,27 +1,20 @@
-use Samaki::Plugin::Repl;
-
-unit class Samaki::Plugin::Repl::Python is Samaki::Plugin::Repl;
-
-method name { "repl-python" }
-method description { "Run the python repl and interact with it" }
-
-has $.command = 'python3';
-
-=begin pod
-
-=head1 NAME
+NAME
+====
 
 Samaki::Plugin::Repl::Python -- Interactive Python REPL
 
-=head1 DESCRIPTION
+DESCRIPTION
+===========
 
 Run an interactive Python REPL in a persistent session. State persists across cells, so variables and functions defined in one cell are available in subsequent cells.
 
-=head1 OPTIONS
+OPTIONS
+=======
 
 * `delay` -- seconds to wait between sending lines (default: 1)
 
-=head1 EXAMPLE
+EXAMPLE
+=======
 
     -- python-repl
     x = 42
@@ -36,4 +29,3 @@ Output:
     42
     84
 
-=end pod

@@ -28,4 +28,34 @@ is $output, '<h1>Hello World</h1>', 'HTML content was saved to output file';
 
 $cell.output-file.unlink;
 
+# Test documentation example
+my $cell2 = Samaki::Cell.new:
+  page-name => 'test',
+  content => q:to/HTML/,
+    <html>
+      <body>
+        <h1>Hello, World!</h1>
+        <p>This is HTML content.</p>
+      </body>
+    </html>
+    HTML
+  cell-type => 'html',
+  name => 'page',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+
+my $page2 = Samaki::Page.new:
+  wkdir => $*TMPDIR,
+  name => 'test',
+  cells => [$cell2];
+
+$plugin.execute(:cell($cell2), :page($page2), :mode<content>);
+
+my $output2 = $cell2.output-file.slurp;
+ok $output2.contains('<h1>Hello, World!</h1>'), 'HTML contains h1 tag';
+ok $output2.contains('<p>This is HTML content.</p>'), 'HTML contains paragraph';
+
+$cell2.output-file.unlink;
+
 done-testing;

@@ -28,4 +28,31 @@ ok $output.contains('42'), 'raku code was executed';
 $out-file.unlink;
 $plugin.tmpfile.unlink if $plugin.tmpfile.e;
 
+# Test documentation example
+my $cell2 = Samaki::Cell.new:
+  page-name => 'test',
+  content => "say \"Hello from a separate process!\";\nsay π;",
+  cell-type => 'raku',
+  name => 'test-raku-2',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+
+my $page2 = Samaki::Page.new:
+  wkdir => $*TMPDIR,
+  name => 'test',
+  cells => [$cell2];
+
+my $out-file2 = $cell2.output-file;
+my $out2 = $out-file2.open(:w);
+$plugin.execute(:cell($cell2), :page($page2), :mode<content>, :out($out2));
+$out2.close;
+
+my $output2 = $out-file2.slurp;
+ok $output2.contains('Hello from a separate process!'), 'raku output contains hello message';
+ok $output2.contains('3.14159'), 'raku output contains pi';
+
+$out-file2.unlink;
+$plugin.tmpfile.unlink if $plugin.tmpfile.e;
+
 done-testing;

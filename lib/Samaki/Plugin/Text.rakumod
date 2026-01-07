@@ -37,3 +37,40 @@ method line-format(Str $line) {
   }
   @out;
 }
+
+=begin pod
+
+=head1 NAME
+
+Samaki::Plugin::Text -- Write text content to a file
+
+=head1 DESCRIPTION
+
+Write cell content to a text file. Supports special C<[link:pagename]> syntax for creating links to other Samaki pages.
+
+=head1 OPTIONS
+
+No specific options.
+
+=head1 EXAMPLE
+
+    -- text:notes.txt
+    This is some text content.
+
+    You can reference other pages: [link:otherpage]
+
+Output: Creates C<notes.txt> with the content. When displayed, C<[link:otherpage]> is rendered as a clickable link that loads the "otherpage" notebook.
+
+Example with interpolation:
+
+    -- duck
+    select 'Alice' as name, 30 as age;
+
+    -- text:summary.txt
+    The user 〈 cells(0).rows[0]<name> 〉 is 〈 cells(0).rows[0]<age> 〉 years old.
+
+Output in C<summary.txt>:
+
+    The user Alice is 30 years old.
+
+=end pod

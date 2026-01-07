@@ -29,4 +29,37 @@ ok $output.contains('<'), 'output contains HTML tags';
 
 $cell.output-file.unlink;
 
+# Test documentation example
+my $cell2 = Samaki::Cell.new:
+  page-name => 'test',
+  content => q:to/MD/,
+    # Hello, World!
+
+    This is **Markdown** content with:
+
+    * Lists
+    * Links
+    * _Emphasis_
+    MD
+  cell-type => 'markdown',
+  name => 'doc',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+
+my $page2 = Samaki::Page.new:
+  wkdir => $*TMPDIR,
+  name => 'test',
+  cells => [$cell2];
+
+$plugin.execute(:cell($cell2), :page($page2), :mode<content>);
+
+my $output2 = $cell2.output-file.slurp;
+ok $output2.contains('Hello, World!'), 'markdown contains heading text';
+ok $output2.contains('<strong>Markdown</strong>'), 'bold text converted to strong tag';
+ok $output2.contains('<em>Emphasis</em>'), 'italic text converted to em tag';
+ok $output2.contains('<ul>') || $output2.contains('<li>'), 'list converted to HTML';
+
+$cell2.output-file.unlink;
+
 done-testing;

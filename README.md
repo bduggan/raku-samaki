@@ -235,7 +235,7 @@ The following plugins are included with samaki:
 
 Plugin documentation:
 
-* [Bash](docs/lib/Samaki/Plugin/Bash.md)
+* [Bash](docs/lib/Samaki/Plugin/Bash.md) * [Code](docs/lib/Samaki/Plugin/Code.md) * [Duck](docs/lib/Samaki/Plugin/Duck.md) * [Duckie](docs/lib/Samaki/Plugin/Duckie.md) * [File](docs/lib/Samaki/Plugin/File.md) * [HTML](docs/lib/Samaki/Plugin/HTML.md) * [LLM](docs/lib/Samaki/Plugin/LLM.md) * [Markdown](docs/lib/Samaki/Plugin/Markdown.md) * [Postgres](docs/lib/Samaki/Plugin/Postgres.md) * [Raku](docs/lib/Samaki/Plugin/Raku.md) * [Repl::Raku](docs/lib/Samaki/Plugin/Repl/Raku.md) * [Repl::Python](docs/lib/Samaki/Plugin/Repl/Python.md) * [Repl::R](docs/lib/Samaki/Plugin/Repl/R.md) * [Text](docs/lib/Samaki/Plugin/Text.md)
 
 PLUGIN OPTIONS
 ==============

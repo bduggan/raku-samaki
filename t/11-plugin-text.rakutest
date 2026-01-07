@@ -28,4 +28,48 @@ is $meta<page_name>, 'otherpage', 'link page name is extracted';
 
 $cell.output-file.unlink;
 
+# Test interpolation (documentation example)
+# First create a duck cell with some data
+use Samaki::Plugin::Duckie;
+my $duck-plugin = Samaki::Plugin::Duckie.new;
+
+my $duck-cell = Samaki::Cell.new:
+  page-name => 'test',
+  content => "select 'Alice' as name, 30 as age;",
+  cell-type => 'duckie',
+  name => 'duck-data',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  plugin => $duck-plugin;
+
+my $text-cell2 = Samaki::Cell.new:
+  page-name => 'test',
+  content => "The user 〈 cells(0).rows[0]<name> 〉 is 〈 cells(0).rows[0]<age> 〉 years old.",
+  cell-type => 'text',
+  name => 'test-text-interp',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR,
+  :$plugin;
+
+my $page2 = Samaki::Page.new:
+  wkdir => $*TMPDIR,
+  name => 'test',
+  cells => [$duck-cell, $text-cell2];
+
+# Execute duck cell first
+my $duck-out = $duck-cell.output-file.open(:w);
+$duck-plugin.execute(:cell($duck-cell), :page($page2), :mode<content>, :out($duck-out));
+$duck-out.close;
+
+# Execute text cell with interpolation
+$plugin.execute(:cell($text-cell2), :page($page2), :mode<eval>);
+
+my $output2 = $text-cell2.output-file.slurp;
+ok $output2.contains('Alice'), 'interpolated text contains name';
+ok $output2.contains('30'), 'interpolated text contains age';
+is $output2.trim, 'The user Alice is 30 years old.', 'interpolation works correctly';
+
+$duck-cell.output-file.unlink;
+$text-cell2.output-file.unlink;
+
 done-testing;

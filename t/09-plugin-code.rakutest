@@ -27,4 +27,43 @@ ok $content.contains('42'), 'output contains 42';
 
 $out-file.unlink;
 
+# Test shared state between cells (documentation example)
+my $cell1 = Samaki::Cell.new:
+  page-name => 'test',
+  content => 'my $a = 12;',
+  cell-type => 'code',
+  name => 'test-code-1',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR;
+
+my $cell2 = Samaki::Cell.new:
+  page-name => 'test',
+  content => '$a + 1;',
+  cell-type => 'code',
+  name => 'test-code-2',
+  data-dir => $*TMPDIR,
+  wkdir => $*TMPDIR;
+
+my $page2 = Samaki::Page.new:
+  wkdir => $*TMPDIR,
+  name => 'test',
+  cells => [$cell1, $cell2];
+
+my $out-file1 = $*TMPDIR.child('test-code-output-1.txt');
+my $out1 = $out-file1.open(:w);
+$plugin.execute(:cell($cell1), :page($page2), :mode<content>, :out($out1));
+$out1.close;
+
+my $out-file2 = $*TMPDIR.child('test-code-output-2.txt');
+my $out2 = $out-file2.open(:w);
+$plugin.execute(:cell($cell2), :page($page2), :mode<content>, :out($out2));
+$out2.close;
+
+ok $out-file2.e, 'second output file was created';
+my $content2 = $out-file2.slurp;
+ok $content2.contains('13'), 'shared state works: output contains 13';
+
+$out-file1.unlink;
+$out-file2.unlink;
+
 done-testing;
