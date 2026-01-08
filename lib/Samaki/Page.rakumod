@@ -144,7 +144,7 @@ class Samaki::Page {
     self.show(:pane, :$plugins);
   }
 
-  method show(:$pane, :$plugins!) {
+  method show(:$pane!, :$plugins!) {
     my $mode = self.mode;
     my $page = self;
     if $mode eq 'raw' {
