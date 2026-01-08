@@ -86,7 +86,7 @@ method set-events {
     if $! {
         $.ui.panes[1].put: "error starting editor: $!";
     } else {
-      $page.reload(plugins => $.plugins);
+      $page.reload(plugins => $.plugins, pane => top);
       self.show-page: $page;
       $.ui.refresh: :hard;
       top.select: $line;

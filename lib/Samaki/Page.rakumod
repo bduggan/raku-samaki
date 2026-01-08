@@ -1,6 +1,7 @@
 
 use Log::Async;
 use Terminal::ANSI::OO 't';
+use Terminal::UI;
 
 use Samaki::Plugins;
 use Samaki::Cell;
@@ -136,15 +137,15 @@ class Samaki::Page {
     self.load(:$plugins);
   }
 
-  method reload(:$plugins!) {
+  method reload(:$pane!, :$plugins!) {
     $!content = Nil;
     @!cells = ();
     self.load(:$plugins);
     self.add-context;
-    self.show(:pane, :$plugins);
+    self.show(:$pane, :$plugins);
   }
 
-  method show(:$pane!, :$plugins!) {
+  method show(Terminal::UI::Pane:D :$pane!, :$plugins!) {
     my $mode = self.mode;
     my $page = self;
     if $mode eq 'raw' {
