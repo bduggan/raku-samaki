@@ -1,3 +1,12 @@
+0.0.21 2026-01-08
+  - add exit button for repls
+  - repl fix reloads
+  - improve param validation, error handling
+  - improve formatting
+  - more better docs, and add markdown pages for plugins
+  - add "out:none" for no output
+  - clear pane errors before running
+
 0.0.20 2026-01-05
   - kill repls with OS as a last resort
   - add quietly option for bash plugin
