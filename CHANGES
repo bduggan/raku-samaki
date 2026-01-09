@@ -1,3 +1,6 @@
+0.0.22 2026-01-09
+  - fix reload bug
+
 0.0.21 2026-01-08
   - add exit button for repls
   - repl fix reloads

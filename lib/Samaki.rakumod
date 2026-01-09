@@ -12,7 +12,7 @@ use Samaki::Conf;
 use Samaki::Utils;
 use Samaki::Watcher;
 
-unit class Samaki:ver<0.0.21>:api<1>:auth<zef:bduggan> does Samaki::Events;
+unit class Samaki:ver<0.0.22>:api<1>:auth<zef:bduggan> does Samaki::Events;
 
 has $.ui = Terminal::UI.new;
 my \top := my $;
