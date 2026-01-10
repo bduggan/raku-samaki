@@ -255,6 +255,10 @@ method show-dir(IO::Path $dir, :$suffix = 'samaki', :$pane = top, Bool :$header 
     }
   }
 
+  if @subdirs == @pages == @others == 0 {
+    pane.put: "0 files found.";
+  }
+
   pane.select(2);
 }
 

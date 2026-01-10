@@ -23,7 +23,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
 
     my $html-file = $data-dir.child("{$name}-chartjs.html");
 
-    my $title = html-escape($data-dir.basename ~ " : " ~ $name);
+    my $title = html-escape($data-dir.basename ~ " : " ~ $path.basename);
     my $labels-json = to-json(@labels);
     my $values-json = to-json(@values);
     my $chart-label = html-escape($value-col);

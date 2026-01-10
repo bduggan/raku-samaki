@@ -17,7 +17,7 @@ method name { $name }
 
 method description { "Run $name in a separate process" }
 
-method stream-output { True };
+has Bool $.stream-output = True;
 
 method add-env { %() }
 
@@ -98,6 +98,11 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
     my @cmd = self.build-command(:$cell);
     info "Sending input to process:\n" ~ $input-content;
     my $proc = Proc::Async.new: |@cmd, :out, :err, :w;
+    with $cell.get-conf('stream') -> $s {
+      $!stream-output = $s ne 'none';
+    } else {
+      $!stream-output = True;
+    }
 
     try {
       self.do-react-loop($proc, :$cell, :$out, input => $input-content, :$timeout);
@@ -127,11 +132,5 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
 
 method tmpfile {
   $*TMPDIR.child("/samaki-tmp-script")
-}
-
-method command( --> List) {
-  # Backward compatibility for plugins using parameterized form with cmd
-  return ($cmd, self.tmpfile) if $cmd;
-  die "Must override build-command or provide cmd parameter";
 }
 

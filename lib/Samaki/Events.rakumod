@@ -33,6 +33,16 @@ method set-events {
 
   ui.bind: 'pane', 'e' => 'edit';
 
+  ui.bind: 'pane', 'D' => 'delete-file';
+  btm.on: delete-file => -> :%meta {
+    with %meta<path> -> $path {
+      unlink $path;
+      with %meta<dir> -> $dir {
+        self.show-dir($dir, pane => btm, header => False, :highlight-samaki);
+      }
+    }
+  }
+
   ui.bind: 'v' => 'verbose-toggle';
   ui.on: verbose-toggle => {
     my $level = get-stream-log-level;
