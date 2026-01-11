@@ -95,6 +95,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                 <button id="btn-vertical" class="active">Vertical Bar</button>
                 <button id="btn-horizontal">Horizontal Bar</button>
                 <button id="btn-pie">Pie Chart</button>
+                <button id="btn-polar">Polar Area</button>
             </div>
             <div class="chart-container">
                 <canvas id="myChart"></canvas>
@@ -109,7 +110,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                 datasets: [{
                     label: '$chart-label',
                     data: $values-json,
-                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.5)',
                     borderColor: 'rgba(54, 162, 235, 1)',
                     borderWidth: 1
                 }]
@@ -120,17 +121,17 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                     myChart.destroy();
                 }
 
-                const isPie = type === 'pie';
+                const isRadial = type === 'pie' || type === 'polarArea';
 
-                // For pie charts, use multiple colors
+                // For pie and polar area charts, use multiple colors
                 const data = JSON.parse(JSON.stringify(chartData)); // deep clone
-                if (isPie) {
+                if (isRadial) {
                     const colors = [
-                        'rgba(54, 162, 235, 0.7)', 'rgba(255, 99, 132, 0.7)',
-                        'rgba(255, 206, 86, 0.7)', 'rgba(75, 192, 192, 0.7)',
-                        'rgba(153, 102, 255, 0.7)', 'rgba(255, 159, 64, 0.7)',
-                        'rgba(199, 199, 199, 0.7)', 'rgba(83, 102, 255, 0.7)',
-                        'rgba(255, 99, 255, 0.7)', 'rgba(99, 255, 132, 0.7)'
+                        'rgba(54, 162, 235, 0.5)', 'rgba(255, 99, 132, 0.5)',
+                        'rgba(255, 206, 86, 0.5)', 'rgba(75, 192, 192, 0.5)',
+                        'rgba(153, 102, 255, 0.5)', 'rgba(255, 159, 64, 0.5)',
+                        'rgba(199, 199, 199, 0.5)', 'rgba(83, 102, 255, 0.5)',
+                        'rgba(255, 99, 255, 0.5)', 'rgba(99, 255, 132, 0.5)'
                     ];
                     const colorArray = [];
                     for (let i = 0; i < data.labels.length; i++) {
@@ -146,7 +147,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                         responsive: true,
                         maintainAspectRatio: false,
                         indexAxis: indexAxis,
-                        scales: isPie ? undefined : {
+                        scales: isRadial ? undefined : {
                             y: {
                                 beginAtZero: true,
                                 ticks: {
@@ -170,7 +171,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                         plugins: {
                             legend: {
                                 display: true,
-                                position: isPie ? 'right' : 'top',
+                                position: isRadial ? 'right' : 'top',
                                 labels: {
                                     font: {
                                         family: 'ui-monospace, monospace',
@@ -199,6 +200,11 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
 
             document.getElementById('btn-pie').addEventListener('click', function() {
                 createChart('pie');
+                setActiveButton(this);
+            });
+
+            document.getElementById('btn-polar').addEventListener('click', function() {
+                createChart('polarArea');
                 setActiveButton(this);
             });
 
