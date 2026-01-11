@@ -22,53 +22,52 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
     my @values = @rows.map: { ($_{ $value-col } // 0).Numeric };
 
     my $html-file = $data-dir.child("{$name}-chart.html");
-    my $fh = open :w, $html-file;
 
     my $title = html-escape($data-dir.basename ~ " : " ~ $name);
     my $labels-json = to-json(@labels);
     my $values-json = to-json(@values);
     my $chart-label = html-escape($value-col);
 
-    $fh.print: qq:to/HTML/;
+    my $html = Q:s:to/HTML/;
     <!DOCTYPE html>
     <html>
     <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title> $title </title>
+        <title>$title </title>
         <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
         <style>
-            body \{
+            body {
                 font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
                 margin: 0;
                 padding: 20px;
                 background-color: #f8f9fa;
                 color: #2c3e50;
-            \}
-            .container \{
+            }
+            .container {
                 max-width: 1400px;
                 margin: 0 auto;
                 padding: 20px;
                 background: white;
                 border-radius: 4px;
                 box-shadow: 0 1px 2px rgba(0,0,0,0.05);
-            \}
-            h2 \{
+            }
+            h2 {
                 margin: 0 0 20px 0;
                 color: #2c3e50;
                 font-size: 18px;
                 font-weight: 500;
-            \}
-            .chart-container \{
+            }
+            .chart-container {
                 position: relative;
                 height: 70vh;
                 width: 100%;
-            \}
+            }
         </style>
     </head>
     <body>
         <div class="container">
-            <h2> $title </h2>
+            <h2>$title </h2>
             <div class="chart-container">
                 <canvas id="myChart"></canvas>
             </div>
@@ -76,61 +75,61 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         <script>
             const ctx = document.getElementById('myChart');
 
-            new Chart(ctx, \{
+            new Chart(ctx, {
                 type: 'bar',
-                data: \{
+                data: {
                     labels: $labels-json,
-                    datasets: [\{
+                    datasets: [{
                         label: '$chart-label',
                         data: $values-json,
                         backgroundColor: 'rgba(54, 162, 235, 0.7)',
                         borderColor: 'rgba(54, 162, 235, 1)',
                         borderWidth: 1
-                    \}]
-                \},
-                options: \{
+                    }]
+                },
+                options: {
                     responsive: true,
                     maintainAspectRatio: false,
-                    scales: \{
-                        y: \{
+                    scales: {
+                        y: {
                             beginAtZero: true,
-                            ticks: \{
-                                font: \{
+                            ticks: {
+                                font: {
                                     family: 'ui-monospace, monospace',
                                     size: 11
-                                \}
-                            \}
-                        \},
-                        x: \{
-                            ticks: \{
-                                font: \{
+                                }
+                            }
+                        },
+                        x: {
+                            ticks: {
+                                font: {
                                     family: 'ui-monospace, monospace',
                                     size: 11
-                                \},
+                                },
                                 maxRotation: 45,
                                 minRotation: 45
-                            \}
-                        \}
-                    \},
-                    plugins: \{
-                        legend: \{
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
                             display: true,
-                            labels: \{
-                                font: \{
+                            labels: {
+                                font: {
                                     family: 'ui-monospace, monospace',
                                     size: 12
-                                \}
-                            \}
-                        \}
-                    \}
-                \}
-            \});
+                                }
+                            }
+                        }
+                    }
+                }
+            });
         </script>
     </body>
     </html>
     HTML
 
-    $fh.close;
+    spurt $html-file, $html;
     shell-open $html-file;
 }
 
