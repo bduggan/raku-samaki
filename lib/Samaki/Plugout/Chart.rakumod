@@ -58,6 +58,29 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                 font-size: 18px;
                 font-weight: 500;
             }
+            .controls {
+                margin-bottom: 15px;
+                display: flex;
+                gap: 8px;
+            }
+            .controls button {
+                padding: 6px 12px;
+                font-family: ui-monospace, monospace;
+                font-size: 12px;
+                background: #f1f5f9;
+                border: 1px solid #e2e8f0;
+                border-radius: 3px;
+                cursor: pointer;
+                color: #2c3e50;
+            }
+            .controls button:hover {
+                background: #e2e8f0;
+            }
+            .controls button.active {
+                background: #3b82f6;
+                color: white;
+                border-color: #3b82f6;
+            }
             .chart-container {
                 position: relative;
                 height: 70vh;
@@ -68,62 +91,123 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
     <body>
         <div class="container">
             <h2>$title </h2>
+            <div class="controls">
+                <button id="btn-vertical" class="active">Vertical Bar</button>
+                <button id="btn-horizontal">Horizontal Bar</button>
+                <button id="btn-pie">Pie Chart</button>
+            </div>
             <div class="chart-container">
                 <canvas id="myChart"></canvas>
             </div>
         </div>
         <script>
             const ctx = document.getElementById('myChart');
+            let myChart;
 
-            new Chart(ctx, {
-                type: 'bar',
-                data: {
-                    labels: $labels-json,
-                    datasets: [{
-                        label: '$chart-label',
-                        data: $values-json,
-                        backgroundColor: 'rgba(54, 162, 235, 0.7)',
-                        borderColor: 'rgba(54, 162, 235, 1)',
-                        borderWidth: 1
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: {
-                                font: {
-                                    family: 'ui-monospace, monospace',
-                                    size: 11
+            const chartData = {
+                labels: $labels-json,
+                datasets: [{
+                    label: '$chart-label',
+                    data: $values-json,
+                    backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                    borderColor: 'rgba(54, 162, 235, 1)',
+                    borderWidth: 1
+                }]
+            };
+
+            function createChart(type, indexAxis = 'x') {
+                if (myChart) {
+                    myChart.destroy();
+                }
+
+                const isPie = type === 'pie';
+
+                // For pie charts, use multiple colors
+                const data = JSON.parse(JSON.stringify(chartData)); // deep clone
+                if (isPie) {
+                    const colors = [
+                        'rgba(54, 162, 235, 0.7)', 'rgba(255, 99, 132, 0.7)',
+                        'rgba(255, 206, 86, 0.7)', 'rgba(75, 192, 192, 0.7)',
+                        'rgba(153, 102, 255, 0.7)', 'rgba(255, 159, 64, 0.7)',
+                        'rgba(199, 199, 199, 0.7)', 'rgba(83, 102, 255, 0.7)',
+                        'rgba(255, 99, 255, 0.7)', 'rgba(99, 255, 132, 0.7)'
+                    ];
+                    const colorArray = [];
+                    for (let i = 0; i < data.labels.length; i++) {
+                        colorArray.push(colors[i % colors.length]);
+                    }
+                    data.datasets[0].backgroundColor = colorArray;
+                }
+
+                myChart = new Chart(ctx, {
+                    type: type,
+                    data: data,
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        indexAxis: indexAxis,
+                        scales: isPie ? undefined : {
+                            y: {
+                                beginAtZero: true,
+                                ticks: {
+                                    font: {
+                                        family: 'ui-monospace, monospace',
+                                        size: 11
+                                    }
+                                }
+                            },
+                            x: {
+                                ticks: {
+                                    font: {
+                                        family: 'ui-monospace, monospace',
+                                        size: 11
+                                    },
+                                    maxRotation: indexAxis === 'x' ? 45 : 0,
+                                    minRotation: indexAxis === 'x' ? 45 : 0
                                 }
                             }
                         },
-                        x: {
-                            ticks: {
-                                font: {
-                                    family: 'ui-monospace, monospace',
-                                    size: 11
-                                },
-                                maxRotation: 45,
-                                minRotation: 45
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            display: true,
-                            labels: {
-                                font: {
-                                    family: 'ui-monospace, monospace',
-                                    size: 12
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: isPie ? 'right' : 'top',
+                                labels: {
+                                    font: {
+                                        family: 'ui-monospace, monospace',
+                                        size: 12
+                                    }
                                 }
                             }
                         }
                     }
-                }
+                });
+            }
+
+            // Initialize with vertical bar chart
+            createChart('bar', 'x');
+
+            // Button event listeners
+            document.getElementById('btn-vertical').addEventListener('click', function() {
+                createChart('bar', 'x');
+                setActiveButton(this);
             });
+
+            document.getElementById('btn-horizontal').addEventListener('click', function() {
+                createChart('bar', 'y');
+                setActiveButton(this);
+            });
+
+            document.getElementById('btn-pie').addEventListener('click', function() {
+                createChart('pie');
+                setActiveButton(this);
+            });
+
+            function setActiveButton(activeBtn) {
+                document.querySelectorAll('.controls button').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                activeBtn.classList.add('active');
+            }
         </script>
     </body>
     </html>
