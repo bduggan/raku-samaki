@@ -383,8 +383,12 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                 bubbles.append('text')
                     .attr('text-anchor', 'middle')
                     .attr('dy', '.3em')
-                    .style('font-size', '10px')
-                    .style('fill', 'white')
+                    .style('font-size', '11px')
+                    .style('font-weight', '600')
+                    .style('fill', '#2c3e50')
+                    .style('stroke', 'white')
+                    .style('stroke-width', '3px')
+                    .style('paint-order', 'stroke')
                     .style('pointer-events', 'none')
                     .text(d => {
                         const r = radiusScale(d.value);
