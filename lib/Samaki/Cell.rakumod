@@ -4,6 +4,7 @@ use Terminal::ANSI::OO 't';
 use Log::Async;
 use Duck::CSV;
 use Duckie;
+use JSON::Fast;
 
 use Samaki::Conf;
 use Samaki::Plugins;
@@ -149,10 +150,20 @@ class Samaki::Cell {
   }
 
   method res {
-    my $file = self.output-file;
-    my $db = Duckie.new;
-    my $res = $db.query: "select * from read_csv('$file')";
-    $res;
+    given self.ext {
+      when 'csv' {
+        my $file = self.output-file;
+        my $db = Duckie.new;
+        my $res = $db.query: "select * from read_csv('$file')";
+        return $res;
+      }
+      when 'json' {
+        return from-json slurp self.output-file;
+      }
+      default {
+        return self.output-file.slurp;
+      }
+    }
   }
 
   method execute(:$mode = 'eval', :$page!, :$pane!, :$action) {

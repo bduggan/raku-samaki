@@ -33,6 +33,7 @@ class Samaki::Page {
     multi cell(Int $i) { cells($i); }
     multi cells(Int $i) { self.get-cell($i); }
     multi cells(Str $name) { self.get-cell($name); }
+    sub current-page() { self }
 
     my $context = context;
     $!cu = CodeUnit.new(:$context,:keep-warnings);
@@ -299,8 +300,7 @@ class Samaki::Page {
       my $data-dir = self.data-dir;
       my $name = $cell-name // "cell-{+@!cells}";
       if $name ∈ $names {
-        $!errors = "duplicate cell name: $name";
-        fail "duplicate cell name: $name" 
+        @lines.unshift: "--▶ Error: duplicate cell name '{ $name }' --\n";
       }
       $names{$name} = True;
       @!cells.push: Samaki::Cell.new:
