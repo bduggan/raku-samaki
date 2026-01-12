@@ -2,9 +2,9 @@ use Samaki::Plugout;
 use Samaki::Utils;
 use Duck::CSV;
 
-unit class Samaki::Plugout::D3Chart does Samaki::Plugout;
+unit class Samaki::Plugout::D3 does Samaki::Plugout;
 
-has $.name = 'd3-chart';
+has $.name = 'd3';
 has $.description = 'Display data using D3.js visualizations';
 has $.clear-before = False;
 
@@ -26,7 +26,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         };
     }
 
-    my $html-file = $data-dir.child("{$name}-d3chart.html");
+    my $html-file = $data-dir.child("{$name}-d3.html");
 
     my $title = html-escape($data-dir.basename ~ " : " ~ $name);
     my $data-json = to-json(@data);

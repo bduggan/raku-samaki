@@ -2,9 +2,9 @@ use Samaki::Plugout;
 use Samaki::Utils;
 use Duck::CSV;
 
-unit class Samaki::Plugout::Chart does Samaki::Plugout;
+unit class Samaki::Plugout::ChartJS does Samaki::Plugout;
 
-has $.name = 'chart';
+has $.name = 'chartjs';
 has $.description = 'Display data as a bar chart using Chart.js';
 has $.clear-before = False;
 
@@ -21,7 +21,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
     my @labels = @rows.map: { $_{ $label-col } // '' };
     my @values = @rows.map: { ($_{ $value-col } // 0).Numeric };
 
-    my $html-file = $data-dir.child("{$name}-chart.html");
+    my $html-file = $data-dir.child("{$name}-chartjs.html");
 
     my $title = html-escape($data-dir.basename ~ " : " ~ $name);
     my $labels-json = to-json(@labels);
