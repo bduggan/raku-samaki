@@ -635,6 +635,8 @@ The following plugouts are included with samaki:
 =begin table
 Plugout                 | Description
 ========================|============================================
+Chart                   | Display CSV as interactive charts in browser (via Chart.js)
+D3Chart                 | Display CSV as D3.js visualizations in browser
 DataTable               | Display CSV in browser with sorting/pagination/search
 Duckview                | Show CSV summary in bottom pane (via duckdb)
 Geojson                 | Display GeoJSON on map in browser (via leaflet)
