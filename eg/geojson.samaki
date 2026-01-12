@@ -1,5 +1,4 @@
--- bash
-| ext: geojson
+-- bash:out.geojson
 curl -s \
 'https://nominatim.openstreetmap.org/search?q=Golden%20Gate%20Park%2C%20San%20Francisco&format=geojson&polygon_geojson=1&limit=1'
 
