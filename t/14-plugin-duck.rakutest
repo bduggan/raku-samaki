@@ -36,7 +36,8 @@ if $duck-available {
     name => 'test',
     cells => [$cell];
 
-  my $out-file = $*TMPDIR.child('test-duck-output.csv');
+  my $out-file = $cell.output-file;
+  $out-file.parent.mkdir unless $out-file.parent.e;
   my $out = $out-file.open(:w);
   $plugin.execute(:$cell, :$page, :mode<content>, :$out);
 
@@ -45,9 +46,13 @@ if $duck-available {
   ok $content.contains('greeting,noun'), 'output contains CSV headers';
   ok $content.contains('hello,world'), 'output contains data';
 
+  ok $plugin.output, 'plugin output is set';
+  ok $plugin.output.^name eq 'Array', 'plugin output is an array';
+  ok $plugin.output.elems > 0, 'plugin output has elements';
+
   $out-file.unlink;
 } else {
-  skip 'duckdb not available', 3;
+  skip 'duckdb not available', 6;
 }
 
 done-testing;

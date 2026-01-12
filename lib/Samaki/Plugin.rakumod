@@ -35,6 +35,9 @@ method write-output { True }
 has $.output; # Str or array
 has Channel $.output-stream = Channel.new;
 
+method set-output($value) { $!output = $value }
+method clear-output { $!output = Nil }
+
 multi method stream(:$txt!, :$level!, :$meta) {
   self.stream: %( :$txt, :$meta, :$level )
 }
