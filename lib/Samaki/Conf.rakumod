@@ -1,7 +1,6 @@
 unit class Samaki::Conf;
 use Log::Async;
 use Color;
-use Color::Scheme;
 use Terminal::ANSI::OO 't';
 
 has $.file is required;
@@ -17,11 +16,11 @@ my $bright = $cyan;
 my $dim-cyan = Color.new($cyan).darken(20);
 
 my $base = Color.new($mid);
-my @palette = color-scheme($base, 'analogous');
 
 my $red = Color.new("#fc5a50");
 my $yellow = Color.new('#ffff00');
 my $grey = Color.new('#888888');
+my $tea-green = Color.new('#CDE7B0');
 
 our %COLORS is export = (
   prompt => $mid,
@@ -44,7 +43,7 @@ our %COLORS is export = (
   input => $bright,
   text => $white,
   line => $dark,
-  interp => $yellow,
+  interp => Color.new("#BDD5EA"),
 ).map: { .key => .value.gist };
 
 sub col($name) is export {

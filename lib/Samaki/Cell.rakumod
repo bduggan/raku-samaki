@@ -87,14 +87,14 @@ class Samaki::Cell {
       for $.content.lines {
         my @pieces = $_.split( / <phrase> | <alt> /, :v);
         my @out;
-        @out.push: t.text-reset => '';
+        @out.push: col('text') => '';
         for @pieces -> $p {
           if $p.isa(Str) {
             @out.push($p);
           } else {
             my $eval-str = ($p<phrase> // $p<alt>).Str;
             @out.push: t.color(%COLORS<interp>) => "〈" ~ $eval-str ~ "〉";
-            @out.push: t.text-reset => '';
+            @out.push: col('text') => '';
           }
         }
         @!formatted-content-lines.push(@out);
@@ -112,11 +112,12 @@ class Samaki::Cell {
     for $.content.lines -> $content-line {
       my $out;
       my @formatted;
+      @formatted.push: col('text') => '';
       my @pieces = $content-line.split( / <phrase> | <alt> /, :v);
       for @pieces -> $p {
         if $p.isa(Str) {
           $out ~= $p;
-          @formatted.push(t.text-reset => $p);
+          @formatted.push($p);
           next;
         }
         my $eval-str = ($p<phrase> // $p<alt>).Str;
@@ -126,6 +127,7 @@ class Samaki::Cell {
         }
         $out ~= ( $res // "");
         @formatted.push: t.color(%COLORS<interp>) => ($res // "");
+        @formatted.push: t.color(%COLORS<text>) => '';
         with $page.cu.exception {
           $out ~= " ▶$p◀ ";
           @formatted.push(t.color(%COLORS<error>) => " ▶" ~ $eval-str ~ "◀ ");
@@ -134,7 +136,6 @@ class Samaki::Cell {
         }
       }
       $out ~= "\n";
-      @formatted.push(t.text-reset => "");
       @!formatted-content-lines.push(@formatted);
       $all-content ~= $out;
     }
