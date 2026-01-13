@@ -111,9 +111,11 @@ class Samaki::Cell {
     $out;
   }
 
-  method cell-dir {
+  method cell-dir(Bool :$create = False) {
     my $subdir = $.wkdir.child($.page-name);
-    $subdir.mkdir unless $subdir.d;
+    if $create && !$subdir.d {
+      $subdir.mkdir;
+    }
     return $subdir;
   }
 
@@ -173,7 +175,7 @@ class Samaki::Cell {
     $pane.put: [ col('info') => "Executing cell ", col('cell-name') => $.name, col('info') => " of type ", col('cell-type') => $.cell-type ];
     return without $!plugin;
     info "Executing cell of type { $.cell-type }";
-    indir self.cell-dir, {
+    indir self.cell-dir(:create), {
       info "In directory {self.cell-dir}";
       try {
         my IO::Handle $out;
