@@ -1,3 +1,11 @@
+0.0.23 2026-01-13
+  - process plugin refactor: args,use-stdin, stream:none
+  - D to delete files
+  - catch kill if it fails
+  - chart.js, d3 plugouts
+  - json output format, add current-page to context
+  - remove fatal error for duplicate cell names
+
 0.0.22 2026-01-09
   - fix reload bug
 
