@@ -112,6 +112,9 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
       .column-selector select:hover {
         border-color: #cbd5e1;
       }
+      .column-selector select[multiple] {
+        min-height: 60px;
+      }
       .chart-container {
         position: relative;
         height: 70vh;
@@ -132,8 +135,8 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
           <select id="label-column"></select>
         </div>
         <div class="column-selector">
-          <label>Value:</label>
-          <select id="value-column"></select>
+          <label>Values:</label>
+          <select id="value-column" multiple></select>
         </div>
       </div>
       <div class="chart-container">
@@ -168,12 +171,15 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         const option2 = document.createElement('option');
         option2.value = col;
         option2.textContent = col;
+        // Select the default value column by default
+        if (col === '$default-value') {
+          option2.selected = true;
+        }
         valueSelect.appendChild(option2);
       });
 
-      // Set default selections
+      // Set default label selection
       labelSelect.value = '$default-label';
-      valueSelect.value = '$default-value';
 
       console.log('=== ChartJS Debug ===');
       console.log('All Data:', allData);
@@ -184,36 +190,59 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
 
       function getChartData() {
         const labelCol = labelSelect.value;
-        const valueCol = valueSelect.value;
+        const selectedOptions = Array.from(valueSelect.selectedOptions);
+        const valueCols = selectedOptions.map(opt => opt.value);
 
-        console.log('Getting chart data for label="' + labelCol + '" value="' + valueCol + '"');
+        if (valueCols.length === 0) {
+          console.warn('No value columns selected');
+          return { labels: [], datasets: [] };
+        }
+
+        console.log('Getting chart data for label="' + labelCol + '" values=' + JSON.stringify(valueCols));
 
         const labels = allData.map(row => row[labelCol] || '');
-        const values = allData.map(row => {
-          const val = row[valueCol] || '0';
-          // Try to parse as number, prefer integer if no decimal
-          let numVal = Number(val);
-          if (isNaN(numVal)) {
-            numVal = 0;
-          } else if (Number.isInteger(numVal)) {
-            numVal = parseInt(val, 10);
-          }
-          console.log('  Row value: "' + val + '" -> parsed: ' + numVal + ' (type: ' + typeof numVal + ')');
-          return numVal;
+
+        // Color palette for multiple datasets
+        const colorPalette = [
+          { bg: 'rgba(54, 162, 235, 0.5)', border: 'rgba(54, 162, 235, 1)' },
+          { bg: 'rgba(255, 99, 132, 0.5)', border: 'rgba(255, 99, 132, 1)' },
+          { bg: 'rgba(75, 192, 192, 0.5)', border: 'rgba(75, 192, 192, 1)' },
+          { bg: 'rgba(255, 206, 86, 0.5)', border: 'rgba(255, 206, 86, 1)' },
+          { bg: 'rgba(153, 102, 255, 0.5)', border: 'rgba(153, 102, 255, 1)' },
+          { bg: 'rgba(255, 159, 64, 0.5)', border: 'rgba(255, 159, 64, 1)' },
+          { bg: 'rgba(199, 199, 199, 0.5)', border: 'rgba(199, 199, 199, 1)' },
+          { bg: 'rgba(83, 102, 255, 0.5)', border: 'rgba(83, 102, 255, 1)' }
+        ];
+
+        // Create a dataset for each selected value column
+        const datasets = valueCols.map((valueCol, index) => {
+          const values = allData.map(row => {
+            const val = row[valueCol] || '0';
+            let numVal = Number(val);
+            if (isNaN(numVal)) {
+              numVal = 0;
+            } else if (Number.isInteger(numVal)) {
+              numVal = parseInt(val, 10);
+            }
+            return numVal;
+          });
+
+          const colors = colorPalette[index % colorPalette.length];
+          return {
+            label: valueCol,
+            data: values,
+            backgroundColor: colors.bg,
+            borderColor: colors.border,
+            borderWidth: 1
+          };
         });
 
         console.log('Labels:', labels);
-        console.log('Values:', values);
+        console.log('Datasets:', datasets.length);
 
         return {
           labels: labels,
-          datasets: [{
-            label: valueCol,
-            data: values,
-            backgroundColor: 'rgba(54, 162, 235, 0.5)',
-            borderColor: 'rgba(54, 162, 235, 1)',
-            borderWidth: 1
-          }]
+          datasets: datasets
         };
       }
 
@@ -230,8 +259,8 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         // Get fresh data based on selected columns
         const data = getChartData();
 
-        // For pie and polar area charts, use multiple colors
-        if (isRadial) {
+        // For pie and polar area charts with a single dataset, use multiple colors per slice
+        if (isRadial && data.datasets.length === 1) {
           const colors = [
             'rgba(54, 162, 235, 0.5)', 'rgba(255, 99, 132, 0.5)',
             'rgba(255, 206, 86, 0.5)', 'rgba(75, 192, 192, 0.5)',
