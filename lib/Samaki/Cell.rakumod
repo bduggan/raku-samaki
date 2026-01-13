@@ -101,7 +101,6 @@ class Samaki::Cell {
       }
       return $.content 
     }
-    @!formatted-content-lines = $.content.lines;
 
     my \page = $page;
 
@@ -109,29 +108,38 @@ class Samaki::Cell {
       page.get-cell($.index - 1)
     }
 
-    my @pieces = $.content.split( / <phrase> | <alt> /, :v);
-    info "Splitting { $.content }";
-    info @pieces.raku;
-    my $out;
-    for @pieces -> $p {
-      if $p.isa(Str) {
-        $out ~= $p;
-        next;
+    my $all-content;
+    for $.content.lines -> $content-line {
+      my $out;
+      my @formatted;
+      my @pieces = $content-line.split( / <phrase> | <alt> /, :v);
+      for @pieces -> $p {
+        if $p.isa(Str) {
+          $out ~= $p;
+          @formatted.push(t.text-reset => $p);
+          next;
+        }
+        my $eval-str = ($p<phrase> // $p<alt>).Str;
+        trace "calling EVAL with $eval-str";
+        my $res = do {
+          indir self.data-dir, { $page.cu.eval($eval-str) }
+        }
+        $out ~= ( $res // "");
+        @formatted.push: t.color(%COLORS<interp>) => ($res // "");
+        with $page.cu.exception {
+          $out ~= " ▶$p◀ ";
+          @formatted.push(t.color(%COLORS<error>) => " ▶" ~ $eval-str ~ "◀ ");
+          $!errors ~= "$p │ Sorry!\n " ~ .message.chomp ~ "\n";
+          $page.cu.exception = Nil;
+        }
       }
-      my $eval-str = ($p<phrase> // $p<alt>).Str;
-      trace "calling EVAL with $eval-str";
-      my $res = do {
-        indir self.data-dir, { $page.cu.eval($eval-str) }
-      }
-      $out ~= ( $res // "");
-      with $page.cu.exception {
-        $out ~= " ▶$p◀ ";
-        $!errors ~= "$p │ Sorry!\n " ~ .message.chomp ~ "\n";
-        $page.cu.exception = Nil;
-      }
+      $out ~= "\n";
+      @formatted.push(t.text-reset => "");
+      @!formatted-content-lines.push(@formatted);
+      $all-content ~= $out;
     }
-    $!last-content = $out;
-    $out;
+    $!last-content = $all-content;
+    $all-content;
   }
 
   method cell-dir(Bool :$create = False) {
