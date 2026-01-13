@@ -94,29 +94,29 @@ class Samaki::Page {
   }
 
   method show-auto-cell(:$cell!, :$pane!, :$mode!, :$leadchar!, :%meta!) {
-    $pane.put: [ col('cell-type') => ' ╌╌'.indent(4) ], :%meta;
-    self.show-cell-conf(:$cell, :$pane, :$leadchar, :%meta);
-    self.show-cell-body(:$cell, :$pane, :$mode, :$leadchar, :%meta);
+    $pane.put: [ col('interp') => ' ╌╌'.indent(4) ], :%meta;
+    self.show-cell-conf(:$cell, :$pane, :$leadchar, :%meta, color => 'interp');
+    self.show-cell-body(:$cell, :$pane, :$mode, :$leadchar, :%meta, color => 'interp');
   }
 
-  method show-cell-conf(:$cell!, :$pane!, :$leadchar!, :%meta!) {
+  method show-cell-conf(:$cell!, :$pane!, :$leadchar!, :%meta!, :$color = 'cell-type') {
     for $cell.conf.list {
       next if .key.starts-with('_');
-      $pane.put([ col('cell-type') => "$leadchar ".indent(4) ~ "$_" ], :%meta) 
+      $pane.put([ col($color) => "$leadchar ".indent(4) ~ "$_" ], :%meta) 
     }
   }
 
-  method show-cell-body(:$cell!, :$pane!, :$mode!, :$leadchar!, :%meta!) {
+  method show-cell-body(:$cell!, :$pane!, :$mode!, :$leadchar!, :%meta!, :$color = 'cell-type') {
     try {
        CATCH { default { $pane.put: [ t.red => "Error displaying cell: $_" ], :%meta } }
        my $*page = self;
        my $out = $cell.get-content(:$mode, page => self);
        if $cell.errors {
-         $pane.put([ col('cell-type') => "$leadchar ".indent(4), col('error') => "▶ $_" ], :%meta)
+         $pane.put([ col($color) => "$leadchar ".indent(4), col('error') => "▶ $_" ], :%meta)
                for $cell.errors.lines;
        }
        for $cell.formatted-content-lines.kv -> $n, $line {
-         $pane.put: [ col('line') => $n.fmt('%3d '), col('cell-type') => ($n == $out.lines.elems - 1 ?? '└ ' !! "$leadchar "), |$line ], :%meta;
+         $pane.put: [ col('line') => $n.fmt('%3d '), col($color) => ($n == $out.lines.elems - 1 ?? '└ ' !! "$leadchar "), |$line ], :%meta;
        }
        #for $out.lines.kv -> $n, $txt {
        #  my $line = $txt;
