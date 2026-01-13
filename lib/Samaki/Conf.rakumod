@@ -20,7 +20,7 @@ my $base = Color.new($mid);
 my $red = Color.new("#fc5a50");
 my $yellow = Color.new('#ffff00');
 my $grey = Color.new('#888888');
-my $tea-green = Color.new('#CDE7B0');
+my $orange = Color.new('#ff9900');
 
 our %COLORS is export = (
   prompt => $mid,
@@ -43,7 +43,7 @@ our %COLORS is export = (
   input => $bright,
   text => $white,
   line => $dark,
-  interp => Color.new("#BDD5EA"),
+  interp => $orange,
 ).map: { .key => .value.gist };
 
 sub col($name) is export {
