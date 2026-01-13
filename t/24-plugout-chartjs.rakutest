@@ -1,0 +1,28 @@
+use Test;
+use Samaki::Plugout::ChartJS;
+use Duckie;
+
+my $plugout = Samaki::Plugout::ChartJS.new;
+
+# Minimal test: text name column, integer count column, float price, id column, status text
+my $query = q{SELECT * FROM (VALUES
+  ('baked', 101, 8, 'Margherita', 12.99),
+  ('baked', 102, 12, 'Pepperoni', 14.99)
+) AS t(status, pizza_id, sold, pizza_name, price)};
+
+my $res = Duckie.new.query($query);
+my @rows = $res.rows;
+my @types = $res.column-types;
+my @cols = $res.column-names;
+
+my %result = $plugout.detect-columns(@cols, @rows, :column-types(@types));
+
+is %result<label>, 'pizza_name', 'text column selected as label';
+is %result<value>, 'sold', 'integer column selected as value';
+
+my @numeric = @(%result<numeric>);
+ok 'sold' ∈ @numeric, 'sold is numeric';
+ok 'status' ∉ @numeric, 'status not numeric';
+ok 'pizza_name' ∉ @numeric, 'pizza_name not numeric';
+
+done-testing;
