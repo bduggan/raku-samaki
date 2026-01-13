@@ -39,6 +39,10 @@ class Samaki::Cell {
     $!plugin = Samaki::Plugin::Auto.new if $!cell-type eq 'auto';
   }
 
+  method is-auto {
+    return $.cell-type eq 'auto';
+  }
+
   method Str {
     self.content.trim;
   }
@@ -82,19 +86,20 @@ class Samaki::Cell {
 
     @!formatted-content-lines = [];
 
+    my $text-color = self.is-auto ?? 'interp' !! 'text';
     unless $mode eq 'eval' {
       # @!formatted-content-lines should contain content but with highlgihting for interpolated parts
       for $.content.lines {
         my @pieces = $_.split( / <phrase> | <alt> /, :v);
         my @out;
-        @out.push: col('text') => '';
+        @out.push: col($text-color) => '';
         for @pieces -> $p {
           if $p.isa(Str) {
             @out.push($p);
           } else {
             my $eval-str = ($p<phrase> // $p<alt>).Str;
             @out.push: t.color(%COLORS<interp>) => "〈" ~ $eval-str ~ "〉";
-            @out.push: col('text') => '';
+            @out.push: col($text-color) => '';
           }
         }
         @!formatted-content-lines.push(@out);
@@ -112,7 +117,7 @@ class Samaki::Cell {
     for $.content.lines -> $content-line {
       my $out;
       my @formatted;
-      @formatted.push: col('text') => '';
+      @formatted.push: col($text-color) => '';
       my @pieces = $content-line.split( / <phrase> | <alt> /, :v);
       for @pieces -> $p {
         if $p.isa(Str) {

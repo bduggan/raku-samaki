@@ -1,0 +1,8 @@
+-- duck
+select 1 as one;
+
+--
+my $a = 2;
+
+-- duck
+select 〈 12 〉 as two;
