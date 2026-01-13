@@ -7,6 +7,8 @@ use Log::Async;
 unit role Samaki::Plugin::Process[
   :$name="unnamed",
   :$cmd = Nil,
+  :$args = [],
+  Bool :$use-stdin = False
 ] does Samaki::Plugin;
 
 has $.start-time;
@@ -21,11 +23,14 @@ method add-env { %() }
 
 method wrap { 'word' }
 
-method use-stdin { False }
+method use-stdin { $use-stdin }
 
 method stream-stdout-to-pane { True }
 
 method build-command(Samaki::Cell :$cell) {
+  if $cmd && $args.elems {
+    return ($cmd, |$args);
+  }
   return ($cmd, self.tmpfile) if $cmd;
   die "Must override build-command or provide cmd parameter";
 }
@@ -107,7 +112,9 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
         return;
       }
     }
-    self.set-output(self.output-duckie($cell.output-file));
+    if self.output-ext eq 'csv' {
+      self.set-output(self.output-duckie($cell.output-file));
+    }
   } else {
     # Temp file-based execution (default)
     my @cmd = self.build-command(:$cell);
