@@ -191,6 +191,7 @@ class Samaki::Cell {
         }
         indir self.data-dir, {
           info "running plugin " ~ $.plugin.^name;
+          $.plugin.clear-output;
           $.plugin.execute: cell => self, :$mode, :$page, :$out, :$pane, :$action;
         }
         CATCH {
