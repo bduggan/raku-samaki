@@ -17,27 +17,6 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
 
 my regex page { <[a..zA..Z0..9]>+ }
 
-method line-meta($text, :$cell) {
-  if $text ~~ /'[link:' <page> ']'/ {
-    return %( action => 'load_page', page_name => ~$<page>, wkdir => $cell.wkdir );
-  }
-  return %();
-}
-
-method line-format(Str $line) {
-  return $line unless $line ~~ /'[link:' <page> ']'/;
-  my @pieces = $line.split: / '[link:' <page> \] /, :v;
-  my @out = @pieces.map: {
-    when Match {
-      t.color(%COLORS<title>) => "[〜 $<page> 〜]"
-    }
-    default {
-      t.color("#ffffff") => $_
-    }
-  }
-  @out;
-}
-
 =begin pod
 
 =head1 NAME

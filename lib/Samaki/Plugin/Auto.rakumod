@@ -12,9 +12,5 @@ method select-action { }
 method execute(:$cell,:$mode,:$page) {
 }
 
-method line-format($line) {
-  $line
-}
-
 method shutdown { }
 

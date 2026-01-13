@@ -212,18 +212,7 @@ class Samaki::Cell {
     $!res = $!plugin.res;
   }
 
-  #| used when writing out content
-  method line-meta(Str $line) {
-    return %() unless $!plugin;
-    return %() if self.cell-type eq 'auto';
-    $!plugin.line-meta($line, cell => self);
-  }
 
-  #| used to format content
-  method line-format(Str $line) {
-    return $line unless $!plugin;
-    $!plugin.line-format($line, cell => self);
-  }
 }
 
 

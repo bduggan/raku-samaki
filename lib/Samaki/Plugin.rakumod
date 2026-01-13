@@ -70,14 +70,6 @@ method shutdown {
 has Str $.errors is rw;
 has $.res;
 
-method line-meta(Str $line) {
-  %();
-}
-
-method line-format(Str $line) {
-  $line;
-}
- 
 method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane, Str :$action) {
   ... 
 }
