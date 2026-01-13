@@ -27,9 +27,13 @@ class Samaki::Cell {
   has $.display-line is rw; #= line number in displayed pane where cell starts
   has $.timeout = 60; #= default execution timeout in seconds
   has $.plugin handles <wrap stream-output output-stream output-ext clear-stream-before select-action write-output>;
+  has @.formatted-content-lines;
 
   has $!ext;
   has @.conf;
+
+  my regex phrase { '〈' <( <-[〉]>* )> '〉' }
+  my regex alt { '<<<' <( <( .*? )> )> '>>>' }
 
   method TWEAK {
     $!plugin = Samaki::Plugin::Auto.new if $!cell-type eq 'auto';
@@ -75,16 +79,35 @@ class Samaki::Cell {
   }
 
   method get-content(Str :$mode = 'eval', :$page!) {
-    return $.content unless $mode eq 'eval';
+
+    @!formatted-content-lines = [];
+
+    unless $mode eq 'eval' {
+      # @!formatted-content-lines should contain content but with highlgihting for interpolated parts
+      for $.content.lines {
+        my @pieces = $_.split( / <phrase> | <alt> /, :v);
+        my @out;
+        @out.push: t.text-reset => '';
+        for @pieces -> $p {
+          if $p.isa(Str) {
+            @out.push($p);
+          } else {
+            my $eval-str = ($p<phrase> // $p<alt>).Str;
+            @out.push: t.color(%COLORS<interp>) => "〈" ~ $eval-str ~ "〉";
+            @out.push: t.text-reset => '';
+          }
+        }
+        @!formatted-content-lines.push(@out);
+      }
+      return $.content 
+    }
+    @!formatted-content-lines = $.content.lines;
 
     my \page = $page;
 
     sub prev {
       page.get-cell($.index - 1)
     }
-
-    my regex phrase { '〈' <( <-[〉]>* )> '〉' }
-    my regex alt { '<<<' <( <( .*? )> )> '>>>' }
 
     my @pieces = $.content.split( / <phrase> | <alt> /, :v);
     info "Splitting { $.content }";

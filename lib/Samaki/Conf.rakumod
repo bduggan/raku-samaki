@@ -44,6 +44,7 @@ our %COLORS is export = (
   input => $bright,
   text => $white,
   line => $dark,
+  interp => $yellow,
 ).map: { .key => .value.gist };
 
 sub col($name) is export {

@@ -115,11 +115,14 @@ class Samaki::Page {
          $pane.put([ col('cell-type') => "$leadchar ".indent(4), col('error') => "▶ $_" ], :%meta)
                for $cell.errors.lines;
        }
-       for $out.lines.kv -> $n, $txt {
-         my $line = $txt;
-         my Pair $l = ($line.isa(Pair) ?? $line !! col('text') => $line);
-         $pane.put: [ col('line') => $n.fmt('%3d '), col('cell-type') => ($n == $out.lines.elems - 1 ?? '└ ' !! "$leadchar "), $l ];
+       for $cell.formatted-content-lines.kv -> $n, $line {
+         $pane.put: [ col('line') => $n.fmt('%3d '), col('cell-type') => ($n == $out.lines.elems - 1 ?? '└ ' !! "$leadchar "), |$line ], :%meta;
        }
+       #for $out.lines.kv -> $n, $txt {
+       #  my $line = $txt;
+       #my Pair $l = ($line.isa(Pair) ?? $line !! col('text') => $line);
+       #$pane.put: [ col('line') => $n.fmt('%3d '), col('cell-type') => ($n == $out.lines.elems - 1 ?? '└ ' !! "$leadchar "), $l ];
+       #}
     }
   }
 
