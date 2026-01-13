@@ -5,7 +5,7 @@ class TestProcess does Samaki::Plugin::Process[name => 'test', cmd => 'echo'] { 
 
 my $plugin = TestProcess.new;
 
-my @cmd = $plugin.command;
+my @cmd = $plugin.build-command;
 ok @cmd.elems > 0, 'command returns a list';
 
 done-testing;
