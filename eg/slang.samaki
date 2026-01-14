@@ -1,0 +1,6 @@
+--
+use Slang::Nogil;
+my x = 12;
+
+-- duck
+select 〈 x 〉
