@@ -4,14 +4,14 @@ use Duck::CSV;
 use JSON::Fast;
 use Log::Async;
 
-unit class Samaki::Plugout::GeoMap does Samaki::Plugout;
+unit class Samaki::Plugout::CSVGeo does Samaki::Plugout;
 
-has $.name = 'geo-map';
+has $.name = 'csv-geo';
 has $.description = 'View CSV data with GeoJSON columns on an interactive map';
 has $.clear-before = False;
 
 method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
-  info "executing GeoMap with $path";
+  info "executing CSVGeo with $path";
 
   # Read CSV
   my @rows = read-csv("$path");
@@ -35,18 +35,19 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   info "Detected GeoJSON columns: {@geojson-columns.join(', ')}" if @geojson-columns;
   info "Detected lat/lon pairs: {@latlon-pairs.map({ $_<lat> ~ '/' ~ $_<lon> }).join(', ')}" if @latlon-pairs;
 
-  # Prepare data with colors and features
-  my @prepared-rows = self!prepare-row-data(@rows, @columns, @geojson-columns, @latlon-pairs);
+  # Read the raw CSV content
+  my $csv-content = slurp $path;
 
-  # Convert to JSON for JavaScript
-  my $data-json = self!rows-to-json(@prepared-rows, @columns, @geojson-columns);
+  # Prepare metadata for JavaScript
+  my $geojson-cols-json = to-json(@geojson-columns.Array);
+  my $latlon-pairs-json = to-json(@latlon-pairs);
 
   # Generate HTML file
-  my $html-file = $data-dir.child("{$name}-geomap.html");
+  my $html-file = $data-dir.child("{$name}-csv-geo.html");
   my $title = html-escape($data-dir.basename ~ " : " ~ $name);
 
   # Build HTML content
-  my $html = self!build-html($title, $data-json, @columns, @geojson-columns);
+  my $html = self!build-html($title, $csv-content, $geojson-cols-json, $latlon-pairs-json);
 
   # Write and open
   spurt $html-file, $html;
@@ -150,128 +151,10 @@ method !is-valid-geojson($data) {
   return True;
 }
 
-method !prepare-row-data(@rows, @columns, @geojson-columns, @latlon-pairs) {
-  my @color-palette = <
-    #3b82f6 #ef4444 #10b981 #f59e0b #8b5cf6 #ec4899
-    #14b8a6 #f97316 #6366f1 #84cc16 #06b6d4 #f43f5e
-  >;
-
-  my @prepared;
-
-  for @rows.kv -> $idx, $row {
-    my $color = @color-palette[$idx % @color-palette.elems];
-
-    # Extract all GeoJSON features from all GeoJSON columns
-    my @features;
-    for @geojson-columns -> $col {
-      my $val = $row{$col};
-      next unless $val;
-
-      try {
-        my $json = from-json($val);
-        if self!is-valid-geojson($json) {
-          # Handle both Feature and FeatureCollection
-          if $json<type> eq 'FeatureCollection' {
-            @features.append($json<features>.Array);
-          } elsif $json<type> eq 'Feature' {
-            @features.push($json);
-          } else {
-            # Wrap bare geometry in Feature
-            my %feature = (
-              type => 'Feature',
-              geometry => $json,
-              properties => %()
-            );
-            @features.push(%feature);
-            info "Row $idx, col $col: Added {$json<type>} geometry with coords: {$json<coordinates>.raku}";
-          }
-        }
-        CATCH {
-          default {
-            warning "Row $idx, column $col: Invalid GeoJSON - $_";
-          }
-        }
-      }
-    }
-
-    # Create Point features from lat/lon pairs
-    for @latlon-pairs -> $pair {
-      my $lat-val = $row{$pair<lat>};
-      my $lon-val = $row{$pair<lon>};
-
-      # Skip if either value is missing or not numeric
-      next unless $lat-val.defined && $lon-val.defined;
-
-      try {
-        my $lat = +$lat-val;
-        my $lon = +$lon-val;
-
-        # Basic validation of coordinate ranges
-        next unless -90 <= $lat <= 90;
-        next unless -180 <= $lon <= 180;
-
-        my %feature = (
-          type => 'Feature',
-          geometry => %(
-            type => 'Point',
-            coordinates => [$lon, $lat]  # GeoJSON uses [lon, lat] order
-          ),
-          properties => %(
-            lat_col => $pair<lat>,
-            lon_col => $pair<lon>
-          )
-        );
-        @features.push(%feature);
-        info "Row $idx: Added Point from {$pair<lat>}/{$pair<lon>}: [$lon, $lat]";
-        CATCH {
-          default {
-            warning "Row $idx: Invalid lat/lon values in {$pair<lat>}/{$pair<lon>}";
-          }
-        }
-      }
-    }
-
-    @prepared.push(%(
-      index => $idx,
-      color => $color,
-      features => @features,
-      data => $row
-    ));
-  }
-
-  return @prepared;
-}
-
-method !rows-to-json(@prepared-rows, @columns, @geojson-columns) {
-  my @json-rows;
-
-  for @prepared-rows -> $prep {
-    my %row-data = (
-      index => $prep<index>,
-      color => $prep<color>,
-      features => $prep<features>,
-      data => %()
-    );
-
-    # Include ALL columns in data (including GeoJSON columns)
-    for @columns -> $col {
-      my $val = $prep<data>{$col} // '';
-      # Truncate long GeoJSON strings for display
-      if $col ~~ any(@geojson-columns) && $val.chars > 100 {
-        $val = $val.substr(0, 100) ~ '...';
-      }
-      %row-data<data>{$col} = $val;
-    }
-
-    @json-rows.push(%row-data);
-  }
-
-  return to-json(@json-rows);
-}
-
-method !build-html($title, $data-json, @columns, @geojson-columns) {
-  # Include all columns in the table
-  my $columns-json = to-json(@columns.Array);
+method !build-html($title, $csv-content, $geojson-cols-json, $latlon-pairs-json) {
+  # Escape the CSV content for embedding in HTML/JavaScript
+  # Need to escape backslashes, quotes, and newlines for JavaScript string literals
+  my $csv-escaped = $csv-content.trans(['\\', '"', "\n", "\r"] => ['\\\\', '\\"', '\\n', '']);
 
   my $html = q:to/HTML/;
   <!DOCTYPE html>
@@ -289,6 +172,9 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.7/css/jquery.dataTables.css">
     <script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
+
+    <!-- Papa Parse for CSV parsing -->
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
 
     <style>
       body {
@@ -341,7 +227,7 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
         background: #2563eb;
       }
 
-      #tile-selector {
+      #tile-selector, #palette-selector {
         padding: 5px 8px;
         font-family: inherit;
         font-size: 12px;
@@ -351,7 +237,7 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
         cursor: pointer;
       }
 
-      #tile-selector:hover {
+      #tile-selector:hover, #palette-selector:hover {
         border-color: #cbd5e1;
       }
 
@@ -442,11 +328,21 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
       <div id="controls">
         <button id="show-all-btn">Show All</button>
         <select id="tile-selector">
-          <option value="osm">OpenStreetMap</option>
+          <option value="osm" selected>OpenStreetMap</option>
           <option value="light">Light (Positron)</option>
           <option value="dark">Dark (Dark Matter)</option>
           <option value="satellite">Satellite</option>
           <option value="topo">Topographic</option>
+        </select>
+        <select id="palette-selector">
+          <option value="muted" selected>Muted</option>
+          <option value="pastel">Pastel</option>
+          <option value="bright">Bright</option>
+          <option value="earth">Earth Tones</option>
+          <option value="vivid">Vivid</option>
+          <option value="monochrome">Monochrome</option>
+          <option value="blackborders">Black Borders</option>
+          <option value="whiteborders">White Borders</option>
         </select>
       </div>
     </div>
@@ -468,9 +364,103 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
     </div>
 
     <script>
-      // Data from Raku
-      const rowData = ROWDATA_PLACEHOLDER;
-      const columns = COLUMNS_PLACEHOLDER;
+      // CSV data and metadata from Raku
+      const csvContent = "CSV_CONTENT_PLACEHOLDER";
+      const geojsonColumns = GEOJSON_COLS_PLACEHOLDER;
+      const latlonPairs = LATLON_PAIRS_PLACEHOLDER;
+
+      // Parse CSV and build row data
+      let rowData = [];
+      let columns = [];
+
+      function parseCSVData() {
+        const parsed = Papa.parse(csvContent, {
+          header: true,
+          skipEmptyLines: true
+        });
+
+        if (!parsed.data || parsed.data.length === 0) {
+          console.error('No CSV data parsed');
+          return;
+        }
+
+        // Get columns from the first row
+        columns = Object.keys(parsed.data[0]);
+        console.log('Columns:', columns);
+        console.log('GeoJSON columns:', geojsonColumns);
+        console.log('Lat/lon pairs:', latlonPairs);
+
+        // Build rowData array
+        parsed.data.forEach(function(row, index) {
+          const rowObj = {
+            index: index,
+            features: [],
+            data: {}
+          };
+
+          // Copy all column data
+          columns.forEach(function(col) {
+            rowObj.data[col] = row[col] || '';
+          });
+
+          // Extract GeoJSON features from designated columns
+          geojsonColumns.forEach(function(col) {
+            const val = row[col];
+            if (!val) return;
+
+            try {
+              const geojson = JSON.parse(val);
+
+              // Handle different GeoJSON types
+              if (geojson.type === 'Feature') {
+                rowObj.features.push(geojson);
+              } else if (geojson.type === 'FeatureCollection') {
+                geojson.features.forEach(function(f) {
+                  rowObj.features.push(f);
+                });
+              } else if (geojson.type && geojson.coordinates) {
+                // Bare geometry - wrap in Feature
+                rowObj.features.push({
+                  type: 'Feature',
+                  geometry: geojson,
+                  properties: {}
+                });
+              }
+            } catch (e) {
+              console.warn('Failed to parse GeoJSON in row ' + index + ', column ' + col + ':', e);
+            }
+          });
+
+          // Create Point features from lat/lon pairs
+          latlonPairs.forEach(function(pair) {
+            const latVal = row[pair.lat];
+            const lonVal = row[pair.lon];
+
+            if (latVal && lonVal) {
+              const lat = parseFloat(latVal);
+              const lon = parseFloat(lonVal);
+
+              if (!isNaN(lat) && !isNaN(lon)) {
+                rowObj.features.push({
+                  type: 'Feature',
+                  geometry: {
+                    type: 'Point',
+                    coordinates: [lon, lat]
+                  },
+                  properties: {
+                    lat_col: pair.lat,
+                    lon_col: pair.lon
+                  }
+                });
+              }
+            }
+          });
+
+          rowData.push(rowObj);
+        });
+
+        console.log('Parsed', rowData.length, 'rows');
+      }
 
       // Global state
       let map;
@@ -478,6 +468,49 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
       let currentSelection = null;
       let dataTable;
       let currentTileLayer;
+      let currentPalette = 'muted';
+
+      // Color palettes
+      const colorPalettes = {
+        muted: [
+          '#4a6fa5', '#8b5a5a', '#5a8770', '#9b845f', '#6d5f8b', '#8b6b7a',
+          '#5a8b8b', '#9b7a5a', '#5f6d8b', '#7a8b5f', '#5a7a8b', '#8b6a6a'
+        ],
+        pastel: [
+          '#a8b9d1', '#d1a8b9', '#b9d1a8', '#d1c1a8', '#b5a8d1', '#d1a8c1',
+          '#a8d1c1', '#c1a8d1', '#a8c1d1', '#c1d1a8', '#d1a8a8', '#a8d1a8'
+        ],
+        bright: [
+          '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899',
+          '#14b8a6', '#f97316', '#6366f1', '#84cc16', '#06b6d4', '#f43f5e'
+        ],
+        earth: [
+          '#8b7355', '#6b8e23', '#cd853f', '#8fbc8f', '#d2691e', '#9acd32',
+          '#bc8f8f', '#daa520', '#808000', '#b8860b', '#a0522d', '#6b8e23'
+        ],
+        vivid: [
+          '#ff6b6b', '#4ecdc4', '#45b7d1', '#f7b731', '#5f27cd', '#00d2d3',
+          '#ff9ff3', '#54a0ff', '#48dbfb', '#1dd1a1', '#feca57', '#ff6348'
+        ],
+        monochrome: [
+          '#404040', '#404040', '#404040', '#404040', '#404040', '#404040',
+          '#404040', '#404040', '#404040', '#404040', '#404040', '#404040'
+        ],
+        blackborders: [
+          '#cccccc', '#cccccc', '#cccccc', '#cccccc', '#cccccc', '#cccccc',
+          '#cccccc', '#cccccc', '#cccccc', '#cccccc', '#cccccc', '#cccccc'
+        ],
+        whiteborders: [
+          '#555555', '#555555', '#555555', '#555555', '#555555', '#555555',
+          '#555555', '#555555', '#555555', '#555555', '#555555', '#555555'
+        ]
+      };
+
+      // Special styling for border-based palettes
+      const borderPalettes = {
+        blackborders: { borderColor: '#000000', borderWidth: 2.5 },
+        whiteborders: { borderColor: '#ffffff', borderWidth: 2.5 }
+      };
 
       // Tile provider configurations
       const tileProviders = {
@@ -508,8 +541,63 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
         }
       };
 
+      // Helper function to get color for a row index
+      function getColorForRow(rowIndex) {
+        const palette = colorPalettes[currentPalette];
+        return palette[rowIndex % palette.length];
+      }
+
+      // Helper function to create GeoJSON summary
+      function summarizeGeoJSON(geojsonStr) {
+        try {
+          const geojson = JSON.parse(geojsonStr);
+          let summary = '';
+
+          if (geojson.type === 'Feature') {
+            const geomType = geojson.geometry ? geojson.geometry.type : 'Unknown';
+            const coordCount = countCoordinates(geojson.geometry);
+            summary = `Feature: ${geomType}, ${coordCount} coord${coordCount !== 1 ? 's' : ''}`;
+          } else if (geojson.type === 'FeatureCollection') {
+            const featureCount = geojson.features ? geojson.features.length : 0;
+            summary = `FeatureCollection: ${featureCount} feature${featureCount !== 1 ? 's' : ''}`;
+          } else if (geojson.type && geojson.coordinates) {
+            // Bare geometry
+            const coordCount = countCoordinates(geojson);
+            summary = `${geojson.type}: ${coordCount} coord${coordCount !== 1 ? 's' : ''}`;
+          } else {
+            summary = 'GeoJSON';
+          }
+
+          return summary;
+        } catch (e) {
+          return geojsonStr;
+        }
+      }
+
+      // Count coordinates in a geometry
+      function countCoordinates(geometry) {
+        if (!geometry || !geometry.coordinates) return 0;
+
+        function countArray(arr) {
+          if (typeof arr[0] === 'number') return 1;
+          return arr.reduce((sum, item) => sum + countArray(item), 0);
+        }
+
+        return countArray(geometry.coordinates);
+      }
+
+      // Copy to clipboard
+      function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(function() {
+          console.log('Copied to clipboard');
+        }).catch(function(err) {
+          console.error('Failed to copy:', err);
+        });
+      }
+
       // Initialize on page load
       document.addEventListener('DOMContentLoaded', function() {
+        parseCSVData();
         initializeMap();
         initializeTable();
         setupEventHandlers();
@@ -519,7 +607,7 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
       function initializeMap() {
         map = L.map('map');
 
-        // Add default tile layer
+        // Add default tile layer (OpenStreetMap)
         currentTileLayer = L.tileLayer(tileProviders.osm.url, {
           maxZoom: tileProviders.osm.maxZoom,
           attribution: tileProviders.osm.attribution
@@ -532,10 +620,11 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
           console.log('Row ' + row.index + ' has ' + row.features.length + ' features');
           row.features.forEach(function(feature) {
             console.log('  Feature type:', feature.type, 'Geometry:', feature.geometry ? feature.geometry.type : 'none');
+            const color = getColorForRow(row.index);
             const geoLayer = L.geoJSON(feature, {
               style: {
-                color: row.color,
-                fillColor: row.color,
+                color: color,
+                fillColor: color,
                 fillOpacity: 0.3,
                 weight: 2
               },
@@ -545,7 +634,7 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
                   // Create a custom colored icon for Point geometries
                   const markerIcon = L.divIcon({
                     className: 'custom-marker-icon',
-                    html: '<div style="background-color: ' + row.color + '; width: 20px; height: 20px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+                    html: '<div style="background-color: ' + color + '; width: 20px; height: 20px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
                     iconSize: [24, 24],
                     iconAnchor: [12, 24],
                     popupAnchor: [0, -24]
@@ -555,7 +644,7 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
                   // Use circle markers for other point-like features
                   return L.circleMarker(latlng, {
                     radius: 8,
-                    fillColor: row.color,
+                    fillColor: color,
                     color: '#ffffff',
                     weight: 2,
                     opacity: 1,
@@ -568,6 +657,12 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
             // Add popup with row data
             const popupContent = buildPopupContent(row, feature);
             geoLayer.bindPopup(popupContent);
+
+            // Add click handler to select and scroll to corresponding table row
+            geoLayer.on('click', function(e) {
+              console.log('Layer clicked, row index:', row.index);
+              selectRowFromMap(row.index);
+            });
 
             layerGroup.addLayer(geoLayer);
           });
@@ -584,9 +679,13 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
         let html = '<div style="font-size: 11px;">';
         html += '<strong>Row ' + (row.index + 1) + '</strong><br>';
 
-        // Add feature properties if they exist
+        // Add feature properties if they exist (filter out lat_col/lon_col)
         if (feature.properties) {
           for (let key in feature.properties) {
+            // Skip internal metadata properties
+            if (key === 'lat_col' || key === 'lon_col') {
+              continue;
+            }
             html += key + ': ' + feature.properties[key] + '<br>';
           }
         }
@@ -638,7 +737,7 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
           const colorTd = document.createElement('td');
           const colorSpan = document.createElement('span');
           colorSpan.className = 'color-indicator';
-          colorSpan.style.backgroundColor = row.color;
+          colorSpan.style.backgroundColor = getColorForRow(row.index);
           colorTd.appendChild(colorSpan);
           tr.appendChild(colorTd);
 
@@ -650,7 +749,43 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
           // Data cells
           columns.forEach(function(col) {
             const td = document.createElement('td');
-            td.textContent = row.data[col] || '';
+            const cellValue = row.data[col] || '';
+
+            // Check if this column contains GeoJSON
+            if (geojsonColumns.includes(col) && cellValue) {
+              // Show summary instead of full GeoJSON
+              const summary = summarizeGeoJSON(cellValue);
+              const summarySpan = document.createElement('span');
+              summarySpan.textContent = summary;
+              summarySpan.style.fontStyle = 'italic';
+              summarySpan.style.color = '#666';
+
+              // Add copy button
+              const copyBtn = document.createElement('button');
+              copyBtn.textContent = '📋';
+              copyBtn.style.marginLeft = '6px';
+              copyBtn.style.padding = '2px 6px';
+              copyBtn.style.fontSize = '11px';
+              copyBtn.style.border = '1px solid #ccc';
+              copyBtn.style.borderRadius = '3px';
+              copyBtn.style.background = '#f8f9fa';
+              copyBtn.style.cursor = 'pointer';
+              copyBtn.title = 'Copy GeoJSON to clipboard';
+              copyBtn.onclick = function(e) {
+                e.stopPropagation();
+                copyToClipboard(cellValue);
+                copyBtn.textContent = '✓';
+                setTimeout(function() {
+                  copyBtn.textContent = '📋';
+                }, 1000);
+              };
+
+              td.appendChild(summarySpan);
+              td.appendChild(copyBtn);
+            } else {
+              td.textContent = cellValue;
+            }
+
             tr.appendChild(td);
           });
 
@@ -661,7 +796,12 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
         dataTable = $('#dataTable').DataTable({
           pageLength: 10,
           searching: true,
-          ordering: true
+          ordering: true,
+          createdRow: function(row, data, dataIndex) {
+            // Preserve the data-row-index attribute
+            const originalIndex = rowData[dataIndex].index;
+            $(row).attr('data-row-index', originalIndex);
+          }
         });
       }
 
@@ -681,6 +821,11 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
         // Tile provider selector
         document.getElementById('tile-selector').addEventListener('change', function(e) {
           switchTileProvider(e.target.value);
+        });
+
+        // Palette selector
+        document.getElementById('palette-selector').addEventListener('change', function(e) {
+          switchPalette(e.target.value);
         });
 
         // Divider drag handler
@@ -704,6 +849,104 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
 
         // Move tile layer to back so features are on top
         currentTileLayer.bringToBack();
+      }
+
+      function switchPalette(paletteKey) {
+        if (!colorPalettes[paletteKey]) return;
+
+        currentPalette = paletteKey;
+        console.log('Switching to palette:', paletteKey);
+
+        // Check if this is a border-based palette
+        const borderStyle = borderPalettes[paletteKey];
+        const isBorderPalette = !!borderStyle;
+
+        // Update all map features
+        Object.keys(allLayerGroups).forEach(function(rowIndex) {
+          const layerGroup = allLayerGroups[rowIndex];
+          const newColor = getColorForRow(parseInt(rowIndex));
+
+          layerGroup.eachLayer(function(layer) {
+            // Check if this layer itself is a marker
+            if (layer.setIcon && layer.options && layer.options.icon) {
+              const oldIcon = layer.options.icon;
+              if (oldIcon.options && oldIcon.options.className === 'custom-marker-icon') {
+                const markerBorder = isBorderPalette ? borderStyle.borderColor : '#ffffff';
+                const newIcon = L.divIcon({
+                  className: 'custom-marker-icon',
+                  html: '<div style="background-color: ' + newColor + '; width: 20px; height: 20px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid ' + markerBorder + '; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+                  iconSize: [24, 24],
+                  iconAnchor: [12, 24],
+                  popupAnchor: [0, -24]
+                });
+                layer.setIcon(newIcon);
+              }
+            }
+            // Update the layer's style for polygons, lines, etc.
+            else if (layer.setStyle) {
+              if (isBorderPalette) {
+                layer.setStyle({
+                  color: borderStyle.borderColor,
+                  fillColor: newColor,
+                  weight: borderStyle.borderWidth,
+                  fillOpacity: 0.6
+                });
+              } else {
+                layer.setStyle({
+                  color: newColor,
+                  fillColor: newColor,
+                  weight: 2,
+                  fillOpacity: 0.3
+                });
+              }
+            }
+            // For geoJSON layers that contain multiple sub-layers
+            else if (layer.eachLayer) {
+              layer.eachLayer(function(subLayer) {
+                // Check if sublayer is a marker
+                if (subLayer.setIcon && subLayer.options && subLayer.options.icon) {
+                  const oldIcon = subLayer.options.icon;
+                  if (oldIcon.options && oldIcon.options.className === 'custom-marker-icon') {
+                    const markerBorder = isBorderPalette ? borderStyle.borderColor : '#ffffff';
+                    const newIcon = L.divIcon({
+                      className: 'custom-marker-icon',
+                      html: '<div style="background-color: ' + newColor + '; width: 20px; height: 20px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid ' + markerBorder + '; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+                      iconSize: [24, 24],
+                      iconAnchor: [12, 24],
+                      popupAnchor: [0, -24]
+                    });
+                    subLayer.setIcon(newIcon);
+                  }
+                }
+                // Update sublayer style for polygons, lines, etc.
+                else if (subLayer.setStyle) {
+                  if (isBorderPalette) {
+                    subLayer.setStyle({
+                      color: borderStyle.borderColor,
+                      fillColor: newColor,
+                      weight: borderStyle.borderWidth,
+                      fillOpacity: 0.6
+                    });
+                  } else {
+                    subLayer.setStyle({
+                      color: newColor,
+                      fillColor: newColor,
+                      weight: 2,
+                      fillOpacity: 0.3
+                    });
+                  }
+                }
+              });
+            }
+          });
+        });
+
+        // Update table color indicators
+        document.querySelectorAll('.color-indicator').forEach(function(indicator, index) {
+          if (index < rowData.length) {
+            indicator.style.backgroundColor = getColorForRow(rowData[index].index);
+          }
+        });
       }
 
       function setupDividerDrag() {
@@ -789,6 +1032,50 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
         currentSelection = rowIndex;
       }
 
+      function selectRowFromMap(rowIndex) {
+        console.log('selectRowFromMap called with rowIndex:', rowIndex);
+
+        // Clear all selections
+        $('#dataTable tbody tr').removeClass('selected');
+
+        // Find the data row index in our original data
+        const dataRowIndex = rowData.findIndex(function(r) { return r.index === rowIndex; });
+        console.log('Data row index:', dataRowIndex);
+
+        if (dataRowIndex < 0) {
+          console.log('Row not found in rowData!');
+          return;
+        }
+
+        // Get the DataTable API instance
+        const dt = dataTable;
+        const pageLength = dt.page.len();
+        const pageNumber = Math.floor(dataRowIndex / pageLength);
+        console.log('Jumping to page:', pageNumber, 'of', Math.ceil(rowData.length / pageLength));
+
+        // Jump to the page containing the row
+        dt.page(pageNumber).draw('page');
+
+        // After the page is drawn, select and scroll to the row
+        setTimeout(function() {
+          const $targetRow = $('#dataTable tbody tr[data-row-index="' + rowIndex + '"]');
+          console.log('After page draw, found target row:', $targetRow.length);
+
+          if ($targetRow.length > 0) {
+            $targetRow.addClass('selected');
+
+            // Scroll the row into view
+            const rowElement = $targetRow[0];
+            if (rowElement) {
+              rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              console.log('Scrolled row into view');
+            }
+          }
+        }, 200);
+
+        currentSelection = rowIndex;
+      }
+
       function showAll() {
         // Clear table selection
         $('#dataTable tbody tr').removeClass('selected');
@@ -810,8 +1097,9 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
 
   # Replace placeholders with actual values
   $html = $html.subst('TITLE_PLACEHOLDER', $title, :g);
-  $html = $html.subst('ROWDATA_PLACEHOLDER', $data-json);
-  $html = $html.subst('COLUMNS_PLACEHOLDER', $columns-json);
+  $html = $html.subst('CSV_CONTENT_PLACEHOLDER', $csv-escaped);
+  $html = $html.subst('GEOJSON_COLS_PLACEHOLDER', $geojson-cols-json);
+  $html = $html.subst('LATLON_PAIRS_PLACEHOLDER', $latlon-pairs-json);
 
   return $html;
 }
