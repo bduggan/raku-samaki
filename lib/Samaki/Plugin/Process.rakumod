@@ -91,43 +91,30 @@ method do-react-loop($proc, :$cell, :$out, :$input, :$timeout) {
 
 method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane, Str :$action) {
   my $timeout = $cell.get-conf('timeout') // $cell.timeout;
-  my $input-content = $cell.get-content(:$mode, :$page);
+  my $input = $cell.get-content(:$mode, :$page);
   $.errors = Nil;
   self.clear-output;
+  $!stream-output = ($cell.get-conf('stream') andthen $_ eq 'none') ?? False !! True;
+  info "using " ~ (self.use-stdin ?? "stdin" !! "a temp file") ~ " for input";
+  my @cmd = self.build-command(:$cell);
+  info "executing process {@cmd.raku}";
 
   if self.use-stdin {
-    info "using stdin";
-    my @cmd = self.build-command(:$cell);
-    info "executing process {@cmd.raku}";
     my $proc = Proc::Async.new: |@cmd, :out, :err, :w;
-    with $cell.get-conf('stream') -> $s {
-      $!stream-output = $s ne 'none';
-    } else {
-      $!stream-output = True;
-    }
-
     try {
-      self.do-react-loop($proc, :$cell, :$out, input => $input-content, :$timeout);
+      self.do-react-loop($proc, :$cell, :$out, :$input, :$timeout);
       CATCH { default { self.error("Execution failed: $_"); } }
     }
-    self.error("Execution failed: $_") with $!;
-    $out.close;
-
-    with $cell.output-file.IO {
-      unless .e && (.s > 0) {
+    if $cell.output-file.IO andthen !(.e && (.s > 0)) {
         $.errors = "No output generated";
         return;
-      }
     }
+    $out.close;
     if self.output-ext eq 'csv' {
       self.set-output(self.output-duckie($cell.output-file));
     }
   } else {
-    # Temp file-based execution (default)
-    my @cmd = self.build-command(:$cell);
-    info "executing process {@cmd.raku}";
-    info "writing input to temp file " ~ self.tmpfile.Str;
-    $input-content ==> spurt self.tmpfile;
+    $input ==> spurt self.tmpfile;
     my $proc = Proc::Async.new: |@cmd, :out, :err;
     self.do-react-loop($proc, :$cell, :$out, :$timeout);
   }
