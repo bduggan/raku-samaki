@@ -1,9 +1,7 @@
 use Test;
-use Samaki::Utils;
 use Samaki::Plugin::Markdown;
 
-# Mock shell-open to avoid opening browser
-&shell-open.wrap: -> $path { }
+my $*SAMAKI-NO-SHELL-OPEN = True;
 
 my $plugin = Samaki::Plugin::Markdown.new;
 

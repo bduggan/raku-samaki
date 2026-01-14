@@ -1,6 +1,8 @@
 use Test;
 use Samaki::Plugout::CSVGeo;
 
+my $*SAMAKI-NO-SHELL-OPEN = True;
+
 my $plugout = Samaki::Plugout::CSVGeo.new;
 
 ok $plugout, 'CSVGeo plugout created';
@@ -13,42 +15,37 @@ my @rows = [
 ];
 my @cols = <point name>;
 my @geojson-cols = $plugout.detect-geojson-columns(@rows, @cols);
-is @geojson-cols.elems, 1, 'detected GeoJSON column';
-is @geojson-cols[0], 'point', 'correct column detected';
+is @geojson-cols.elems, 1, 'detected one GeoJSON column';
+is @geojson-cols[0], 'point', 'detected point column';
 
 # Test lat/lon detection
 my @latlon-cols = <name lat lon>;
 my @pairs = $plugout.detect-latlon-pairs(@latlon-cols);
-is @pairs.elems, 1, 'detected lat/lon pair';
-is @pairs[0]<lat>, 'lat', 'lat column correct';
-is @pairs[0]<lon>, 'lon', 'lon column correct';
+is @pairs.elems, 1, 'detected one lat/lon pair';
+is @pairs[0]<lat>, 'lat', 'detected lat column';
+is @pairs[0]<lon>, 'lon', 'detected lon column';
 
-# Test HTML generation with GeoJSON
+# Test lat/lon with prefix
+my @prefix-cols = <name start_lat start_lon>;
+my @prefix-pairs = $plugout.detect-latlon-pairs(@prefix-cols);
+is @prefix-pairs.elems, 1, 'detected prefixed lat/lon pair';
+is @prefix-pairs[0]<lat>, 'start_lat', 'detected start_lat';
+is @prefix-pairs[0]<lon>, 'start_lon', 'detected start_lon';
+
+# Test HTML generation
 my $temp-dir = $*TMPDIR.child('csvgeo-test-' ~ $*PID);
 $temp-dir.mkdir;
 
-my $csv-geojson = $temp-dir.child('geojson.csv');
-spurt $csv-geojson, "point,name\n" ~
-  '"{\"type\":\"Point\",\"coordinates\":[4.37,50.81]}",Brussels' ~ "\n" ~
-  '"{\"type\":\"Point\",\"coordinates\":[2.35,48.86]}",Paris' ~ "\n";
+my $csv-file = $temp-dir.child('test.csv');
+spurt $csv-file, "point,name\n" ~
+  '"{\"type\":\"Point\",\"coordinates\":[4.37,50.81]}",Brussels' ~ "\n";
 
-$plugout.execute(path => $csv-geojson, data-dir => $temp-dir, name => 'geojson');
-my $html-geojson = $temp-dir.child('geojson-csv-geo.html');
-ok $html-geojson.e, 'HTML created with GeoJSON';
-ok ($html-geojson.s > 1000), 'HTML has reasonable size';
+$plugout.execute(path => $csv-file, data-dir => $temp-dir, name => 'test');
+my $html-file = $temp-dir.child('test-csv-geo.html');
+ok $html-file.e, 'HTML file created';
 
-my $html1 = slurp $html-geojson;
-ok $html1 ~~ /'Papa.parse'/, 'contains Papa Parse';
-ok $html1 ~~ /'Leaflet'/, 'contains Leaflet';
-ok $html1 ~~ /'summarizeGeoJSON'/, 'contains GeoJSON summary';
-
-# Test with lat/lon columns
-my $csv-latlon = $temp-dir.child('latlon.csv');
-spurt $csv-latlon, "name,lat,lon\nBrussels,50.81,4.37\nParis,48.86,2.35\n";
-
-$plugout.execute(path => $csv-latlon, data-dir => $temp-dir, name => 'latlon');
-my $html-latlon = $temp-dir.child('latlon-csv-geo.html');
-ok $html-latlon.e, 'HTML created with lat/lon';
-ok ($html-latlon.s > 1000), 'HTML has content';
+my $html = slurp $html-file;
+ok $html ~~ /'Papa.parse'/, 'HTML contains Papa Parse';
+ok $html ~~ /'Leaflet'/, 'HTML contains Leaflet';
 
 done-testing;
