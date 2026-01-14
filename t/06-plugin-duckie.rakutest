@@ -13,6 +13,7 @@ my $cell = Samaki::Cell.new: page-name => 'test',
    wkdir => $*TMPDIR,
    :$plugin;
 my $page = Samaki::Page.new: wkdir => $*TMPDIR, name => 'test', cells => [$cell];
+my $dir = $cell.cell-dir(:create);
 my $out-file = $cell.output-file;
 my $out-handle = $out-file.open(:w);
 my $output = $plugin.execute(:$cell, :mode('content'), :$page, out => $out-handle);
