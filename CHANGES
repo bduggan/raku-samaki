@@ -1,3 +1,12 @@
+0.0.24 2026-01-14
+  - csv-geo plugout
+  - double lines for auto cells
+  - refactor process plugin
+  - highlight interpolated code
+  - do not create new file on startup
+  - chartjs fixes
+  - other minor fixes
+
 0.0.23 2026-01-13
   - process plugin refactor: args,use-stdin, stream:none
   - D to delete files
