@@ -28,11 +28,14 @@ method use-stdin { $use-stdin }
 method stream-stdout-to-pane { True }
 
 method build-command(Samaki::Cell :$cell) {
-  if $cmd && $args.elems {
-    return ($cmd, |$args);
+  die "missing cmd parameter" unless $cmd;
+  my @cmd = ($cmd);
+  if $args.elems {
+    @cmd.push( |$args );
   }
-  return ($cmd, self.tmpfile) if $cmd;
-  die "Must override build-command or provide cmd parameter";
+  return @cmd if $use-stdin;
+  @cmd.push( self.tmpfile.Str );
+  @cmd;
 }
 
 method do-ready($pid, $proc, $timeout = Nil) {
@@ -87,16 +90,15 @@ method do-react-loop($proc, :$cell, :$out, :$input, :$timeout) {
 }
 
 method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane, Str :$action) {
-  info "executing process";
   my $timeout = $cell.get-conf('timeout') // $cell.timeout;
   my $input-content = $cell.get-content(:$mode, :$page);
   $.errors = Nil;
   self.clear-output;
 
   if self.use-stdin {
-    # Stdin-based execution (Duck, Postgres)
+    info "using stdin";
     my @cmd = self.build-command(:$cell);
-    info "Sending input to process:\n" ~ $input-content;
+    info "executing process {@cmd.raku}";
     my $proc = Proc::Async.new: |@cmd, :out, :err, :w;
     with $cell.get-conf('stream') -> $s {
       $!stream-output = $s ne 'none';
@@ -123,7 +125,8 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
   } else {
     # Temp file-based execution (default)
     my @cmd = self.build-command(:$cell);
-    info "executing process {@cmd.join(' ')}";
+    info "executing process {@cmd.raku}";
+    info "writing input to temp file " ~ self.tmpfile.Str;
     $input-content ==> spurt self.tmpfile;
     my $proc = Proc::Async.new: |@cmd, :out, :err;
     self.do-react-loop($proc, :$cell, :$out, :$timeout);
