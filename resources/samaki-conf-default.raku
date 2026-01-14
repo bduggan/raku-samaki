@@ -23,6 +23,7 @@ use Samaki::Plugin::Process;
     / csv  /   => 'Samaki::Plugout::DataTable',
     / csv  /   => 'Samaki::Plugout::ChartJS',
     / csv  /   => 'Samaki::Plugout::D3',
+    / csv  /   => 'Samaki::Plugout::GeoMap',
     / html /   => 'Samaki::Plugout::HTML',
     / txt  /   => 'Samaki::Plugout::Plain',
     / geojson / => 'Samaki::Plugout::Geojson',

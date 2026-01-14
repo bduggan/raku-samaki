@@ -23,16 +23,20 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   # Detect GeoJSON columns
   my @geojson-columns = self!detect-geojson-columns(@rows, @columns);
 
-  # Error handling: no GeoJSON found
-  if @geojson-columns.elems == 0 {
-    self.info("No GeoJSON columns detected in CSV");
+  # Detect lat/lon column pairs
+  my @latlon-pairs = self!detect-latlon-pairs(@columns);
+
+  # Error handling: no GeoJSON or lat/lon found
+  if @geojson-columns.elems == 0 && @latlon-pairs.elems == 0 {
+    self.info("No GeoJSON columns or lat/lon pairs detected in CSV");
     return;
   }
 
-  info "Detected GeoJSON columns: {@geojson-columns.join(', ')}";
+  info "Detected GeoJSON columns: {@geojson-columns.join(', ')}" if @geojson-columns;
+  info "Detected lat/lon pairs: {@latlon-pairs.map({ $_<lat> ~ '/' ~ $_<lon> }).join(', ')}" if @latlon-pairs;
 
   # Prepare data with colors and features
-  my @prepared-rows = self!prepare-row-data(@rows, @columns, @geojson-columns);
+  my @prepared-rows = self!prepare-row-data(@rows, @columns, @geojson-columns, @latlon-pairs);
 
   # Convert to JSON for JavaScript
   my $data-json = self!rows-to-json(@prepared-rows, @columns, @geojson-columns);
@@ -79,6 +83,53 @@ method !detect-geojson-columns(@rows, @columns) {
   return @geojson-cols;
 }
 
+method !detect-latlon-pairs(@columns) {
+  my @pairs;
+  my %used-cols;
+
+  for @columns -> $col {
+    next if %used-cols{$col};
+
+    # Check if this is a latitude column
+    my $col-lc = $col.lc;
+    my $is-lat = $col-lc eq 'lat'
+              || $col-lc eq 'latitude'
+              || $col ~~ /'_lat' $/
+              || $col ~~ /'_latitude' $/;
+
+    next unless $is-lat;
+
+    # Try to find matching longitude column
+    # Extract base name (e.g., "start_lat" -> "start")
+    my $base = $col;
+    $base ~~ s/_?lat(itude)?$//;
+
+    # Try to find matching longitude column with various patterns
+    my $lon-col;
+    my @candidates;
+    if $base {
+      @candidates = ($base ~ '_lon', $base ~ '_lng', $base ~ '_longitude');
+    }
+    @candidates.append('lon', 'lng', 'longitude');
+
+    for @candidates -> $candidate {
+      if $candidate ~~ any(@columns) && !%used-cols{$candidate} {
+        $lon-col = $candidate;
+        last;
+      }
+    }
+
+    if $lon-col {
+      @pairs.push(%(lat => $col, lon => $lon-col));
+      %used-cols{$col} = True;
+      %used-cols{$lon-col} = True;
+      info "Found lat/lon pair: $col, $lon-col";
+    }
+  }
+
+  return @pairs;
+}
+
 method !is-valid-geojson($data) {
   return False unless $data ~~ Hash;
 
@@ -99,7 +150,7 @@ method !is-valid-geojson($data) {
   return True;
 }
 
-method !prepare-row-data(@rows, @columns, @geojson-columns) {
+method !prepare-row-data(@rows, @columns, @geojson-columns, @latlon-pairs) {
   my @color-palette = <
     #3b82f6 #ef4444 #10b981 #f59e0b #8b5cf6 #ec4899
     #14b8a6 #f97316 #6366f1 #84cc16 #06b6d4 #f43f5e
@@ -138,6 +189,43 @@ method !prepare-row-data(@rows, @columns, @geojson-columns) {
         CATCH {
           default {
             warning "Row $idx, column $col: Invalid GeoJSON - $_";
+          }
+        }
+      }
+    }
+
+    # Create Point features from lat/lon pairs
+    for @latlon-pairs -> $pair {
+      my $lat-val = $row{$pair<lat>};
+      my $lon-val = $row{$pair<lon>};
+
+      # Skip if either value is missing or not numeric
+      next unless $lat-val.defined && $lon-val.defined;
+
+      try {
+        my $lat = +$lat-val;
+        my $lon = +$lon-val;
+
+        # Basic validation of coordinate ranges
+        next unless -90 <= $lat <= 90;
+        next unless -180 <= $lon <= 180;
+
+        my %feature = (
+          type => 'Feature',
+          geometry => %(
+            type => 'Point',
+            coordinates => [$lon, $lat]  # GeoJSON uses [lon, lat] order
+          ),
+          properties => %(
+            lat_col => $pair<lat>,
+            lon_col => $pair<lon>
+          )
+        );
+        @features.push(%feature);
+        info "Row $idx: Added Point from {$pair<lat>}/{$pair<lon>}: [$lon, $lat]";
+        CATCH {
+          default {
+            warning "Row $idx: Invalid lat/lon values in {$pair<lat>}/{$pair<lon>}";
           }
         }
       }
@@ -214,7 +302,7 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
       }
 
       #map-container {
-        height: 66.67vh;
+        height: 75vh;
         position: relative;
         flex-shrink: 0;
       }
@@ -233,6 +321,9 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
         padding: 8px 12px;
         border-radius: 4px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        display: flex;
+        gap: 8px;
+        align-items: center;
       }
 
       #show-all-btn {
@@ -248,6 +339,20 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
 
       #show-all-btn:hover {
         background: #2563eb;
+      }
+
+      #tile-selector {
+        padding: 5px 8px;
+        font-family: inherit;
+        font-size: 12px;
+        border: 1px solid #e2e8f0;
+        border-radius: 3px;
+        background: white;
+        cursor: pointer;
+      }
+
+      #tile-selector:hover {
+        border-color: #cbd5e1;
       }
 
       #divider {
@@ -336,6 +441,13 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
       <div id="map"></div>
       <div id="controls">
         <button id="show-all-btn">Show All</button>
+        <select id="tile-selector">
+          <option value="osm">OpenStreetMap</option>
+          <option value="light">Light (Positron)</option>
+          <option value="dark">Dark (Dark Matter)</option>
+          <option value="satellite">Satellite</option>
+          <option value="topo">Topographic</option>
+        </select>
       </div>
     </div>
 
@@ -365,6 +477,36 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
       let allLayerGroups = {};
       let currentSelection = null;
       let dataTable;
+      let currentTileLayer;
+
+      // Tile provider configurations
+      const tileProviders = {
+        osm: {
+          url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+          attribution: '© OpenStreetMap contributors',
+          maxZoom: 19
+        },
+        light: {
+          url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+          attribution: '© OpenStreetMap contributors © CARTO',
+          maxZoom: 19
+        },
+        dark: {
+          url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+          attribution: '© OpenStreetMap contributors © CARTO',
+          maxZoom: 19
+        },
+        satellite: {
+          url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+          attribution: '© Esri',
+          maxZoom: 18
+        },
+        topo: {
+          url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+          attribution: '© OpenStreetMap contributors © OpenTopoMap',
+          maxZoom: 17
+        }
+      };
 
       // Initialize on page load
       document.addEventListener('DOMContentLoaded', function() {
@@ -377,9 +519,10 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
       function initializeMap() {
         map = L.map('map');
 
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19,
-          attribution: '© OpenStreetMap contributors'
+        // Add default tile layer
+        currentTileLayer = L.tileLayer(tileProviders.osm.url, {
+          maxZoom: tileProviders.osm.maxZoom,
+          attribution: tileProviders.osm.attribution
         }).addTo(map);
 
         // Create layer groups for each row
@@ -535,8 +678,32 @@ method !build-html($title, $data-json, @columns, @geojson-columns) {
           showAll();
         });
 
+        // Tile provider selector
+        document.getElementById('tile-selector').addEventListener('change', function(e) {
+          switchTileProvider(e.target.value);
+        });
+
         // Divider drag handler
         setupDividerDrag();
+      }
+
+      function switchTileProvider(providerKey) {
+        const provider = tileProviders[providerKey];
+        if (!provider) return;
+
+        // Remove current tile layer
+        if (currentTileLayer) {
+          map.removeLayer(currentTileLayer);
+        }
+
+        // Add new tile layer
+        currentTileLayer = L.tileLayer(provider.url, {
+          maxZoom: provider.maxZoom,
+          attribution: provider.attribution
+        }).addTo(map);
+
+        // Move tile layer to back so features are on top
+        currentTileLayer.bringToBack();
       }
 
       function setupDividerDrag() {
