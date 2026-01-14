@@ -161,9 +161,9 @@ class Samaki::Cell {
     self.get-conf('_ext') || $!ext || $.output-ext || "csv";
   }
 
-  method output-file {
+  method output-file(Bool :$create = False) {
     my $ext = self.ext;
-    self.cell-dir.child( self.name ~ "." ~ $ext);
+    self.cell-dir(:$create).child( self.name ~ "." ~ $ext);
   }
 
   #| Should the output file be closed after execution?

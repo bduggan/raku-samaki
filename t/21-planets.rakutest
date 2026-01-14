@@ -62,7 +62,7 @@ if $duck-available {
   # Execute the second cell (earth query) to generate output
   my $duck-plugin = $page.cells[1].plugin;
   if $duck-plugin {
-    my $out-file = $page.cells[1].output-file;
+    my $out-file = $page.cells[1].output-file(:create);
     my $out = $out-file.open(:w);
     lives-ok {
       $duck-plugin.execute(:cell($page.cells[1]), :$page, :mode<eval>, :$out);

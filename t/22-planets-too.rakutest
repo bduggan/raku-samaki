@@ -55,7 +55,7 @@ ok $raw-llm.contains('<planet>'), 'raw mode shows column reference';
 # Test actual execution with duckie plugin
 my $duckie-plugin = $page.cells[1].plugin;
 if $duckie-plugin {
-  my $out-file = $page.cells[1].output-file;
+  my $out-file = $page.cells[1].output-file(:create);
   my $out = $out-file.open(:w);
   lives-ok {
     $duckie-plugin.execute(:cell($page.cells[1]), :$page, :mode<eval>, :$out);
