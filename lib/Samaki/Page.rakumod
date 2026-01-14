@@ -93,10 +93,10 @@ class Samaki::Page {
           for $cell.source.lines;
   }
 
-  method show-auto-cell(:$cell!, :$pane!, :$mode!, :$leadchar!, :%meta!) {
-    $pane.put: [ col('interp') => ' ╌╌'.indent(4) ], :%meta;
+  method show-auto-cell(:$cell!, :$pane!, :$mode!, :$leadchar = '║', :%meta!) {
+    $pane.put: [ col('interp') => '╔═'.indent(4) ], :%meta;
     self.show-cell-conf(:$cell, :$pane, :$leadchar, :%meta, color => 'interp');
-    self.show-cell-body(:$cell, :$pane, :$mode, :$leadchar, :%meta, color => 'interp');
+    self.show-cell-body(:$cell, :$pane, :$mode, :$leadchar, :%meta, color => 'interp', lastchar => '╚');
   }
 
   method show-cell-conf(:$cell!, :$pane!, :$leadchar!, :%meta!, :$color = 'cell-type') {
@@ -106,7 +106,7 @@ class Samaki::Page {
     }
   }
 
-  method show-cell-body(:$cell!, :$pane!, :$mode!, :$leadchar!, :%meta!, :$color = 'cell-type') {
+  method show-cell-body(:$cell!, :$pane!, :$mode!, :$leadchar!, :%meta!, :$color = 'cell-type', :$lastchar = '└') {
     try {
        CATCH { default { $pane.put: [ t.red => "Error displaying cell: $_" ], :%meta } }
        my $*page = self;
@@ -116,13 +116,8 @@ class Samaki::Page {
                for $cell.errors.lines;
        }
        for $cell.formatted-content-lines.kv -> $n, $line {
-         $pane.put: [ col('line') => $n.fmt('%3d '), col($color) => ($n == $out.lines.elems - 1 ?? '└ ' !! "$leadchar "), |$line ], :%meta;
+         $pane.put: [ col('line') => $n.fmt('%3d '), col($color) => ($n == $out.lines.elems - 1 ?? $lastchar !! "$leadchar "), |$line ], :%meta;
        }
-       #for $out.lines.kv -> $n, $txt {
-       #  my $line = $txt;
-       #my Pair $l = ($line.isa(Pair) ?? $line !! col('text') => $line);
-       #$pane.put: [ col('line') => $n.fmt('%3d '), col('cell-type') => ($n == $out.lines.elems - 1 ?? '└ ' !! "$leadchar "), $l ];
-       #}
     }
   }
 
@@ -185,12 +180,11 @@ class Samaki::Page {
         %meta<cell> = $cell;
 
         my $leadchar = '│';
-        $leadchar =  '╎' if $cell.cell-type eq 'auto';
 
         if !$cell.is-valid {
           self.show-invalid-cell(:$cell, :$pane, :$leadchar, :%meta);
         } elsif $cell.cell-type eq 'auto' {
-          self.show-auto-cell(:$cell, :$pane, :$mode, :$leadchar, :%meta);
+          self.show-auto-cell(:$cell, :$pane, :$mode, :%meta);
         } else {
           self.show-valid-cell(:$cell, :$pane, :$mode, :@actions, :$leadchar, :%meta);
         }
