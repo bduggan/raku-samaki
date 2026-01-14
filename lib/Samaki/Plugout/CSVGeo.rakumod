@@ -21,10 +21,10 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   my @columns = @rows[0].keys.sort;
 
   # Detect GeoJSON columns
-  my @geojson-columns = self!detect-geojson-columns(@rows, @columns);
+  my @geojson-columns = self.detect-geojson-columns(@rows, @columns);
 
   # Detect lat/lon column pairs
-  my @latlon-pairs = self!detect-latlon-pairs(@columns);
+  my @latlon-pairs = self.detect-latlon-pairs(@columns);
 
   # Error handling: no GeoJSON or lat/lon found
   if @geojson-columns.elems == 0 && @latlon-pairs.elems == 0 {
@@ -47,7 +47,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   my $title = html-escape($data-dir.basename ~ " : " ~ $name);
 
   # Build HTML content
-  my $html = self!build-html($title, $csv-content, $geojson-cols-json, $latlon-pairs-json);
+  my $html = self.build-html($title, $csv-content, $geojson-cols-json, $latlon-pairs-json);
 
   # Write and open
   spurt $html-file, $html;
@@ -55,7 +55,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   shell-open $html-file;
 }
 
-method !detect-geojson-columns(@rows, @columns) {
+method detect-geojson-columns(@rows, @columns) {
   my @geojson-cols;
 
   for @columns -> $col {
@@ -68,7 +68,7 @@ method !detect-geojson-columns(@rows, @columns) {
 
       try {
         my $json = from-json($val);
-        if self!is-valid-geojson($json) {
+        if self.is-valid-geojson($json) {
           $has-valid-geojson = True;
           last;
         }
@@ -84,7 +84,7 @@ method !detect-geojson-columns(@rows, @columns) {
   return @geojson-cols;
 }
 
-method !detect-latlon-pairs(@columns) {
+method detect-latlon-pairs(@columns) {
   my @pairs;
   my %used-cols;
 
@@ -131,7 +131,7 @@ method !detect-latlon-pairs(@columns) {
   return @pairs;
 }
 
-method !is-valid-geojson($data) {
+method is-valid-geojson($data) {
   return False unless $data ~~ Hash;
 
   my $type = $data<type>;
@@ -151,7 +151,7 @@ method !is-valid-geojson($data) {
   return True;
 }
 
-method !build-html($title, $csv-content, $geojson-cols-json, $latlon-pairs-json) {
+method build-html($title, $csv-content, $geojson-cols-json, $latlon-pairs-json) {
   # Escape the CSV content for embedding in HTML/JavaScript
   # Need to escape backslashes, quotes, and newlines for JavaScript string literals
   my $csv-escaped = $csv-content.trans(['\\', '"', "\n", "\r"] => ['\\\\', '\\"', '\\n', '']);
