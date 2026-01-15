@@ -107,17 +107,27 @@ class Samaki::Page {
   }
 
   method show-cell-body(:$cell!, :$pane!, :$mode!, :$leadchar!, :%meta!, :$color = 'cell-type', :$lastchar = '└') {
+    my @body-lines;
     try {
-       CATCH { default { $pane.put: [ t.red => "Error displaying cell: $_" ], :%meta } }
+       CATCH {
+         default {
+           $pane.put: [ t.red => "$leadchar ".indent(4), "Error displaying cell: $_" ], :%meta;
+           @body-lines = $cell.get-content(:mode<raw>, page => self).lines.map: { [ t.red => $_ ]  };
+         }
+       }
        my $*page = self;
        my $out = $cell.get-content(:$mode, page => self);
        if $cell.errors {
          $pane.put([ col($color) => "$leadchar ".indent(4), col('error') => "▶ $_" ], :%meta)
                for $cell.errors.lines;
        }
-       for $cell.formatted-content-lines.kv -> $n, $line {
-         $pane.put: [ col('line') => $n.fmt('%3d '), col($color) => ($n == $out.lines.elems - 1 ?? $lastchar !! "$leadchar "), |$line ], :%meta;
-       }
+       @body-lines := $cell.formatted-content-lines;
+    }
+    for @body-lines.kv -> $n, $line {
+      $pane.put: [
+        col('line') => $n.fmt('%3d '),
+        col($color) => ($n == @body-lines - 1 ?? "$lastchar " !! "$leadchar "), |$line
+      ], :%meta;
     }
   }
 
