@@ -127,17 +127,26 @@ class Samaki::Cell {
         }
         my $eval-str = ($p<phrase> // $p<alt>).Str;
         trace "calling EVAL with $eval-str";
-        my $res = do {
-          indir self.data-dir, { $page.cu.eval($eval-str) }
-        }
-        $out ~= ( $res // "");
-        @formatted.push: t.color(%COLORS<interp>) => ($res // "");
-        @formatted.push: t.color(%COLORS<text>) => '';
-        with $page.cu.exception {
-          $out ~= " ▶$p◀ ";
-          @formatted.push(t.color(%COLORS<error>) => " ▶" ~ $eval-str ~ "◀ ");
-          $!errors ~= "$p │ Sorry!\n " ~ .message.chomp ~ "\n";
-          $page.cu.exception = Nil;
+        try {
+          my $res = do {
+            indir self.data-dir, { $page.cu.eval($eval-str) }
+          }
+          $out ~= ( $res // "");
+          @formatted.push: t.color(%COLORS<interp>) => ($res // "");
+          @formatted.push: t.color(%COLORS<text>) => '';
+          with $page.cu.exception {
+            $out ~= " ❰$p❱ ";
+            @formatted.push(t.color(%COLORS<error>) => "❰" ~ $eval-str ~ "❱ ");
+            $!errors ~= "sorry: " ~ .message.chomp ~ "\n";
+            $page.cu.exception = Nil;
+          }
+          CATCH {
+            default {
+              $out ~= " ❰$p❱ ";
+              @formatted.push(t.color(%COLORS<error>) => " ❰" ~ $eval-str ~ "❱");
+              $!errors ~= "sorry: $_\n";
+            }
+          }
         }
       }
       $out ~= "\n";
