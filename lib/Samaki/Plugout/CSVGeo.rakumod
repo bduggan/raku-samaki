@@ -325,63 +325,29 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
       // Try to parse a value as geo data using wkx
       function tryParseGeo(value) {
         if (!value || typeof value !== 'string') return null;
-
         const trimmed = value.trim();
         if (!trimmed) return null;
 
-        // Try GeoJSON first (most common in CSV exports)
-        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-          try {
+        const parsers = [
+          // GeoJSON
+          () => {
             const json = JSON.parse(trimmed);
-            // Validate it's GeoJSON-like
-            if (json.type && (json.coordinates || json.geometries || json.features)) {
-              const geom = wkx.Geometry.parseGeoJSON(json);
-              return geom.toGeoJSON();
-            }
-          } catch (e) {
-            // Not valid GeoJSON
-          }
-        }
+            return json.type ? wkx.Geometry.parseGeoJSON(json).toGeoJSON() : null;
+          },
+          // WKT/EWKT string
+          () => wkx.Geometry.parse(trimmed).toGeoJSON(),
+          // WKB hex
+          () => wkx.Geometry.parse(new Buffer(trimmed, 'hex')).toGeoJSON(),
+          // WKB base64
+          () => wkx.Geometry.parse(new Buffer(trimmed, 'base64')).toGeoJSON()
+        ];
 
-        // Try WKT (Well-Known Text) - e.g., "POINT(1 2)", "POLYGON((...))"
-        if (/^(POINT|LINESTRING|POLYGON|MULTIPOINT|MULTILINESTRING|MULTIPOLYGON|GEOMETRYCOLLECTION)/i.test(trimmed)) {
+        for (const parser of parsers) {
           try {
-            const geom = wkx.Geometry.parse(trimmed);
-            return geom.toGeoJSON();
+            const result = parser();
+            if (result) return result;
           } catch (e) {
-            // Not valid WKT
-          }
-        }
-
-        // Try EWKT (Extended WKT with SRID) - e.g., "SRID=4326;POINT(1 2)"
-        if (/^SRID=\d+;/i.test(trimmed)) {
-          try {
-            const geom = wkx.Geometry.parse(trimmed);
-            return geom.toGeoJSON();
-          } catch (e) {
-            // Not valid EWKT
-          }
-        }
-
-        // Try WKB (Well-Known Binary) - hex string
-        if (/^[0-9A-Fa-f]+$/.test(trimmed) && trimmed.length >= 10) {
-          try {
-            const wkbBuffer = new Buffer(trimmed, 'hex');
-            const geom = wkx.Geometry.parse(wkbBuffer);
-            return geom.toGeoJSON();
-          } catch (e) {
-            console.error('WKB parse error for hex string (length=' + trimmed.length + '):', e.message);
-          }
-        }
-
-        // Try base64-encoded WKB/EWKB
-        if (/^[A-Za-z0-9+/]+=*$/.test(trimmed) && trimmed.length >= 16) {
-          try {
-            const wkbBuffer = new Buffer(trimmed, 'base64');
-            const geom = wkx.Geometry.parse(wkbBuffer);
-            return geom.toGeoJSON();
-          } catch (e) {
-            // Not valid base64 WKB
+            // Try next parser
           }
         }
 
@@ -391,38 +357,17 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
       // Detect which columns contain geo data
       function detectGeoColumns(rows, columnNames) {
         const detected = [];
-
-        console.log('detectGeoColumns: checking', columnNames.length, 'columns');
+        const sampleSize = Math.min(5, rows.length);
 
         for (const col of columnNames) {
-          let hasGeoData = false;
-
-          // Check first 5 rows for geo data
-          const sampleSize = Math.min(5, rows.length);
           for (let i = 0; i < sampleSize; i++) {
-            const val = rows[i][col];
-            if (!val) continue;
-
-            // Log sample values for debugging
-            if (i === 0 && val && val.length < 100) {
-              console.log('  Column "' + col + '" sample value:', val);
-            }
-
-            const parsed = tryParseGeo(val);
-            if (parsed !== null) {
-              hasGeoData = true;
-              console.log('  Column "' + col + '" contains parseable geo data!');
+            if (rows[i][col] && tryParseGeo(rows[i][col])) {
+              detected.push(col);
               break;
             }
           }
-
-          if (hasGeoData) {
-            detected.push(col);
-            console.log('✓ Detected geo column:', col);
-          }
         }
 
-        console.log('detectGeoColumns: found', detected.length, 'geo columns');
         return detected;
       }
 
@@ -439,12 +384,9 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
 
         // Get columns from the first row
         columns = Object.keys(parsed.data[0]);
-        console.log('Columns:', columns);
 
         // Detect geo columns using wkx
         geoColumns = detectGeoColumns(parsed.data, columns);
-        console.log('Detected geo columns:', geoColumns);
-        console.log('Lat/lon pairs:', latlonPairs);
 
         // Build rowData array
         parsed.data.forEach(function(row, index) {
@@ -515,10 +457,6 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
 
           rowData.push(rowObj);
         });
-
-        console.log('Parsed', rowData.length, 'rows');
-        const totalFeatures = rowData.reduce((sum, row) => sum + row.features.length, 0);
-        console.log('Total features across all rows:', totalFeatures);
       }
 
       // Global state
@@ -660,15 +598,10 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
 
       // Initialize on page load
       document.addEventListener('DOMContentLoaded', function() {
-        console.log('DOMContentLoaded - starting initialization');
         parseCSVData();
-        console.log('CSV parsed, rowData length:', rowData.length);
         initializeMap();
-        console.log('Map initialized');
         initializeTable();
-        console.log('Table initialized');
         setupEventHandlers();
-        console.log('Event handlers set up');
       });
 
       // Map initialization
@@ -685,9 +618,7 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
         rowData.forEach(function(row) {
           const layerGroup = L.layerGroup();
 
-          console.log('Row ' + row.index + ' has ' + row.features.length + ' features');
           row.features.forEach(function(feature) {
-            console.log('  Feature type:', feature.type, 'Geometry:', feature.geometry ? feature.geometry.type : 'none');
             const color = getColorForRow(row.index);
             const geoLayer = L.geoJSON(feature, {
               style: {
@@ -728,7 +659,6 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
 
             // Add click handler to select and scroll to corresponding table row
             geoLayer.on('click', function(e) {
-              console.log('Layer clicked, row index:', row.index);
               selectRowFromMap(row.index);
             });
 
@@ -776,8 +706,6 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
           });
         });
 
-        console.log('fitAllBounds: found', allBounds.length, 'bounds');
-
         if (allBounds.length > 0) {
           const bounds = allBounds[0];
           allBounds.slice(1).forEach(function(b) {
@@ -785,8 +713,6 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
           });
           map.fitBounds(bounds, { padding: [20, 20] });
         } else {
-          // Default view if no bounds found
-          console.log('No bounds found, setting default view');
           map.setView([0, 0], 2);
         }
       }
@@ -935,7 +861,6 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
         if (!colorPalettes[paletteKey]) return;
 
         currentPalette = paletteKey;
-        console.log('Switching to palette:', paletteKey);
 
         // Check if this is a border-based palette
         const borderStyle = borderPalettes[paletteKey];
@@ -1113,42 +1038,24 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
       }
 
       function selectRowFromMap(rowIndex) {
-        console.log('selectRowFromMap called with rowIndex:', rowIndex);
-
-        // Clear all selections
         $('#dataTable tbody tr').removeClass('selected');
 
-        // Find the data row index in our original data
         const dataRowIndex = rowData.findIndex(function(r) { return r.index === rowIndex; });
-        console.log('Data row index:', dataRowIndex);
+        if (dataRowIndex < 0) return;
 
-        if (dataRowIndex < 0) {
-          console.log('Row not found in rowData!');
-          return;
-        }
-
-        // Get the DataTable API instance
         const dt = dataTable;
         const pageLength = dt.page.len();
         const pageNumber = Math.floor(dataRowIndex / pageLength);
-        console.log('Jumping to page:', pageNumber, 'of', Math.ceil(rowData.length / pageLength));
 
-        // Jump to the page containing the row
         dt.page(pageNumber).draw('page');
 
-        // After the page is drawn, select and scroll to the row
         setTimeout(function() {
           const $targetRow = $('#dataTable tbody tr[data-row-index="' + rowIndex + '"]');
-          console.log('After page draw, found target row:', $targetRow.length);
-
           if ($targetRow.length > 0) {
             $targetRow.addClass('selected');
-
-            // Scroll the row into view
             const rowElement = $targetRow[0];
             if (rowElement) {
               rowElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-              console.log('Scrolled row into view');
             }
           }
         }, 200);
