@@ -8,16 +8,6 @@ my $plugout = Samaki::Plugout::CSVGeo.new;
 ok $plugout, 'CSVGeo plugout created';
 is $plugout.name, 'csv-geo', 'plugout has correct name';
 
-# Test GeoJSON detection
-my @rows = [
-  { point => '{"type":"Point","coordinates":[4.37,50.81]}', name => 'Brussels' },
-  { point => '{"type":"Point","coordinates":[2.35,48.86]}', name => 'Paris' }
-];
-my @cols = <point name>;
-my @geojson-cols = $plugout.detect-geojson-columns(@rows, @cols);
-is @geojson-cols.elems, 1, 'detected one GeoJSON column';
-is @geojson-cols[0], 'point', 'detected point column';
-
 # Test lat/lon detection
 my @latlon-cols = <name lat lon>;
 my @pairs = $plugout.detect-latlon-pairs(@latlon-cols);
@@ -47,5 +37,7 @@ ok $html-file.e, 'HTML file created';
 my $html = slurp $html-file;
 ok $html ~~ /'Papa.parse'/, 'HTML contains Papa Parse';
 ok $html ~~ /'Leaflet'/, 'HTML contains Leaflet';
+ok $html ~~ /'wkx'/, 'HTML contains wkx library';
+ok $html ~~ /'tryParseGeo'/, 'HTML contains geo parsing function';
 
 done-testing;
