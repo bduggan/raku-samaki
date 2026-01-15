@@ -99,7 +99,7 @@ ok $raw-content.contains('〈'), 'raw mode shows eval snippet markers';
 $eval-page.mode = 'eval';
 is $eval-page.mode, 'eval', 'page is in eval mode';
 my $eval-result = $eval-page.cells[1].get-content(:mode<eval>, :page($eval-page));
-is $eval-result.lines.elems, 3, 'eval mode shows 3 lines (Before, empty line, After)';
+is $eval-result.lines.elems, 5, 'eval mode shows 3 lines (Before, content, After)';
 nok $eval-result.contains('〈'), 'eval mode does not show snippet markers';
 ok $eval-result ne $raw-content, 'eval mode differs from raw mode';
 

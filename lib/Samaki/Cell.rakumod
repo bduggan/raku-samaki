@@ -129,6 +129,7 @@ class Samaki::Cell {
         trace "calling EVAL with $eval-str";
         try {
           my $res = do {
+            self.maybe-make-data-dir;
             indir self.data-dir, { $page.cu.eval($eval-str) }
           }
           $out ~= ( $res // "");
@@ -168,6 +169,10 @@ class Samaki::Cell {
   method ext {
     # either a configured ext or it comes from the plugin, or csv as a last resort
     self.get-conf('_ext') || $!ext || $.output-ext || "csv";
+  }
+
+  method maybe-make-data-dir {
+    $.data-dir.mkdir unless $.data-dir.d;
   }
 
   method output-file(Bool :$create = False) {
@@ -237,6 +242,7 @@ class Samaki::Cell {
         LEAVE {
           try { $out.close } if self.close-output-file && $out;
         }
+        self.maybe-make-data-dir;
         indir self.data-dir, {
           info "running plugin " ~ $.plugin.^name;
           $.plugin.clear-output;
