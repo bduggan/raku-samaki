@@ -323,32 +323,67 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
       let geoColumns = [];
 
       // Try to parse a value as geo data using wkx
-      function tryParseGeo(value) {
+      function tryParseGeo(value, debug) {
         if (!value || typeof value !== 'string') return null;
         const trimmed = value.trim();
         if (!trimmed) return null;
 
+        // First try: if it's valid JSON with geo keywords, use it directly
+        try {
+          const json = JSON.parse(trimmed);
+          const jsonStr = JSON.stringify(json).toLowerCase();
+          const hasGeoKeywords = jsonStr.includes('feature') ||
+                                 jsonStr.includes('coordinates') ||
+                                 jsonStr.includes('geometry') ||
+                                 jsonStr.includes('polygon') ||
+                                 jsonStr.includes('point') ||
+                                 jsonStr.includes('linestring');
+
+          if (hasGeoKeywords) {
+            if (debug) console.log('✓ Detected as GeoJSON (direct)');
+            // Return directly if it's already a Feature or FeatureCollection
+            if (json.type === 'Feature' || json.type === 'FeatureCollection') {
+              return json;
+            }
+            // If it has geometry type and coordinates, wrap it as a Feature
+            if (json.type && json.coordinates) {
+              return {
+                type: 'Feature',
+                geometry: json,
+                properties: {}
+              };
+            }
+            // Otherwise, just return it and let Leaflet handle it
+            return json;
+          }
+        } catch (e) {
+          // Not valid JSON, continue to other parsers
+        }
+
         const parsers = [
-          // GeoJSON
-          () => {
-            const json = JSON.parse(trimmed);
-            return json.type ? wkx.Geometry.parseGeoJSON(json).toGeoJSON() : null;
-          },
           // WKT/EWKT string
-          () => wkx.Geometry.parse(trimmed).toGeoJSON(),
+          { name: 'WKT/EWKT', fn: () => wkx.Geometry.parse(trimmed).toGeoJSON() },
           // WKB hex
-          () => wkx.Geometry.parse(new Buffer(trimmed, 'hex')).toGeoJSON(),
+          { name: 'WKB hex', fn: () => wkx.Geometry.parse(new Buffer(trimmed, 'hex')).toGeoJSON() },
           // WKB base64
-          () => wkx.Geometry.parse(new Buffer(trimmed, 'base64')).toGeoJSON()
+          { name: 'WKB base64', fn: () => wkx.Geometry.parse(new Buffer(trimmed, 'base64')).toGeoJSON() }
         ];
 
         for (const parser of parsers) {
           try {
-            const result = parser();
-            if (result) return result;
+            const result = parser.fn();
+            if (result) {
+              if (debug) console.log('✓ Parsed as', parser.name);
+              return result;
+            }
           } catch (e) {
-            // Try next parser
+            if (debug) console.log('✗', parser.name, 'failed:', e.message);
           }
+        }
+
+        if (debug) {
+          console.log('Failed to parse value (length=' + trimmed.length + ')');
+          console.log('Sample:', trimmed.substring(0, 100));
         }
 
         return null;
@@ -359,15 +394,41 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
         const detected = [];
         const sampleSize = Math.min(5, rows.length);
 
+        console.log('=== Geo Column Detection ===');
+        console.log('Checking', columnNames.length, 'columns across', sampleSize, 'sample rows');
+
         for (const col of columnNames) {
+          let foundGeo = false;
           for (let i = 0; i < sampleSize; i++) {
-            if (rows[i][col] && tryParseGeo(rows[i][col])) {
+            const val = rows[i][col];
+            if (!val) continue;
+
+            // Enable debug for first value in each column
+            const debug = i === 0;
+            if (debug) {
+              console.log('\n--- Column:', col, '---');
+              console.log('Sample length:', val.length);
+            }
+
+            const parsed = tryParseGeo(val, debug);
+            if (parsed) {
               detected.push(col);
+              foundGeo = true;
+              console.log('✓ Column "' + col + '" detected as geo data');
               break;
+            }
+          }
+
+          if (!foundGeo) {
+            const firstVal = rows[0][col];
+            if (firstVal && firstVal.length > 50) {
+              console.log('✗ Column "' + col + '" not detected (sample: ' + firstVal.substring(0, 50) + '...)');
             }
           }
         }
 
+        console.log('\n=== Detection Complete ===');
+        console.log('Found', detected.length, 'geo columns:', detected.join(', '));
         return detected;
       }
 
