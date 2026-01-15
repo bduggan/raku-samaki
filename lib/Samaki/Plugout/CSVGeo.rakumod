@@ -20,26 +20,15 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   # Get column names
   my @columns = @rows[0].keys.sort;
 
-  # Detect GeoJSON columns
-  my @geojson-columns = self.detect-geojson-columns(@rows, @columns);
-
-  # Detect lat/lon column pairs
+  # Detect lat/lon column pairs (still useful for lat/lon columns)
   my @latlon-pairs = self.detect-latlon-pairs(@columns);
 
-  # Error handling: no GeoJSON or lat/lon found
-  if @geojson-columns.elems == 0 && @latlon-pairs.elems == 0 {
-    self.info("No GeoJSON columns or lat/lon pairs detected in CSV");
-    return;
-  }
-
-  info "Detected GeoJSON columns: {@geojson-columns.join(', ')}" if @geojson-columns;
   info "Detected lat/lon pairs: {@latlon-pairs.map({ $_<lat> ~ '/' ~ $_<lon> }).join(', ')}" if @latlon-pairs;
 
   # Read the raw CSV content
   my $csv-content = slurp $path;
 
   # Prepare metadata for JavaScript
-  my $geojson-cols-json = to-json(@geojson-columns.Array);
   my $latlon-pairs-json = to-json(@latlon-pairs);
 
   # Generate HTML file
@@ -47,7 +36,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   my $title = html-escape($data-dir.basename ~ " : " ~ $name);
 
   # Build HTML content
-  my $html = self.build-html($title, $csv-content, $geojson-cols-json, $latlon-pairs-json);
+  my $html = self.build-html($title, $csv-content, $latlon-pairs-json);
 
   # Write and open
   spurt $html-file, $html;
@@ -55,34 +44,6 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   shell-open $html-file;
 }
 
-method detect-geojson-columns(@rows, @columns) {
-  my @geojson-cols;
-
-  for @columns -> $col {
-    my $has-valid-geojson = False;
-
-    # Check first few rows for valid GeoJSON
-    for @rows[^min(5, @rows.elems)] -> $row {
-      my $val = $row{$col};
-      next unless $val;
-
-      try {
-        my $json = from-json($val);
-        if self.is-valid-geojson($json) {
-          $has-valid-geojson = True;
-          last;
-        }
-        CATCH {
-          default { } # Silent failure for invalid JSON
-        }
-      }
-    }
-
-    @geojson-cols.push($col) if $has-valid-geojson;
-  }
-
-  return @geojson-cols;
-}
 
 method detect-latlon-pairs(@columns) {
   my @pairs;
@@ -131,27 +92,8 @@ method detect-latlon-pairs(@columns) {
   return @pairs;
 }
 
-method is-valid-geojson($data) {
-  return False unless $data ~~ Hash;
 
-  my $type = $data<type>;
-  return False unless $type;
-
-  # Valid GeoJSON types
-  my @valid-types = <Feature FeatureCollection Point LineString Polygon
-                     MultiPoint MultiLineString MultiPolygon GeometryCollection>;
-
-  return False unless $type ~~ any(@valid-types);
-
-  # For bare geometries, verify they have coordinates
-  if $type ~~ any(<Point LineString Polygon MultiPoint MultiLineString MultiPolygon>) {
-    return False unless $data<coordinates>;
-  }
-
-  return True;
-}
-
-method build-html($title, $csv-content, $geojson-cols-json, $latlon-pairs-json) {
+method build-html($title, $csv-content, $latlon-pairs-json) {
   # Escape the CSV content for embedding in HTML/JavaScript
   # Need to escape backslashes, quotes, and newlines for JavaScript string literals
   my $csv-escaped = $csv-content.trans(['\\', '"', "\n", "\r"] => ['\\\\', '\\"', '\\n', '']);
@@ -175,6 +117,9 @@ method build-html($title, $csv-content, $geojson-cols-json, $latlon-pairs-json) 
 
     <!-- Papa Parse for CSV parsing -->
     <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+
+    <!-- wkx for parsing WKT, WKB, EWKB, EWKT, and other geo formats -->
+    <script src="https://cdn.jsdelivr.net/npm/wkx@0.5.0/dist/wkx.min.js"></script>
 
     <style>
       body {
@@ -366,12 +311,120 @@ method build-html($title, $csv-content, $geojson-cols-json, $latlon-pairs-json) 
     <script>
       // CSV data and metadata from Raku
       const csvContent = "CSV_CONTENT_PLACEHOLDER";
-      const geojsonColumns = GEOJSON_COLS_PLACEHOLDER;
       const latlonPairs = LATLON_PAIRS_PLACEHOLDER;
+
+      // Load wkx and Buffer from the browserified bundle
+      const wkx = require('wkx');
+      const Buffer = require('buffer').Buffer;
 
       // Parse CSV and build row data
       let rowData = [];
       let columns = [];
+      let geoColumns = [];
+
+      // Try to parse a value as geo data using wkx
+      function tryParseGeo(value) {
+        if (!value || typeof value !== 'string') return null;
+
+        const trimmed = value.trim();
+        if (!trimmed) return null;
+
+        // Try GeoJSON first (most common in CSV exports)
+        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+          try {
+            const json = JSON.parse(trimmed);
+            // Validate it's GeoJSON-like
+            if (json.type && (json.coordinates || json.geometries || json.features)) {
+              const geom = wkx.Geometry.parseGeoJSON(json);
+              return geom.toGeoJSON();
+            }
+          } catch (e) {
+            // Not valid GeoJSON
+          }
+        }
+
+        // Try WKT (Well-Known Text) - e.g., "POINT(1 2)", "POLYGON((...))"
+        if (/^(POINT|LINESTRING|POLYGON|MULTIPOINT|MULTILINESTRING|MULTIPOLYGON|GEOMETRYCOLLECTION)/i.test(trimmed)) {
+          try {
+            const geom = wkx.Geometry.parse(trimmed);
+            return geom.toGeoJSON();
+          } catch (e) {
+            // Not valid WKT
+          }
+        }
+
+        // Try EWKT (Extended WKT with SRID) - e.g., "SRID=4326;POINT(1 2)"
+        if (/^SRID=\d+;/i.test(trimmed)) {
+          try {
+            const geom = wkx.Geometry.parse(trimmed);
+            return geom.toGeoJSON();
+          } catch (e) {
+            // Not valid EWKT
+          }
+        }
+
+        // Try WKB (Well-Known Binary) - hex string
+        if (/^[0-9A-Fa-f]+$/.test(trimmed) && trimmed.length >= 10) {
+          try {
+            const wkbBuffer = new Buffer(trimmed, 'hex');
+            const geom = wkx.Geometry.parse(wkbBuffer);
+            return geom.toGeoJSON();
+          } catch (e) {
+            console.error('WKB parse error for hex string (length=' + trimmed.length + '):', e.message);
+          }
+        }
+
+        // Try base64-encoded WKB/EWKB
+        if (/^[A-Za-z0-9+/]+=*$/.test(trimmed) && trimmed.length >= 16) {
+          try {
+            const wkbBuffer = new Buffer(trimmed, 'base64');
+            const geom = wkx.Geometry.parse(wkbBuffer);
+            return geom.toGeoJSON();
+          } catch (e) {
+            // Not valid base64 WKB
+          }
+        }
+
+        return null;
+      }
+
+      // Detect which columns contain geo data
+      function detectGeoColumns(rows, columnNames) {
+        const detected = [];
+
+        console.log('detectGeoColumns: checking', columnNames.length, 'columns');
+
+        for (const col of columnNames) {
+          let hasGeoData = false;
+
+          // Check first 5 rows for geo data
+          const sampleSize = Math.min(5, rows.length);
+          for (let i = 0; i < sampleSize; i++) {
+            const val = rows[i][col];
+            if (!val) continue;
+
+            // Log sample values for debugging
+            if (i === 0 && val && val.length < 100) {
+              console.log('  Column "' + col + '" sample value:', val);
+            }
+
+            const parsed = tryParseGeo(val);
+            if (parsed !== null) {
+              hasGeoData = true;
+              console.log('  Column "' + col + '" contains parseable geo data!');
+              break;
+            }
+          }
+
+          if (hasGeoData) {
+            detected.push(col);
+            console.log('✓ Detected geo column:', col);
+          }
+        }
+
+        console.log('detectGeoColumns: found', detected.length, 'geo columns');
+        return detected;
+      }
 
       function parseCSVData() {
         const parsed = Papa.parse(csvContent, {
@@ -387,7 +440,10 @@ method build-html($title, $csv-content, $geojson-cols-json, $latlon-pairs-json) 
         // Get columns from the first row
         columns = Object.keys(parsed.data[0]);
         console.log('Columns:', columns);
-        console.log('GeoJSON columns:', geojsonColumns);
+
+        // Detect geo columns using wkx
+        geoColumns = detectGeoColumns(parsed.data, columns);
+        console.log('Detected geo columns:', geoColumns);
         console.log('Lat/lon pairs:', latlonPairs);
 
         // Build rowData array
@@ -403,13 +459,14 @@ method build-html($title, $csv-content, $geojson-cols-json, $latlon-pairs-json) 
             rowObj.data[col] = row[col] || '';
           });
 
-          // Extract GeoJSON features from designated columns
-          geojsonColumns.forEach(function(col) {
+          // Extract geo features from designated columns using wkx
+          geoColumns.forEach(function(col) {
             const val = row[col];
             if (!val) return;
 
             try {
-              const geojson = JSON.parse(val);
+              const geojson = tryParseGeo(val);
+              if (!geojson) return;
 
               // Handle different GeoJSON types
               if (geojson.type === 'Feature') {
@@ -427,7 +484,7 @@ method build-html($title, $csv-content, $geojson-cols-json, $latlon-pairs-json) 
                 });
               }
             } catch (e) {
-              console.warn('Failed to parse GeoJSON in row ' + index + ', column ' + col + ':', e);
+              console.warn('Failed to parse geo data in row ' + index + ', column ' + col + ':', e);
             }
           });
 
@@ -460,6 +517,8 @@ method build-html($title, $csv-content, $geojson-cols-json, $latlon-pairs-json) 
         });
 
         console.log('Parsed', rowData.length, 'rows');
+        const totalFeatures = rowData.reduce((sum, row) => sum + row.features.length, 0);
+        console.log('Total features across all rows:', totalFeatures);
       }
 
       // Global state
@@ -547,10 +606,14 @@ method build-html($title, $csv-content, $geojson-cols-json, $latlon-pairs-json) 
         return palette[rowIndex % palette.length];
       }
 
-      // Helper function to create GeoJSON summary
-      function summarizeGeoJSON(geojsonStr) {
+      // Helper function to create geo data summary
+      function summarizeGeoData(geoStr) {
         try {
-          const geojson = JSON.parse(geojsonStr);
+          const geojson = tryParseGeo(geoStr);
+          if (!geojson) {
+            return geoStr.substring(0, 50) + (geoStr.length > 50 ? '...' : '');
+          }
+
           let summary = '';
 
           if (geojson.type === 'Feature') {
@@ -565,12 +628,12 @@ method build-html($title, $csv-content, $geojson-cols-json, $latlon-pairs-json) 
             const coordCount = countCoordinates(geojson);
             summary = `${geojson.type}: ${coordCount} coord${coordCount !== 1 ? 's' : ''}`;
           } else {
-            summary = 'GeoJSON';
+            summary = 'Geometry';
           }
 
           return summary;
         } catch (e) {
-          return geojsonStr;
+          return geoStr.substring(0, 50) + (geoStr.length > 50 ? '...' : '');
         }
       }
 
@@ -597,10 +660,15 @@ method build-html($title, $csv-content, $geojson-cols-json, $latlon-pairs-json) 
 
       // Initialize on page load
       document.addEventListener('DOMContentLoaded', function() {
+        console.log('DOMContentLoaded - starting initialization');
         parseCSVData();
+        console.log('CSV parsed, rowData length:', rowData.length);
         initializeMap();
+        console.log('Map initialized');
         initializeTable();
+        console.log('Table initialized');
         setupEventHandlers();
+        console.log('Event handlers set up');
       });
 
       // Map initialization
@@ -708,12 +776,18 @@ method build-html($title, $csv-content, $geojson-cols-json, $latlon-pairs-json) 
           });
         });
 
+        console.log('fitAllBounds: found', allBounds.length, 'bounds');
+
         if (allBounds.length > 0) {
           const bounds = allBounds[0];
           allBounds.slice(1).forEach(function(b) {
             bounds.extend(b);
           });
           map.fitBounds(bounds, { padding: [20, 20] });
+        } else {
+          // Default view if no bounds found
+          console.log('No bounds found, setting default view');
+          map.setView([0, 0], 2);
         }
       }
 
@@ -751,10 +825,10 @@ method build-html($title, $csv-content, $geojson-cols-json, $latlon-pairs-json) 
             const td = document.createElement('td');
             const cellValue = row.data[col] || '';
 
-            // Check if this column contains GeoJSON
-            if (geojsonColumns.includes(col) && cellValue) {
-              // Show summary instead of full GeoJSON
-              const summary = summarizeGeoJSON(cellValue);
+            // Check if this column contains geo data
+            if (geoColumns.includes(col) && cellValue) {
+              // Show summary instead of full geo data
+              const summary = summarizeGeoData(cellValue);
               const summarySpan = document.createElement('span');
               summarySpan.textContent = summary;
               summarySpan.style.fontStyle = 'italic';
@@ -770,10 +844,16 @@ method build-html($title, $csv-content, $geojson-cols-json, $latlon-pairs-json) 
               copyBtn.style.borderRadius = '3px';
               copyBtn.style.background = '#f8f9fa';
               copyBtn.style.cursor = 'pointer';
-              copyBtn.title = 'Copy GeoJSON to clipboard';
+              copyBtn.title = 'Copy as GeoJSON';
               copyBtn.onclick = function(e) {
                 e.stopPropagation();
-                copyToClipboard(cellValue);
+                // Convert to GeoJSON before copying
+                const geojson = tryParseGeo(cellValue);
+                if (geojson) {
+                  copyToClipboard(JSON.stringify(geojson, null, 2));
+                } else {
+                  copyToClipboard(cellValue);
+                }
                 copyBtn.textContent = '✓';
                 setTimeout(function() {
                   copyBtn.textContent = '📋';
@@ -1098,7 +1178,6 @@ method build-html($title, $csv-content, $geojson-cols-json, $latlon-pairs-json) 
   # Replace placeholders with actual values
   $html = $html.subst('TITLE_PLACEHOLDER', $title, :g);
   $html = $html.subst('CSV_CONTENT_PLACEHOLDER', $csv-escaped);
-  $html = $html.subst('GEOJSON_COLS_PLACEHOLDER', $geojson-cols-json);
   $html = $html.subst('LATLON_PAIRS_PLACEHOLDER', $latlon-pairs-json);
 
   return $html;
