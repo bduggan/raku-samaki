@@ -944,41 +944,8 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
           const newColor = getColorForRow(parseInt(rowIndex));
 
           layerGroup.eachLayer(function(layer) {
-            // Check if this layer itself is a marker
-            if (layer.setIcon && layer.options && layer.options.icon) {
-              const oldIcon = layer.options.icon;
-              if (oldIcon.options && oldIcon.options.className === 'custom-marker-icon') {
-                const markerBorder = isBorderPalette ? borderStyle.borderColor : '#ffffff';
-                const newIcon = L.divIcon({
-                  className: 'custom-marker-icon',
-                  html: '<div style="background-color: ' + newColor + '; width: 20px; height: 20px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid ' + markerBorder + '; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
-                  iconSize: [24, 24],
-                  iconAnchor: [12, 24],
-                  popupAnchor: [0, -24]
-                });
-                layer.setIcon(newIcon);
-              }
-            }
-            // Update the layer's style for polygons, lines, etc.
-            else if (layer.setStyle) {
-              if (isBorderPalette) {
-                layer.setStyle({
-                  color: borderStyle.borderColor,
-                  fillColor: newColor,
-                  weight: borderStyle.borderWidth,
-                  fillOpacity: 0.6
-                });
-              } else {
-                layer.setStyle({
-                  color: newColor,
-                  fillColor: newColor,
-                  weight: 2,
-                  fillOpacity: 0.3
-                });
-              }
-            }
-            // For geoJSON layers that contain multiple sub-layers
-            else if (layer.eachLayer) {
+            // For geoJSON layers that contain multiple sub-layers, iterate through them
+            if (layer.eachLayer) {
               layer.eachLayer(function(subLayer) {
                 // Check if sublayer is a marker
                 if (subLayer.setIcon && subLayer.options && subLayer.options.icon) {
@@ -995,7 +962,7 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
                     subLayer.setIcon(newIcon);
                   }
                 }
-                // Update sublayer style for polygons, lines, etc.
+                // Update sublayer style for circle markers, polygons, lines, etc.
                 else if (subLayer.setStyle) {
                   if (isBorderPalette) {
                     subLayer.setStyle({
@@ -1014,6 +981,39 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
                   }
                 }
               });
+            }
+            // Check if this layer itself is a direct marker (not wrapped in geoJSON)
+            else if (layer.setIcon && layer.options && layer.options.icon) {
+              const oldIcon = layer.options.icon;
+              if (oldIcon.options && oldIcon.options.className === 'custom-marker-icon') {
+                const markerBorder = isBorderPalette ? borderStyle.borderColor : '#ffffff';
+                const newIcon = L.divIcon({
+                  className: 'custom-marker-icon',
+                  html: '<div style="background-color: ' + newColor + '; width: 20px; height: 20px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid ' + markerBorder + '; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+                  iconSize: [24, 24],
+                  iconAnchor: [12, 24],
+                  popupAnchor: [0, -24]
+                });
+                layer.setIcon(newIcon);
+              }
+            }
+            // Update the layer's style for direct polygons, lines, etc. (not wrapped in geoJSON)
+            else if (layer.setStyle) {
+              if (isBorderPalette) {
+                layer.setStyle({
+                  color: borderStyle.borderColor,
+                  fillColor: newColor,
+                  weight: borderStyle.borderWidth,
+                  fillOpacity: 0.6
+                });
+              } else {
+                layer.setStyle({
+                  color: newColor,
+                  fillColor: newColor,
+                  weight: 2,
+                  fillOpacity: 0.3
+                });
+              }
             }
           });
         });
