@@ -39,10 +39,10 @@ method dispatch(
     $pane.put: "No plugouts matched for $path";
     return;
   }
-  my $handler = @handlers[0];
+  my $handler = @handlers.head;
   $pane.clear if $handler.clear-before;
   $pane.put: "Matched plugout handler {$handler.name} for $path";
-  for @handlers[1..*] {
+  for @handlers.skip {
     $pane.put: [ t.color(%COLORS<button>) => '[' ~ .name ~ ']' ], meta => %( action => 'do_output', plugout_name => .name, :$path );
   }
   try {
