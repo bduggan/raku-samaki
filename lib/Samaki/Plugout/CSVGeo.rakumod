@@ -674,18 +674,29 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
       }
 
       function buildPopupContent(row, feature) {
-        let html = '<div style="font-size: 11px;">';
-        html += '<strong>Row ' + (row.index + 1) + '</strong><br>';
+        let html = '<div style="font-size: 11px; max-width: 300px;">';
+        html += '<strong>Row ' + (row.index + 1) + '</strong><br><br>';
 
-        // Add feature properties if they exist (filter out lat_col/lon_col)
-        if (feature.properties) {
-          for (let key in feature.properties) {
-            // Skip internal metadata properties
-            if (key === 'lat_col' || key === 'lon_col') {
-              continue;
-            }
-            html += key + ': ' + feature.properties[key] + '<br>';
+        // Show first few key/value pairs from the row data
+        let count = 0;
+        const maxFields = 5;
+        const maxValueLength = 50;
+
+        for (let key in row.data) {
+          if (count >= maxFields) break;
+
+          // Skip geo columns
+          if (geoColumns.includes(key)) continue;
+
+          let value = row.data[key] || '';
+
+          // Truncate long values
+          if (value.length > maxValueLength) {
+            value = value.substring(0, maxValueLength) + '...';
           }
+
+          html += '<strong>' + key + ':</strong> ' + value + '<br>';
+          count++;
         }
 
         html += '</div>';
