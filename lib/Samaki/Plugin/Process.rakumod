@@ -66,7 +66,7 @@ method do-react-loop($proc, :$cell, :$out, :$input, :$timeout) {
       $out.put($_) if $out;
       sleep 0.01;
     }
-    whenever $proc.stderr.lines { $.output-stream.send: "ERR: $_"; self.warn: "$_"; sleep 0.01;}
+    whenever $proc.stderr.lines { self.warn: "$_"; sleep 0.01;}
     whenever $proc.start(:$cwd,:$env) { info "proc is done"; self.do-done($_); done; }
     if $input {
       whenever $proc.print($input) {
