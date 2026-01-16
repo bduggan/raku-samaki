@@ -3,6 +3,7 @@ use Samaki::Utils;
 use Samaki::Plugout::Common;
 use Duckie;
 use Log::Async;
+use JSON::Fast;
 
 unit class Samaki::Plugout::D3 does Samaki::Plugout does Samaki::Plugout::Common;
 
@@ -31,11 +32,11 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
     my $title = html-escape($data-dir.basename ~ " : " ~ $path.basename);
 
     # Prepare all data as JSON for JavaScript
-    my $all-data-json = self.prepare-data-json(@rows, @columns);
-    my $columns-json = self.to-json(@columns);
-    my $numeric-columns-json = self.to-json(@numeric-cols);
-    my $datetime-columns-json = self.to-json(@datetime-cols);
-    my $default-values-json = self.to-json(@default-values);
+    my $all-data-json = to-json(@rows);
+    my $columns-json = to-json(@columns);
+    my $numeric-columns-json = to-json(@numeric-cols);
+    my $datetime-columns-json = to-json(@datetime-cols);
+    my $default-values-json = to-json(@default-values);
     my $default-label = html-escape($label-col);
     my $default-value = html-escape($value-col);
 

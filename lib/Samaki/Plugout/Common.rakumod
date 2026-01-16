@@ -1,16 +1,6 @@
-use Duck::CSV;
 use Log::Async;
 
 unit role Samaki::Plugout::Common;
-
-method to-json(@array) {
-    # Simple JSON array serialization
-    my $items = @array.map({
-        when Str { '"' ~ $_.subst('"', '\\"', :g).subst("\n", '\\n', :g) ~ '"' }
-        default { $_.Str }
-    }).join(', ');
-    return "[$items]";
-}
 
 method debug($msg) {
     debug($msg) if %*ENV<SAMAKI_DEBUG>;
@@ -172,15 +162,3 @@ method detect-columns(@columns, @rows, :@column-types) {
   };
 }
 
-method prepare-data-json(@rows, @columns) {
-  # Convert all data to JSON format for JavaScript
-  my $rows-json = @rows.map(-> $row {
-    my $pairs = @columns.map(-> $col {
-      my $key = $col.Str.subst('"', '\\"', :g);
-      my $val = ($row{ $col } // '').Str.subst('"', '\\"', :g).subst("\n", '\\n', :g);
-      qq["$key": "$val"]
-    }).join(', ');
-    "\{$pairs\}"
-  }).join(",\n  ");
-  return "[\n  $rows-json\n]";
-}
