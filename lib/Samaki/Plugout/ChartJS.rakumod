@@ -131,6 +131,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
       <div class="controls">
         <button id="btn-vertical" class="active">Vertical Bar</button>
         <button id="btn-horizontal">Horizontal Bar</button>
+        <button id="btn-line">Line</button>
         <button id="btn-pie">Pie Chart</button>
         <button id="btn-polar">Polar Area</button>
         <div class="column-selector">
@@ -205,7 +206,22 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
 
         console.log('Getting chart data for label="' + labelCol + '" values=' + JSON.stringify(valueCols));
 
-        const labels = allData.map(row => row[labelCol] || '');
+        // Check if label column is datetime
+        const isLabelDatetime = datetimeColumns.includes(labelCol);
+
+        // Create array of data with indices for sorting
+        let dataWithIndices = allData.map((row, idx) => ({ row, idx }));
+
+        // Sort by label column if it's datetime
+        if (isLabelDatetime) {
+          dataWithIndices.sort((a, b) => {
+            const dateA = new Date(a.row[labelCol] || 0);
+            const dateB = new Date(b.row[labelCol] || 0);
+            return dateA - dateB;
+          });
+        }
+
+        const labels = dataWithIndices.map(item => item.row[labelCol] || '');
 
         // Color palette for multiple datasets
         const colorPalette = [
@@ -221,8 +237,8 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
 
         // Create a dataset for each selected value column
         const datasets = valueCols.map((valueCol, index) => {
-          const values = allData.map(row => {
-            const val = row[valueCol] || '0';
+          const values = dataWithIndices.map(item => {
+            const val = item.row[valueCol] || '0';
             let numVal = Number(val);
             if (isNaN(numVal)) {
               numVal = 0;
@@ -303,10 +319,25 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
               type: 'time',
               time: {
                 displayFormats: {
-                  datetime: 'MMM d, yyyy HH:mm',
+                  millisecond: 'HH:mm:ss.SSS',
+                  second: 'MMM d, HH:mm:ss',
+                  minute: 'MMM d, HH:mm',
+                  hour: 'MMM d, HH:mm',
                   day: 'MMM d, yyyy',
+                  week: 'MMM d, yyyy',
                   month: 'MMM yyyy',
+                  quarter: 'MMM yyyy',
                   year: 'yyyy'
+                },
+                tooltipFormat: 'PPpp'
+              },
+              title: {
+                display: true,
+                text: labelCol,
+                font: {
+                  family: 'ui-monospace, monospace',
+                  size: 12,
+                  weight: 'bold'
                 }
               },
               ticks: {
@@ -321,6 +352,15 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
           } else {
             // Regular category scale
             scales[labelAxis] = {
+              title: {
+                display: true,
+                text: labelCol,
+                font: {
+                  family: 'ui-monospace, monospace',
+                  size: 12,
+                  weight: 'bold'
+                }
+              },
               ticks: {
                 font: {
                   family: 'ui-monospace, monospace',
@@ -333,8 +373,21 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
           }
 
           // Configure value axis (y for vertical bar, x for horizontal bar)
+          const selectedOptions = Array.from(valueSelect.selectedOptions);
+          const valueCols = selectedOptions.map(opt => opt.value);
+          const valueAxisLabel = valueCols.length === 1 ? valueCols[0] : 'Value';
+
           scales[valueAxis] = {
             beginAtZero: true,
+            title: {
+              display: true,
+              text: valueAxisLabel,
+              font: {
+                family: 'ui-monospace, monospace',
+                size: 12,
+                weight: 'bold'
+              }
+            },
             ticks: {
               font: {
                 family: 'ui-monospace, monospace',
@@ -369,6 +422,30 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                     size: 12
                   }
                 }
+              },
+              tooltip: {
+                enabled: true,
+                callbacks: {
+                  title: function(context) {
+                    if (isLabelDatetime && context.length > 0) {
+                      const label = context[0].label;
+                      // Parse and format the datetime for tooltip
+                      const date = new Date(label);
+                      if (!isNaN(date.getTime())) {
+                        return date.toLocaleString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          second: '2-digit',
+                          hour12: false
+                        });
+                      }
+                    }
+                    return context[0].label;
+                  }
+                }
               }
             }
           }
@@ -386,6 +463,11 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
 
       document.getElementById('btn-horizontal').addEventListener('click', function() {
         createChart('bar', 'y');
+        setActiveButton(this);
+      });
+
+      document.getElementById('btn-line').addEventListener('click', function() {
+        createChart('line', 'x');
         setActiveButton(this);
       });
 
