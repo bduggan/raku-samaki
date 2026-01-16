@@ -137,6 +137,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
       <div class="controls">
         <button id="btn-bar">Bar</button>
         <button id="btn-line">Line</button>
+        <button id="btn-scatter">Scatter</button>
         <button id="btn-pie">Pie Chart</button>
         <button id="btn-polar">Polar Area</button>
         <button id="btn-orientation">↔ Horizontal</button>
@@ -515,7 +516,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         };
       }
 
-      function getChartData() {
+      function getChartData(isScatter = false) {
         const labelCol = labelSelect.value;
         const selectedOptions = Array.from(valueSelect.selectedOptions);
         const valueCols = selectedOptions.map(opt => opt.value);
@@ -525,10 +526,11 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
           return { labels: [], datasets: [] };
         }
 
-        console.log('Getting chart data for label="' + labelCol + '" values=' + JSON.stringify(valueCols));
+        console.log('Getting chart data for label="' + labelCol + '" values=' + JSON.stringify(valueCols) + ' scatter=' + isScatter);
 
         // Check if label column is datetime
         const isLabelDatetime = datetimeColumns.includes(labelCol);
+        const isLabelNumeric = numericColumns.includes(labelCol);
 
         // Create array of data with indices for sorting
         let dataWithIndices = allData.map((row, idx) => ({ row, idx }));
@@ -577,25 +579,66 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
 
         // Create a dataset for each selected value column
         const datasets = valueCols.map((valueCol, index) => {
-          const values = dataWithIndices.map(item => {
-            const val = item.row[valueCol] || '0';
-            let numVal = Number(val);
-            if (isNaN(numVal)) {
-              numVal = 0;
-            } else if (Number.isInteger(numVal)) {
-              numVal = parseInt(val, 10);
-            }
-            return numVal;
-          });
-
           const colors = colorPalette[index % colorPalette.length];
-          return {
-            label: valueCol,
-            data: values,
-            backgroundColor: colors.bg,
-            borderColor: colors.border,
-            borderWidth: 1
-          };
+
+          if (isScatter) {
+            // For scatter charts, create {x, y} data points
+            const scatterData = dataWithIndices.map((item, i) => {
+              // Get Y value (from value column)
+              const yVal = item.row[valueCol] || '0';
+              let y = Number(yVal);
+              if (isNaN(y)) y = 0;
+
+              // Get X value (from label column)
+              let x;
+              if (isLabelDatetime) {
+                // Use the datetime label converted to timestamp
+                const sourceTimezone = sourceTimezoneSelect.value;
+                const targetTimezone = timezoneSelect.value;
+                const dateStr = item.row[labelCol];
+                const parsed = parseDateTime(dateStr, sourceTimezone, targetTimezone);
+                x = parsed ? parsed.getTime() : i;
+              } else if (isLabelNumeric) {
+                const xVal = item.row[labelCol] || '0';
+                x = Number(xVal);
+                if (isNaN(x)) x = i;
+              } else {
+                // For non-numeric labels, use the index
+                x = i;
+              }
+
+              return { x, y };
+            });
+
+            return {
+              label: valueCol,
+              data: scatterData,
+              backgroundColor: colors.bg,
+              borderColor: colors.border,
+              pointRadius: 5,
+              pointHoverRadius: 7
+            };
+          } else {
+            // Standard format for other chart types
+            const values = dataWithIndices.map(item => {
+              const val = item.row[valueCol] || '0';
+              let numVal = Number(val);
+              if (isNaN(numVal)) {
+                numVal = 0;
+              } else if (Number.isInteger(numVal)) {
+                numVal = parseInt(val, 10);
+              }
+              return numVal;
+            });
+
+            return {
+              label: valueCol,
+              data: values,
+              backgroundColor: colors.bg,
+              borderColor: colors.border,
+              borderWidth: 1
+            };
+          }
         });
 
         console.log('Labels:', labels);
@@ -616,9 +659,10 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         currentIndexAxis = indexAxis;
 
         const isRadial = type === 'pie' || type === 'polarArea';
+        const isScatter = type === 'scatter';
 
         // Get fresh data based on selected columns
-        const data = getChartData();
+        const data = getChartData(isScatter);
 
         // Check if label column is datetime
         const labelCol = labelSelect.value;
@@ -668,8 +712,96 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
 
         // Build scales configuration
         let scales;
+        const isLabelNumeric = numericColumns.includes(labelCol);
         if (isRadial) {
           scales = undefined;
+        } else if (isScatter) {
+          // Scatter charts need special handling for x-axis
+          scales = {};
+
+          // Configure x-axis for scatter
+          if (isLabelDatetime) {
+            // Time scale for datetime columns
+            const displayFormats = getDisplayFormats(selectedFormat);
+            const selectedTimezone = timezoneSelect.value;
+            const tzAbbr = moment().tz(selectedTimezone).format('z');
+            let axisTitle = labelCol + ' (' + tzAbbr + ')';
+            if (dateContextText) {
+              axisTitle += ' : ' + dateContextText;
+            }
+            scales.x = {
+              type: 'time',
+              adapters: {
+                date: {
+                  zone: selectedTimezone
+                }
+              },
+              time: {
+                displayFormats: displayFormats,
+              },
+              title: {
+                display: true,
+                text: axisTitle,
+                font: {
+                  family: 'ui-monospace, monospace',
+                  size: 12,
+                  weight: 'bold'
+                }
+              },
+              ticks: {
+                font: {
+                  family: 'ui-monospace, monospace',
+                  size: 11
+                },
+                maxRotation: 45,
+                minRotation: 45
+              }
+            };
+          } else {
+            // Linear scale for scatter x-axis
+            scales.x = {
+              type: 'linear',
+              title: {
+                display: true,
+                text: labelCol,
+                font: {
+                  family: 'ui-monospace, monospace',
+                  size: 12,
+                  weight: 'bold'
+                }
+              },
+              ticks: {
+                font: {
+                  family: 'ui-monospace, monospace',
+                  size: 11
+                }
+              }
+            };
+          }
+
+          // Configure y-axis for scatter
+          const selectedOptions = Array.from(valueSelect.selectedOptions);
+          const valueCols = selectedOptions.map(opt => opt.value);
+          const valueAxisLabel = valueCols.length === 1 ? valueCols[0] : 'Value';
+
+          scales.y = {
+            type: 'linear',
+            title: {
+              display: true,
+              text: valueAxisLabel,
+              font: {
+                family: 'ui-monospace, monospace',
+                size: 12,
+                weight: 'bold'
+              }
+            },
+            ticks: {
+              font: {
+                family: 'ui-monospace, monospace',
+                size: 11
+              }
+            }
+          };
         } else {
           // Determine which axis is for labels (category/time axis)
           const labelAxis = indexAxis === 'x' ? 'x' : 'y';
@@ -843,6 +975,11 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
 
       document.getElementById('btn-line').addEventListener('click', function() {
         createChart('line', 'x');
+        setActiveButton(this);
+      });
+
+      document.getElementById('btn-scatter').addEventListener('click', function() {
+        createChart('scatter', 'x');
         setActiveButton(this);
       });
 
