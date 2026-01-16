@@ -1,3 +1,11 @@
+0.0.25 2026-01-16
+  - csv-geo plugout improvements
+  - fix updates to point styles
+  - handle raw geojson differently
+  - add info to popup
+  - make data dir on demand in test
+  - optimizations
+
 0.0.24 2026-01-14
   - csv-geo plugout
   - double lines for auto cells
