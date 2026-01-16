@@ -21,6 +21,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   my %result = self.detect-columns(@columns, @rows, :@column-types);
   my $label-col = %result<label>;
   my $value-col = %result<value>;
+  my @default-values = @(%result<values>);
   my @numeric-cols = @(%result<numeric>);
   my @datetime-cols = @(%result<datetime>);
 
@@ -33,6 +34,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   my $columns-json = to-json(@columns);
   my $numeric-columns-json = to-json(@numeric-cols);
   my $datetime-columns-json = to-json(@datetime-cols);
+  my $default-values-json = to-json(@default-values);
   my $default-label = html-escape($label-col);
   my $default-value = html-escape($value-col);
 
@@ -44,7 +46,9 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>$title </title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment-timezone@0.5.43/builds/moment-timezone-with-data.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.1/dist/chartjs-adapter-moment.min.js"></script>
     <style>
       body {
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -129,11 +133,11 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
     <div class="container">
       <h2>$title </h2>
       <div class="controls">
-        <button id="btn-vertical" class="active">Vertical Bar</button>
-        <button id="btn-horizontal">Horizontal Bar</button>
+        <button id="btn-bar">Bar</button>
         <button id="btn-line">Line</button>
         <button id="btn-pie">Pie Chart</button>
         <button id="btn-polar">Polar Area</button>
+        <button id="btn-orientation">↔ Horizontal</button>
         <div class="column-selector">
           <label>Label:</label>
           <select id="label-column"></select>
@@ -141,6 +145,78 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         <div class="column-selector">
           <label>Values:</label>
           <select id="value-column" multiple></select>
+        </div>
+        <div class="column-selector" id="time-format-selector" style="display: none;">
+          <label>Date Format:</label>
+          <select id="time-format">
+            <option value="auto">Auto</option>
+            <option value="time-only">HH:mm</option>
+            <option value="time-seconds">HH:mm:ss</option>
+            <option value="date-time">MMM d, HH:mm</option>
+            <option value="date-time-seconds">MMM d, HH:mm:ss</option>
+            <option value="date-only">MMM d, yyyy</option>
+            <option value="month-year">MMM yyyy</option>
+            <option value="month-only">MMM</option>
+            <option value="year-only">yyyy</option>
+          </select>
+        </div>
+        <div class="column-selector" id="source-timezone-selector" style="display: none;">
+          <label>Source TZ:</label>
+          <select id="source-timezone">
+            <option value="America/New_York">US/Eastern (ET)</option>
+            <option value="America/Chicago">US/Central (CT)</option>
+            <option value="America/Denver">US/Mountain (MT)</option>
+            <option value="America/Los_Angeles">US/Pacific (PT)</option>
+            <option value="America/Anchorage">US/Alaska (AKT)</option>
+            <option value="Pacific/Honolulu">US/Hawaii (HT)</option>
+            <option value="UTC">UTC</option>
+            <option value="Europe/London">Europe/London (GMT/BST)</option>
+            <option value="Europe/Paris">Europe/Paris (CET/CEST)</option>
+            <option value="Europe/Berlin">Europe/Berlin (CET/CEST)</option>
+            <option value="Europe/Rome">Europe/Rome (CET/CEST)</option>
+            <option value="Europe/Madrid">Europe/Madrid (CET/CEST)</option>
+            <option value="Europe/Amsterdam">Europe/Amsterdam (CET/CEST)</option>
+            <option value="Europe/Brussels">Europe/Brussels (CET/CEST)</option>
+            <option value="Europe/Zurich">Europe/Zurich (CET/CEST)</option>
+            <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+            <option value="Asia/Shanghai">Asia/Shanghai (CST)</option>
+            <option value="Asia/Hong_Kong">Asia/Hong_Kong (HKT)</option>
+            <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
+            <option value="Asia/Dubai">Asia/Dubai (GST)</option>
+            <option value="Asia/Kolkata">Asia/Mumbai (IST)</option>
+            <option value="Australia/Sydney">Australia/Sydney (AEST/AEDT)</option>
+            <option value="Australia/Melbourne">Australia/Melbourne (AEST/AEDT)</option>
+            <option value="Australia/Perth">Australia/Perth (AWST)</option>
+          </select>
+        </div>
+        <div class="column-selector" id="timezone-selector" style="display: none;">
+          <label>Display TZ:</label>
+          <select id="timezone">
+            <option value="America/New_York">US/Eastern (ET)</option>
+            <option value="America/Chicago">US/Central (CT)</option>
+            <option value="America/Denver">US/Mountain (MT)</option>
+            <option value="America/Los_Angeles">US/Pacific (PT)</option>
+            <option value="America/Anchorage">US/Alaska (AKT)</option>
+            <option value="Pacific/Honolulu">US/Hawaii (HT)</option>
+            <option value="UTC">UTC</option>
+            <option value="Europe/London">Europe/London (GMT/BST)</option>
+            <option value="Europe/Paris">Europe/Paris (CET/CEST)</option>
+            <option value="Europe/Berlin">Europe/Berlin (CET/CEST)</option>
+            <option value="Europe/Rome">Europe/Rome (CET/CEST)</option>
+            <option value="Europe/Madrid">Europe/Madrid (CET/CEST)</option>
+            <option value="Europe/Amsterdam">Europe/Amsterdam (CET/CEST)</option>
+            <option value="Europe/Brussels">Europe/Brussels (CET/CEST)</option>
+            <option value="Europe/Zurich">Europe/Zurich (CET/CEST)</option>
+            <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+            <option value="Asia/Shanghai">Asia/Shanghai (CST)</option>
+            <option value="Asia/Hong_Kong">Asia/Hong_Kong (HKT)</option>
+            <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
+            <option value="Asia/Dubai">Asia/Dubai (GST)</option>
+            <option value="Asia/Kolkata">Asia/Mumbai (IST)</option>
+            <option value="Australia/Sydney">Australia/Sydney (AEST/AEDT)</option>
+            <option value="Australia/Melbourne">Australia/Melbourne (AEST/AEDT)</option>
+            <option value="Australia/Perth">Australia/Perth (AWST)</option>
+          </select>
         </div>
       </div>
       <div class="chart-container">
@@ -150,7 +226,6 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
     <script>
       const ctx = document.getElementById('myChart');
       let myChart;
-      let currentChartType = 'bar';
       let currentIndexAxis = 'x';
 
       // All data from CSV
@@ -158,6 +233,10 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
       const columns = $columns-json;
       const numericColumns = $numeric-columns-json;
       const datetimeColumns = $datetime-columns-json;
+      const defaultValues = $default-values-json;
+
+      // Set initial chart type based on number of default values
+      let currentChartType = defaultValues.length > 2 ? 'line' : 'bar';
 
       // Populate column selectors
       const labelSelect = document.getElementById('label-column');
@@ -176,8 +255,8 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         const option2 = document.createElement('option');
         option2.value = col;
         option2.textContent = col;
-        // Select the default value column by default
-        if (col === '$default-value') {
+        // Select all columns in defaultValues array by default
+        if (defaultValues.includes(col)) {
           option2.selected = true;
         }
         valueSelect.appendChild(option2);
@@ -192,7 +271,247 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
       console.log('Numeric Columns:', numericColumns);
       console.log('Datetime Columns:', datetimeColumns);
       console.log('Default Label:', '$default-label');
-      console.log('Default Value:', '$default-value');
+      console.log('Default Values:', defaultValues);
+
+      const timeFormatSelect = document.getElementById('time-format');
+      const timeFormatSelector = document.getElementById('time-format-selector');
+      const sourceTimezoneSelect = document.getElementById('source-timezone');
+      const sourceTimezoneSelector = document.getElementById('source-timezone-selector');
+      const timezoneSelect = document.getElementById('timezone');
+      const timezoneSelector = document.getElementById('timezone-selector');
+
+      // Map format types to display format strings
+      function getDisplayFormats(formatType) {
+        const formats = {
+          'time-only': {
+            millisecond: 'HH:mm:ss.SSS',
+            second: 'HH:mm:ss',
+            minute: 'HH:mm',
+            hour: 'HH:mm',
+            day: 'HH:mm',
+            week: 'HH:mm',
+            month: 'HH:mm',
+            quarter: 'HH:mm',
+            year: 'HH:mm'
+          },
+          'time-seconds': {
+            millisecond: 'HH:mm:ss.SSS',
+            second: 'HH:mm:ss',
+            minute: 'HH:mm:ss',
+            hour: 'HH:mm:ss',
+            day: 'HH:mm:ss',
+            week: 'HH:mm:ss',
+            month: 'HH:mm:ss',
+            quarter: 'HH:mm:ss',
+            year: 'HH:mm:ss'
+          },
+          'date-time': {
+            millisecond: 'MMM d, HH:mm:ss',
+            second: 'MMM d, HH:mm:ss',
+            minute: 'MMM d, HH:mm',
+            hour: 'MMM d, HH:mm',
+            day: 'MMM d, HH:mm',
+            week: 'MMM d',
+            month: 'MMM yyyy',
+            quarter: 'MMM yyyy',
+            year: 'yyyy'
+          },
+          'date-time-seconds': {
+            millisecond: 'MMM d, HH:mm:ss.SSS',
+            second: 'MMM d, HH:mm:ss',
+            minute: 'MMM d, HH:mm:ss',
+            hour: 'MMM d, HH:mm:ss',
+            day: 'MMM d, HH:mm:ss',
+            week: 'MMM d, HH:mm:ss',
+            month: 'MMM yyyy',
+            quarter: 'MMM yyyy',
+            year: 'yyyy'
+          },
+          'date-only': {
+            millisecond: 'MMM d, yyyy',
+            second: 'MMM d, yyyy',
+            minute: 'MMM d, yyyy',
+            hour: 'MMM d, yyyy',
+            day: 'MMM d, yyyy',
+            week: 'MMM d, yyyy',
+            month: 'MMM yyyy',
+            quarter: 'MMM yyyy',
+            year: 'yyyy'
+          },
+          'month-year': {
+            millisecond: 'MMM yyyy',
+            second: 'MMM yyyy',
+            minute: 'MMM yyyy',
+            hour: 'MMM yyyy',
+            day: 'MMM yyyy',
+            week: 'MMM yyyy',
+            month: 'MMM yyyy',
+            quarter: 'MMM yyyy',
+            year: 'yyyy'
+          },
+          'month-only': {
+            millisecond: 'MMM',
+            second: 'MMM',
+            minute: 'MMM',
+            hour: 'MMM',
+            day: 'MMM',
+            week: 'MMM',
+            month: 'MMM',
+            quarter: 'MMM',
+            year: 'MMM'
+          },
+          'year-only': {
+            millisecond: 'yyyy',
+            second: 'yyyy',
+            minute: 'yyyy',
+            hour: 'yyyy',
+            day: 'yyyy',
+            week: 'yyyy',
+            month: 'yyyy',
+            quarter: 'yyyy',
+            year: 'yyyy'
+          }
+        };
+        return formats[formatType];
+      }
+
+      // Helper to parse datetime strings consistently using moment.js
+      function parseDateTime(dateStr, sourceTimezone, targetTimezone) {
+        if (!dateStr) return null;
+
+        // Parse datetime string in source timezone
+        let m;
+        if (sourceTimezone === 'UTC') {
+          m = moment.utc(dateStr, 'YYYY-MM-DD HH:mm:ss');
+        } else {
+          m = moment.tz(dateStr, 'YYYY-MM-DD HH:mm:ss', sourceTimezone);
+        }
+
+        if (!m.isValid()) return null;
+
+        // Convert to target timezone if different
+        if (targetTimezone !== sourceTimezone) {
+          m = m.tz(targetTimezone);
+        }
+
+        return m.toDate();
+      }
+
+      // Analyze datetime data and determine best format
+      function analyzeTimeRange(labelCol) {
+        if (!datetimeColumns.includes(labelCol)) {
+          return null;
+        }
+
+        const sourceTimezone = sourceTimezoneSelect.value;
+        const targetTimezone = timezoneSelect.value;
+        const dates = allData.map(row => parseDateTime(row[labelCol], sourceTimezone, targetTimezone)).filter(d => d && !isNaN(d.getTime()));
+        if (dates.length === 0) {
+          return null;
+        }
+
+        dates.sort((a, b) => a - b);
+        const minDate = dates[0];
+        const maxDate = dates[dates.length - 1];
+        const rangeMs = maxDate - minDate;
+        const rangeDays = rangeMs / (1000 * 60 * 60 * 24);
+        const numPoints = dates.length;
+
+        // Check if all dates are on the same day
+        const allSameDay = dates.every(d =>
+          d.getFullYear() === minDate.getFullYear() &&
+          d.getMonth() === minDate.getMonth() &&
+          d.getDate() === minDate.getDate()
+        );
+
+        // Helper to format duration
+        function formatDuration(ms) {
+          const seconds = Math.floor(ms / 1000);
+          const minutes = Math.floor(seconds / 60);
+          const hours = Math.floor(minutes / 60);
+          const days = Math.floor(hours / 24);
+
+          if (days > 0) return days + 'd';
+          if (hours > 0) return hours + 'h';
+          if (minutes > 0) return minutes + 'm';
+          return seconds + 's';
+        }
+
+        // Heuristics for choosing time format
+        let recommendedFormat;
+        let dateContextText = '';
+
+        if (allSameDay) {
+          // All on same day - show time only
+          const rangeHours = rangeMs / (1000 * 60 * 60);
+          if (rangeHours < 1) {
+            recommendedFormat = 'time-seconds';
+          } else {
+            recommendedFormat = 'time-only';
+          }
+          // Show just the date
+          dateContextText = minDate.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'short',
+            day: 'numeric'
+          });
+        } else if (rangeDays < 1) {
+          // Less than a day
+          recommendedFormat = 'date-time';
+        } else if (rangeDays < 7) {
+          // Less than a week
+          recommendedFormat = numPoints > 50 ? 'date-only' : 'date-time';
+          const minStr = minDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const maxStr = maxDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const duration = formatDuration(rangeMs);
+          dateContextText = minStr + ' to ' + maxStr + ', ' + duration;
+        } else if (rangeDays < 31) {
+          // Less than a month
+          recommendedFormat = 'date-only';
+          const minStr = minDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const maxStr = maxDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const duration = formatDuration(rangeMs);
+          dateContextText = minStr + ' to ' + maxStr + ', ' + duration;
+        } else if (rangeDays < 90) {
+          // Less than 3 months
+          recommendedFormat = numPoints > 100 ? 'date-only' : 'date-only';
+          const minStr = minDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const maxStr = maxDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+          const duration = formatDuration(rangeMs);
+          dateContextText = minStr + ' to ' + maxStr + ', ' + duration;
+        } else if (rangeDays < 365) {
+          // Less than a year
+          recommendedFormat = numPoints > 50 ? 'month-year' : 'date-only';
+          const minStr = minDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+          const maxStr = maxDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+          const duration = formatDuration(rangeMs);
+          dateContextText = minStr + ' to ' + maxStr + ', ' + duration;
+        } else {
+          // More than a year
+          recommendedFormat = numPoints > 50 ? 'year-only' : 'month-year';
+          const minStr = minDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+          const maxStr = maxDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+          const duration = formatDuration(rangeMs);
+          dateContextText = minStr + ' to ' + maxStr + ', ' + duration;
+        }
+
+        console.log('Time analysis:', {
+          minDate: minDate.toISOString(),
+          maxDate: maxDate.toISOString(),
+          rangeDays,
+          numPoints,
+          allSameDay,
+          recommendedFormat
+        });
+
+        return {
+          recommendedFormat,
+          dateContextText,
+          minDate,
+          maxDate,
+          allSameDay
+        };
+      }
 
       function getChartData() {
         const labelCol = labelSelect.value;
@@ -212,16 +531,35 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         // Create array of data with indices for sorting
         let dataWithIndices = allData.map((row, idx) => ({ row, idx }));
 
-        // Sort by label column if it's datetime
+        // Sort and convert datetime labels
+        let labels;
         if (isLabelDatetime) {
+          const sourceTimezone = sourceTimezoneSelect.value;
+          const targetTimezone = timezoneSelect.value;
           dataWithIndices.sort((a, b) => {
-            const dateA = new Date(a.row[labelCol] || 0);
-            const dateB = new Date(b.row[labelCol] || 0);
+            const dateA = parseDateTime(a.row[labelCol], sourceTimezone, targetTimezone) || new Date(0);
+            const dateB = parseDateTime(b.row[labelCol], sourceTimezone, targetTimezone) || new Date(0);
             return dateA - dateB;
           });
+          // Convert datetime strings from source to target timezone for display
+          labels = dataWithIndices.map(item => {
+            const dateStr = item.row[labelCol];
+            if (!dateStr) return '';
+            let m;
+            if (sourceTimezone === 'UTC') {
+              m = moment.utc(dateStr, 'YYYY-MM-DD HH:mm:ss');
+            } else {
+              m = moment.tz(dateStr, 'YYYY-MM-DD HH:mm:ss', sourceTimezone);
+            }
+            if (!m.isValid()) return dateStr;
+            if (targetTimezone !== sourceTimezone) {
+              m = m.tz(targetTimezone);
+            }
+            return m.format('YYYY-MM-DD HH:mm:ss');
+          });
+        } else {
+          labels = dataWithIndices.map(item => item.row[labelCol] || '');
         }
-
-        const labels = dataWithIndices.map(item => item.row[labelCol] || '');
 
         // Color palette for multiple datasets
         const colorPalette = [
@@ -285,6 +623,31 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         const isLabelDatetime = datetimeColumns.includes(labelCol);
         console.log('Label column "' + labelCol + '" is datetime:', isLabelDatetime);
 
+        // Analyze time range and update UI for datetime labels
+        let timeAnalysis = null;
+        let selectedFormat = 'date-time'; // default
+        let dateContextText = '';
+        if (isLabelDatetime) {
+          timeAnalysis = analyzeTimeRange(labelCol);
+          timeFormatSelector.style.display = 'flex';
+          sourceTimezoneSelector.style.display = 'flex';
+          timezoneSelector.style.display = 'flex';
+
+          // Determine which format to use
+          if (timeFormatSelect.value === 'auto') {
+            selectedFormat = timeAnalysis.recommendedFormat;
+          } else {
+            selectedFormat = timeFormatSelect.value;
+          }
+
+          // Save date context text for axis title
+          dateContextText = timeAnalysis.dateContextText || '';
+        } else {
+          timeFormatSelector.style.display = 'none';
+          sourceTimezoneSelector.style.display = 'none';
+          timezoneSelector.style.display = 'none';
+        }
+
         // For pie and polar area charts with a single dataset, use multiple colors per slice
         if (isRadial && data.datasets.length === 1) {
           const colors = [
@@ -315,25 +678,28 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
           // Configure label axis (x for vertical bar, y for horizontal bar)
           if (isLabelDatetime) {
             // Time scale for datetime columns
+            const displayFormats = getDisplayFormats(selectedFormat);
+            const selectedTimezone = timezoneSelect.value;
+            // Build axis title: label (timezone) : range
+            const tzAbbr = moment().tz(selectedTimezone).format('z');
+            let axisTitle = labelCol + ' (' + tzAbbr + ')';
+            if (dateContextText) {
+              axisTitle += ' : ' + dateContextText;
+            }
             scales[labelAxis] = {
               type: 'time',
+              adapters: {
+                date: {
+                  zone: selectedTimezone
+                }
+              },
               time: {
-                displayFormats: {
-                  millisecond: 'HH:mm:ss.SSS',
-                  second: 'MMM d, HH:mm:ss',
-                  minute: 'MMM d, HH:mm',
-                  hour: 'MMM d, HH:mm',
-                  day: 'MMM d, yyyy',
-                  week: 'MMM d, yyyy',
-                  month: 'MMM yyyy',
-                  quarter: 'MMM yyyy',
-                  year: 'yyyy'
-                },
+                displayFormats: displayFormats,
                 tooltipFormat: 'PPpp'
               },
               title: {
                 display: true,
-                text: labelCol,
+                text: axisTitle,
                 font: {
                   family: 'ui-monospace, monospace',
                   size: 12,
@@ -429,18 +795,16 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                   title: function(context) {
                     if (isLabelDatetime && context.length > 0) {
                       const label = context[0].label;
-                      // Parse and format the datetime for tooltip
-                      const date = new Date(label);
-                      if (!isNaN(date.getTime())) {
-                        return date.toLocaleString('en-US', {
-                          year: 'numeric',
-                          month: 'short',
-                          day: 'numeric',
-                          hour: '2-digit',
-                          minute: '2-digit',
-                          second: '2-digit',
-                          hour12: false
-                        });
+                      const targetTimezone = timezoneSelect.value;
+                      // Label is already in target timezone, just parse and format nicely
+                      let m;
+                      if (targetTimezone === 'UTC') {
+                        m = moment.utc(label, 'YYYY-MM-DD HH:mm:ss');
+                      } else {
+                        m = moment.tz(label, 'YYYY-MM-DD HH:mm:ss', targetTimezone);
+                      }
+                      if (m.isValid()) {
+                        return m.format('MMM D, YYYY, HH:mm:ss z');
                       }
                     }
                     return context[0].label;
@@ -452,18 +816,28 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         });
       }
 
-      // Initialize with vertical bar chart
-      createChart('bar', 'x');
+      // Initialize: default to line chart if many values selected, otherwise bar chart
+      const initialChartType = defaultValues.length > 2 ? 'line' : 'bar';
+      createChart(initialChartType, 'x');
+
+      // Set the initial active button
+      if (initialChartType === 'line') {
+        setActiveButton(document.getElementById('btn-line'));
+      } else {
+        setActiveButton(document.getElementById('btn-bar'));
+      }
 
       // Button event listeners
-      document.getElementById('btn-vertical').addEventListener('click', function() {
-        createChart('bar', 'x');
+      document.getElementById('btn-bar').addEventListener('click', function() {
+        createChart('bar', currentIndexAxis);
         setActiveButton(this);
       });
 
-      document.getElementById('btn-horizontal').addEventListener('click', function() {
-        createChart('bar', 'y');
-        setActiveButton(this);
+      document.getElementById('btn-orientation').addEventListener('click', function() {
+        // Toggle between horizontal and vertical
+        currentIndexAxis = currentIndexAxis === 'x' ? 'y' : 'x';
+        this.textContent = currentIndexAxis === 'x' ? '↔ Horizontal' : '↕ Vertical';
+        createChart(currentChartType, currentIndexAxis);
       });
 
       document.getElementById('btn-line').addEventListener('click', function() {
@@ -487,6 +861,18 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
       });
 
       valueSelect.addEventListener('change', function() {
+        createChart(currentChartType, currentIndexAxis);
+      });
+
+      timeFormatSelect.addEventListener('change', function() {
+        createChart(currentChartType, currentIndexAxis);
+      });
+
+      sourceTimezoneSelect.addEventListener('change', function() {
+        createChart(currentChartType, currentIndexAxis);
+      });
+
+      timezoneSelect.addEventListener('change', function() {
         createChart(currentChartType, currentIndexAxis);
       });
 
@@ -581,22 +967,32 @@ method detect-columns(@columns, @rows, :@column-types) {
   }
 
   # Score columns for value selection - ONLY numeric columns allowed (excluding datetime)
+  # Exclude columns ending in _id or ID
   # Lower score is better
+  # Prefer HIGH cardinality columns (amounts, distances, etc.)
   my %value-scores;
-  my @numeric-columns = @valid-columns.grep({ %col-info{ $_ }<is-numeric> && !%col-info{ $_ }<is-datetime> });
+  my @numeric-columns = @valid-columns.grep({
+    my $col-lc = $_.lc;
+    %col-info{ $_ }<is-numeric> &&
+    !%col-info{ $_ }<is-datetime> &&
+    $col-lc !~~ /_id$/ &&
+    $col-lc !~~ /id$/
+  });
 
   for @numeric-columns -> $col {
     my $info = %col-info{ $col };
-    # Cardinality matters less for values (they typically have higher cardinality)
-    my $score = $info<cardinality>.Numeric / 10;  # Reduced weight
+    my $cardinality = $info<cardinality>.Numeric;
+    my $total = @rows.elems;
 
-    # Column name patterns
-    $score += 2000 if $info<name-is-id>;      # Never select _id columns
+    # Start with negative cardinality (high cardinality = low score = better)
+    my $score = -$cardinality;
 
-    # Data type penalties and preferences
-    $score += 1500 if $info<looks-like-id>;     # Strongly avoid ID-like data
-    $score += 1000 if $info<is-float>;        # Strongly avoid floats (coordinates, decimals)
-    $score -= 500 if $info<is-integer>;       # Strongly prefer integers
+    # Strong penalties for ID-like data (all values unique)
+    $score += 5000 if $info<looks-like-id>;
+
+    # Penalize very low cardinality (e.g., passenger_count with values 1,2,3,4)
+    # These are categorical-like and not good default values
+    $score += 2000 if $cardinality < 10;
 
     %value-scores{ $col } = $score;
   }
@@ -625,18 +1021,27 @@ method detect-columns(@columns, @rows, :@column-types) {
 
   # Select best label and value columns
   my $label-col = @valid-columns.sort({ %label-scores{ $_ } })[0];
-  # Value must be numeric and different from label
-  my $value-col = @numeric-columns.grep({ $_ ne $label-col }).sort({ %value-scores{ $_ } })[0]
-         // @numeric-columns[0]  # If label isn't numeric, pick best numeric
-         // $label-col;      # Fallback if no numeric columns
+
+  # Select multiple high-cardinality value columns (top 3-4 with good scores)
+  # Value columns must be numeric and different from label
+  my @sorted-values = @numeric-columns.grep({ $_ ne $label-col }).sort({ %value-scores{ $_ } });
+
+  # Take top columns with negative scores (high cardinality) or at least the best one
+  my @default-values = @sorted-values.grep({ %value-scores{ $_ } < 0 }).head(4);
+  @default-values = @sorted-values.head(1) unless @default-values;  # Fallback: take best one
+
+  # Legacy single value for backwards compatibility
+  my $value-col = @default-values[0] // @numeric-columns[0] // $label-col;
 
   debug "Selected Label: $label-col";
-  debug "Selected Value: $value-col";
+  debug "Selected Values (default): " ~ @default-values.join(', ');
+  debug "Selected Value (legacy): $value-col";
   debug "=== End Debug ===";
 
   return {
     label => $label-col,
     value => $value-col,
+    values => @default-values,  # Multiple default values
     numeric => @numeric-columns,
     datetime => @datetime-columns
   };
