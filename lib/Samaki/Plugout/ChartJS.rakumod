@@ -22,6 +22,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   my $label-col = %result<label>;
   my $value-col = %result<value>;
   my @numeric-cols = @(%result<numeric>);
+  my @datetime-cols = @(%result<datetime>);
 
   my $html-file = $data-dir.child("{$name}-chartjs.html");
 
@@ -31,6 +32,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   my $all-data-json = self!prepare-data-json(@rows, @columns);
   my $columns-json = to-json(@columns);
   my $numeric-columns-json = to-json(@numeric-cols);
+  my $datetime-columns-json = to-json(@datetime-cols);
   my $default-label = html-escape($label-col);
   my $default-value = html-escape($value-col);
 
@@ -42,6 +44,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>$title </title>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
     <style>
       body {
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -153,6 +156,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
       const allData = $all-data-json;
       const columns = $columns-json;
       const numericColumns = $numeric-columns-json;
+      const datetimeColumns = $datetime-columns-json;
 
       // Populate column selectors
       const labelSelect = document.getElementById('label-column');
@@ -185,6 +189,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
       console.log('All Data:', allData);
       console.log('All Columns:', columns);
       console.log('Numeric Columns:', numericColumns);
+      console.log('Datetime Columns:', datetimeColumns);
       console.log('Default Label:', '$default-label');
       console.log('Default Value:', '$default-value');
 
@@ -259,6 +264,11 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         // Get fresh data based on selected columns
         const data = getChartData();
 
+        // Check if label column is datetime
+        const labelCol = labelSelect.value;
+        const isLabelDatetime = datetimeColumns.includes(labelCol);
+        console.log('Label column "' + labelCol + '" is datetime:', isLabelDatetime);
+
         // For pie and polar area charts with a single dataset, use multiple colors per slice
         if (isRadial && data.datasets.length === 1) {
           const colors = [
@@ -275,6 +285,72 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
           data.datasets[0].backgroundColor = colorArray;
         }
 
+        // Build scales configuration
+        let scales;
+        if (isRadial) {
+          scales = undefined;
+        } else {
+          // Determine which axis is for labels (category/time axis)
+          const labelAxis = indexAxis === 'x' ? 'x' : 'y';
+          const valueAxis = indexAxis === 'x' ? 'y' : 'x';
+
+          scales = {};
+
+          // Configure label axis (x for vertical bar, y for horizontal bar)
+          if (isLabelDatetime) {
+            // Time scale for datetime columns
+            scales[labelAxis] = {
+              type: 'time',
+              time: {
+                displayFormats: {
+                  datetime: 'MMM d, yyyy HH:mm',
+                  day: 'MMM d, yyyy',
+                  month: 'MMM yyyy',
+                  year: 'yyyy'
+                }
+              },
+              ticks: {
+                font: {
+                  family: 'ui-monospace, monospace',
+                  size: 11
+                },
+                maxRotation: labelAxis === 'x' ? 45 : 0,
+                minRotation: labelAxis === 'x' ? 45 : 0
+              }
+            };
+          } else {
+            // Regular category scale
+            scales[labelAxis] = {
+              ticks: {
+                font: {
+                  family: 'ui-monospace, monospace',
+                  size: 11
+                },
+                maxRotation: labelAxis === 'x' ? 45 : 0,
+                minRotation: labelAxis === 'x' ? 45 : 0
+              }
+            };
+          }
+
+          // Configure value axis (y for vertical bar, x for horizontal bar)
+          scales[valueAxis] = {
+            beginAtZero: true,
+            ticks: {
+              font: {
+                family: 'ui-monospace, monospace',
+                size: 11
+              },
+              precision: 0,
+              callback: function(value) {
+                if (Number.isInteger(value)) {
+                  return value;
+                }
+                return value.toFixed(2);
+              }
+            }
+          };
+        }
+
         myChart = new Chart(ctx, {
           type: type,
           data: data,
@@ -282,34 +358,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
             responsive: true,
             maintainAspectRatio: false,
             indexAxis: indexAxis,
-            scales: isRadial ? undefined : {
-              y: {
-                beginAtZero: true,
-                ticks: {
-                  font: {
-                    family: 'ui-monospace, monospace',
-                    size: 11
-                  },
-                  precision: 0,
-                  callback: function(value) {
-                    if (Number.isInteger(value)) {
-                      return value;
-                    }
-                    return value.toFixed(2);
-                  }
-                }
-              },
-              x: {
-                ticks: {
-                  font: {
-                    family: 'ui-monospace, monospace',
-                    size: 11
-                  },
-                  maxRotation: indexAxis === 'x' ? 45 : 0,
-                  minRotation: indexAxis === 'x' ? 45 : 0
-                }
-              }
-            },
+            scales: scales,
             plugins: {
               legend: {
                 display: true,
@@ -407,6 +456,7 @@ method detect-columns(@columns, @rows, :@column-types) {
     my $is-integer = $type ~~ /^ [ TINYINT | SMALLINT | INTEGER | BIGINT | UTINYINT | USMALLINT | UINTEGER | UBIGINT | HUGEINT | UHUGEINT ] $/;
     my $is-float = $type ~~ /^ [ FLOAT | DOUBLE | DECIMAL ] $/;
     my $is-numeric = $is-integer || $is-float;
+    my $is-datetime = $type ~~ /^ [ DATE | TIME | TIMESTAMP ] /;
 
     # Check if looks like an ID (all unique values)
     my $looks-like-id = $is-numeric && ($cardinality == $total);
@@ -416,6 +466,7 @@ method detect-columns(@columns, @rows, :@column-types) {
       is-numeric => $is-numeric,
       is-integer => $is-integer,
       is-float => $is-float,
+      is-datetime => $is-datetime,
       looks-like-id => $looks-like-id,
       name-is-id => $name-is-id,
       type => $type,
@@ -447,10 +498,10 @@ method detect-columns(@columns, @rows, :@column-types) {
     %label-scores{ $col } = $score;
   }
 
-  # Score columns for value selection - ONLY numeric columns allowed
+  # Score columns for value selection - ONLY numeric columns allowed (excluding datetime)
   # Lower score is better
   my %value-scores;
-  my @numeric-columns = @valid-columns.grep({ %col-info{ $_ }<is-numeric> });
+  my @numeric-columns = @valid-columns.grep({ %col-info{ $_ }<is-numeric> && !%col-info{ $_ }<is-datetime> });
 
   for @numeric-columns -> $col {
     my $info = %col-info{ $col };
@@ -468,9 +519,13 @@ method detect-columns(@columns, @rows, :@column-types) {
     %value-scores{ $col } = $score;
   }
 
+  # Get list of datetime columns
+  my @datetime-columns = @valid-columns.grep({ %col-info{ $_ }<is-datetime> });
+
   # Debug output
   debug "=== Column Detection Debug ===";
   debug "Numeric columns only: " ~ @numeric-columns.join(', ');
+  debug "Datetime columns only: " ~ @datetime-columns.join(', ');
   for @valid-columns -> $col {
     my $info = %col-info{ $col };
     debug "Column: $col";
@@ -479,6 +534,7 @@ method detect-columns(@columns, @rows, :@column-types) {
     debug "  Is Numeric: {$info<is-numeric> // False}";
     debug "  Is Integer: {$info<is-integer> // False}";
     debug "  Is Float: {$info<is-float> // False}";
+    debug "  Is Datetime: {$info<is-datetime> // False}";
     debug "  Looks Like ID: {$info<looks-like-id> // False}";
     debug "  Name ends _id: {$info<name-is-id> // False}";
     debug "  Label Score: {%label-scores{ $col } // 'N/A'}";
@@ -499,7 +555,8 @@ method detect-columns(@columns, @rows, :@column-types) {
   return {
     label => $label-col,
     value => $value-col,
-    numeric => @numeric-columns
+    numeric => @numeric-columns,
+    datetime => @datetime-columns
   };
 }
 
