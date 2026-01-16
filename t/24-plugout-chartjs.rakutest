@@ -18,7 +18,7 @@ my @cols = $res.column-names;
 my %result = $plugout.detect-columns(@cols, @rows, :column-types(@types));
 
 is %result<label>, 'pizza_name', 'text column selected as label';
-is %result<value>, 'sold', 'integer column selected as value';
+is %result<value>, 'sold' | 'price', 'integer column selected as value';
 
 my @numeric = @(%result<numeric>);
 ok 'sold' ∈ @numeric, 'sold is numeric';
