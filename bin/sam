@@ -146,13 +146,15 @@ multi MAIN('export', $target, :$wkdir = $*CWD, :$output, :$format = 'html', Bool
 #| Run all cells in a samaki file
 multi MAIN('run',
    $target,
-  :$only-cells #= comma-separated list of cell names to run
-  , :$wkdir = $*CWD) {
+  :$only-cells, #= comma-separated list of cell names to run
+  Bool :v($verbose), #= verbose output
+  :$wkdir = $*CWD) {
   my (:$samaki, :$page-name, :$page) := resolve-target $target, :$wkdir;
   disable-output;
   my $*SAMAKI-NO-SHELL-OPEN = True;
   my $mock-pane = MockPane.new;
   my Set $run-cells = set $only-cells.split(',') if $only-cells;
+  logger.send-to($*ERR) if $verbose;
 
   my @cells = $page.cells;
   unless @cells {
@@ -162,10 +164,9 @@ multi MAIN('run',
     }
     return;
   }
-  note "Running all cells in $page-name.  Cell count: { @cells.elems }";
+  note "Running $page-name.  Cells: " ~ ($only-cells ?? $only-cells !! @cells.map({ $_.name }).join(','));
   for @cells -> $cell {
     if $only-cells && !$run-cells{$cell.name} {
-      note "Skipping cell { $cell.name }";
       next;
     }
     print " cell { $cell.name }...";

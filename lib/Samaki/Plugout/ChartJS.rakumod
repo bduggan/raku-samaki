@@ -696,7 +696,6 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
               },
               time: {
                 displayFormats: displayFormats,
-                tooltipFormat: 'PPpp'
               },
               title: {
                 display: true,
