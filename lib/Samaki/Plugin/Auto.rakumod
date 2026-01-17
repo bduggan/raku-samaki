@@ -10,6 +10,7 @@ has $.output-ext = Nil;
 method select-action { }
 
 method execute(:$cell,:$mode,:$page) {
+  die "auto cell is not to be executed; contents are eval'ed inline";
 }
 
 method shutdown { }

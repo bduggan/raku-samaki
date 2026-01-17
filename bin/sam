@@ -156,7 +156,7 @@ multi MAIN('run',
   my Set $run-cells = set $only-cells.split(',') if $only-cells;
   logger.send-to($*ERR) if $verbose;
 
-  my @cells = $page.cells;
+  my @cells = $page.runnable-cells;
   unless @cells {
     note "No cells to run in $page-name.";
     unless $page.filename.IO.e {

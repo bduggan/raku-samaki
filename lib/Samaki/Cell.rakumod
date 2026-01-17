@@ -130,10 +130,12 @@ class Samaki::Cell {
         try {
           my $res = do {
             self.maybe-make-data-dir;
+            my $wrapped = &warn.wrap({ warning "$_" } );
+            LEAVE { $wrapped.restore; }
             indir self.data-dir, { $page.cu.eval($eval-str) }
           }
           $out ~= ( $res // "");
-          @formatted.push: t.color(%COLORS<interp>) => ($res // "");
+          @formatted.push: t.color(%COLORS<interp>) => ($res.Str // "");
           @formatted.push: t.color(%COLORS<text>) => '';
           with $page.cu.exception {
             $out ~= " ❰$p❱ ";
@@ -188,7 +190,7 @@ class Samaki::Cell {
   method data {
     my $file = self.output-file;
     fail "no output yet" unless $file && $file.e;
-    return $file.slurp;
+    return $file.slurp.trim;
   }
 
   method rows {
@@ -235,6 +237,7 @@ class Samaki::Cell {
             $.plugin.stream:  txt => [ t.color(%COLORS<info>) => "Writing to ", t.color(%COLORS<link>) => "[" ~ self.output-file.IO.relative ~ "]" ],
                               meta => %( action => 'do_output', path => self.output-file );
           }
+          info "writing to " ~ self.output-file.basename;
           $out = self.output-file.open(:w) 
         } else {
           $.plugin.info: "Not writing output";

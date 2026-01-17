@@ -25,6 +25,10 @@ class Samaki::Page {
   has Str $.errors;
   has $.cu;
 
+  method runnable-cells {
+    @.cells.grep: {! .is-auto }
+  }
+
   method add-context {
     # declare these for codeunits
     multi c(Str $name) { cells($name); }
