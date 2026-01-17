@@ -1,0 +1,50 @@
+use Test;
+use Samaki::Plugout::DeckGLBin;
+
+my $*SAMAKI-NO-SHELL-OPEN = True;
+
+my $plugout = Samaki::Plugout::DeckGLBin.new;
+
+ok $plugout, 'DeckGLBin plugout created';
+is $plugout.name, 'deckgl-bin', 'plugout has correct name';
+
+# Test numeric column detection
+my @rows = (
+  { name => 'a', value => '10', count => '5' },
+  { name => 'b', value => '20', count => '8' },
+);
+my @cols = <name value count>;
+my @numeric = $plugout.detect-numeric-columns(@rows, @cols);
+is @numeric.elems, 2, 'detected two numeric columns';
+ok 'value' ∈ @numeric, 'value is numeric';
+ok 'count' ∈ @numeric, 'count is numeric';
+
+# Test HTML generation
+my $temp-dir = $*TMPDIR.child('deckglbin-test-' ~ $*PID);
+$temp-dir.mkdir;
+
+my $csv-file = $temp-dir.child('test.csv');
+spurt $csv-file, "h3,value\n8928308280fffff,100\n";
+
+$plugout.execute(path => $csv-file, data-dir => $temp-dir, name => 'test');
+my $html-file = $temp-dir.child('test-deckgl-bin.html');
+ok $html-file.e, 'HTML file created';
+
+my $html = slurp $html-file;
+ok $html ~~ /'deck.gl'/, 'HTML contains deck.gl';
+ok $html ~~ /'H3HexagonLayer'/, 'HTML contains H3HexagonLayer';
+ok $html ~~ /'GeoJsonLayer'/, 'HTML contains GeoJsonLayer';
+ok $html ~~ /'Papa.parse'/, 'HTML contains Papa Parse';
+ok $html ~~ /'isH3Index'/, 'HTML contains H3 detection function';
+ok $html ~~ /'normalizeH3Index'/, 'HTML contains H3 normalization function';
+ok $html ~~ /'decodeGeohash'/, 'HTML contains geohash decoder';
+
+# Test with decimal H3 indices (as exported by DuckDB)
+my $csv-decimal = $temp-dir.child('decimal-h3.csv');
+spurt $csv-decimal, "cell,count\n617549798007111679,19\n617549797987450879,10\n";
+
+$plugout.execute(path => $csv-decimal, data-dir => $temp-dir, name => 'decimal');
+my $html-decimal = $temp-dir.child('decimal-deckgl-bin.html');
+ok $html-decimal.e, 'HTML file created for decimal H3';
+
+done-testing;
