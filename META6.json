@@ -36,6 +36,7 @@
     "Samaki::Plugout" : "lib/Samaki/Plugout.rakumod",
     "Samaki::Plugout::ChartJS" : "lib/Samaki/Plugout/ChartJS.rakumod",
     "Samaki::Plugout::CSVGeo" : "lib/Samaki/Plugout/CSVGeo.rakumod",
+    "Samaki::Plugout::DeckGLBin" : "lib/Samaki/Plugout/DeckGLBin.rakumod",
     "Samaki::Plugout::D3" : "lib/Samaki/Plugout/D3.rakumod",
     "Samaki::Plugout::DataTable" : "lib/Samaki/Plugout/DataTable.rakumod",
     "Samaki::Plugout::Duckview" : "lib/Samaki/Plugout/Duckview.rakumod",

@@ -973,7 +973,6 @@ Hexadecimal-encoded WKB geometry, as exported from PostGIS.
 
 =head1 VALUE COLUMNS
 
-Any numeric column can drive height/color. A "Count (1 per feature)" option
-assigns equal weight to each row.
+Any numeric column can be used for height/color.
 
 =end pod
