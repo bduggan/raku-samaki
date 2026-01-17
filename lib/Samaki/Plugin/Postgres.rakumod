@@ -26,8 +26,6 @@ method build-command(Samaki::Cell :$cell) {
   my $db = $cell.get-conf('db');
   info "Executing psql cell";
   self.info: "db is { $db.IO.resolve }" if $db;
-  my $cwd = $cell.data-dir;
-  self.info: "Running in $cwd/";
 
   return $db ?? ($!executable, '-d', $db, '--csv')
              !! ($!executable, '--csv');
