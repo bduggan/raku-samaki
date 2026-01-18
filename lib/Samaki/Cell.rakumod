@@ -92,14 +92,14 @@ class Samaki::Cell {
       for $.content.lines {
         my @pieces = $_.split( / <phrase> | <alt> /, :v);
         my @out;
-        @out.push: col($text-color) => '';
+        @out.push: color($text-color) => '';
         for @pieces -> $p {
           if $p.isa(Str) {
             @out.push($p);
           } else {
             my $eval-str = ($p<phrase> // $p<alt>).Str;
-            @out.push: t.color(%COLORS<interp>) => "〈" ~ $eval-str ~ "〉";
-            @out.push: col($text-color) => '';
+            @out.push: color('interp') => "〈" ~ $eval-str ~ "〉";
+            @out.push: color($text-color) => '';
           }
         }
         @!formatted-content-lines.push(@out);
@@ -117,7 +117,7 @@ class Samaki::Cell {
     for $.content.lines.kv -> $line-number, $content-line {
       my $out;
       my @formatted;
-      @formatted.push: col($text-color) => '';
+      @formatted.push: color($text-color) => '';
       my @pieces = $content-line.split( / <phrase> | <alt> /, :v);
       for @pieces -> $p {
         if $p.isa(Str) {
@@ -135,18 +135,18 @@ class Samaki::Cell {
             indir self.data-dir, { $page.cu.eval($eval-str) }
           }
           $out ~= ( $res // "");
-          @formatted.push: t.color(%COLORS<interp>) => ($res // "").Str;
-          @formatted.push: t.color(%COLORS<text>) => '';
+          @formatted.push: color('interp') => ($res // "").Str;
+          @formatted.push: color('text') => '';
           with $page.cu.exception {
             $out ~= " ❰$p❱ ";
-            @formatted.push(t.color(%COLORS<error>) => "❰" ~ $eval-str ~ "❱ ");
+            @formatted.push(color('error') => "❰" ~ $eval-str ~ "❱ ");
             $!errors ~= "sorry (line $line-number)): " ~ .message.chomp ~ "\n";
             $page.cu.exception = Nil;
           }
           CATCH {
             default {
               $out ~= " ❰$p❱ ";
-              @formatted.push(t.color(%COLORS<error>) => " ❰" ~ $eval-str ~ "❱");
+              @formatted.push(color('error') => " ❰" ~ $eval-str ~ "❱");
               $!errors ~= "sorry: $_\n";
             }
           }
@@ -225,7 +225,7 @@ class Samaki::Cell {
     $!plugin.errors = Nil;
     $!errors = Nil;
     # $pane.put: "Executing cell { $.name } of type { $.cell-type }";
-    $pane.put: [ col('info') => "Executing cell ", col('cell-name') => $.name, col('info') => " of type ", col('cell-type') => $.cell-type ];
+    $pane.put: [ color('info') => "Executing cell ", color('cell-name') => $.name, color('info') => " of type ", color('cell-type') => $.cell-type ];
     return without $!plugin;
     info "Executing cell of type { $.cell-type }";
     indir self.cell-dir(:create), {
@@ -234,7 +234,7 @@ class Samaki::Cell {
         my IO::Handle $out;
         if $.plugin.write-output && !(self.get-conf('out') // '' eq 'none') {
           if $.plugin.clear-stream-before {
-            $.plugin.stream:  txt => [ t.color(%COLORS<info>) => "Writing to ", t.color(%COLORS<link>) => "[" ~ self.output-file.IO.relative ~ "]" ],
+            $.plugin.stream:  txt => [ color('info') => "Writing to ", color('link') => "[" ~ self.output-file.IO.relative ~ "]" ],
                               meta => %( action => 'do_output', path => self.output-file );
           }
           info "writing to " ~ self.output-file.basename;

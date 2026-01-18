@@ -42,7 +42,7 @@ method do-ready($pid, $proc, $timeout = Nil) {
   self.info: "started pid $pid " ~ ($timeout ?? "with timeout $timeout seconds" !! "");
   $!start-time = DateTime.now;
   sleep 0.01;
-  $.output-stream.send: %( txt => [t.color(%COLORS<button>) => "[cancel]" ], meta => { action => 'kill_proc', :$proc } );
+  $.output-stream.send: %( txt => [color('button') => "[cancel]" ], meta => { action => 'kill_proc', :$proc } );
   return $pid;
 }
 

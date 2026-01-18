@@ -70,9 +70,9 @@ submethod TWEAK {
     @!verbose-startup-log.push: "Available plugins: ";
     for $!plugins.list-all -> $p {
       @!verbose-startup-log.push: [
-        t.color(%COLORS<cell-type>) => $p<regex>.raku.fmt(' %-20s '),
-        t.color(%COLORS<plugin-info>) => $p<name>.fmt('%20s : '),
-        t.color(%COLORS<plugin-info>) => $p<desc> // '(no description)',
+        color('cell-type') => $p<regex>.raku.fmt(' %-20s '),
+        color('plugin-info') => $p<name>.fmt('%20s : '),
+        color('plugin-info') => $p<desc> // '(no description)',
       ];
     }
     CATCH {
@@ -93,9 +93,9 @@ submethod TWEAK {
     @!verbose-startup-log.push: "Available plugouts: ";
     for $!plugouts.list-all -> $p {
       @!verbose-startup-log.push: [
-        t.color(%COLORS<cell-type>) => $p<regex>.raku.fmt(' %-20s '),
-        t.color(%COLORS<plugin-info>) => $p<name>.fmt('%20s : '),
-        t.color(%COLORS<plugin-info>) => $p<desc> // '(no description)',
+        color('cell-type') => $p<regex>.raku.fmt(' %-20s '),
+        color('plugin-info') => $p<name>.fmt('%20s : '),
+        color('plugin-info') => $p<desc> // '(no description)',
       ];
     }
     CATCH {
@@ -242,18 +242,18 @@ method show-dir(IO::Path $dir, :$suffix = 'samaki', :$pane = top, Bool :$header 
       data_dir => $.wkdir.child($name),
     ;
     my $page-date-width = $date-width + $size-width + 1;  # pages don't show size, reclaim that space
-    my @row = t.color(%COLORS<title>) => pad-width($title, $name-width);
+    my @row = color('title') => pad-width($title, $name-width);
     %shown{$name} = True;
     my $data-dir = $dir.child($name);
     my $file-count = 0;
     if $data-dir.d {
       $file-count = $data-dir.dir.elems;
       my $s = $file-count == 1 ?? '' !! 's';
-      @row.push: t.color(%COLORS<info>) => " " ~ "($file-count file{$s})".fmt("%-{$size-width}s");
+      @row.push: color('info') => " " ~ "($file-count file{$s})".fmt("%-{$size-width}s");
       $page-date-width -= $size-width + 1;
     }
 
-    @row.push: t.color(%COLORS<date>) => " " ~ ago( (DateTime.now - $d.accessed).Int, 1 ).fmt("%{$page-date-width}s");
+    @row.push: color('date') => " " ~ ago( (DateTime.now - $d.accessed).Int, 1 ).fmt("%{$page-date-width}s");
     pane.put: @row, :%meta, :!scroll-ok;
   }
 
@@ -262,15 +262,14 @@ method show-dir(IO::Path $dir, :$suffix = 'samaki', :$pane = top, Bool :$header 
     next if %shown{$path.basename};
     if $path.IO.d {
       my $dir-date-width = $date-width + $size-width + 1;  # directories don't show size
-      pane.put: [ t.color(%COLORS<yellow>) => pad-width($path.basename ~ '/', $name-width),
-                  t.color(%COLORS<date>) => " " ~ ago( (DateTime.now - $path.accessed).Int, 1).fmt("%{$dir-date-width}s") ],
+      pane.put: [ color('yellow') => pad-width($path.basename ~ '/', $name-width),
+                  color('date') => " " ~ ago( (DateTime.now - $path.accessed).Int, 1).fmt("%{$dir-date-width}s") ],
                   meta => %(dir => $path, action => 'chdir')
     } else {
-      my $color = %COLORS<datafile>;
-      $color = %COLORS<inactive> if $highlight-samaki;
-      pane.put: [ t.color($color) => pad-width($path.basename, $name-width),
-                  t.color(%COLORS<info>) => " " ~ human-size($path.IO.s).fmt("%{$size-width}s"),
-                  t.color(%COLORS<date>) => " " ~ ago( (DateTime.now - $path.accessed).Int, 1).fmt("%{$date-width}s") ],
+      my $color-name = $highlight-samaki ?? 'inactive' !! 'datafile';
+      pane.put: [ color($color-name) => pad-width($path.basename, $name-width),
+                  color('info') => " " ~ human-size($path.IO.s).fmt("%{$size-width}s"),
+                  color('date') => " " ~ ago( (DateTime.now - $path.accessed).Int, 1).fmt("%{$date-width}s") ],
                   meta => %( :$path, action => "do_output", dir => $dir) :!scroll-ok;
     }
   }

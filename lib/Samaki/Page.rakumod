@@ -86,19 +86,19 @@ class Samaki::Page {
   method show-invalid-cell(:$cell!, :$pane!, :$leadchar!, :%meta!) {
     my $lead = "┌── ".indent(4);
     my $error-msg = $cell.cell-type ?? " [invalid: no plugin found]" !! " [invalid]";
-    $pane.put: [ col('error') => $lead ~ ($cell.cell-type ~ $error-msg).fmt('%-20s') ], :%meta;
+    $pane.put: [ color('error') => $lead ~ ($cell.cell-type ~ $error-msg).fmt('%-20s') ], :%meta;
     with $cell.errors {
-      $pane.put([ col('cell-type') => "$leadchar ".indent(4), col('error') => $_ ], :%meta)
+      $pane.put([ color('cell-type') => "$leadchar ".indent(4), color('error') => $_ ], :%meta)
             for .lines;
     }
     my $line = 0;
-    $pane.put([ col('cell-type') => "$leadchar ".indent(4) ~ $_.raku ], :%meta) for $cell.conf.list;
-    $pane.put([ col('line') => ($line++).fmt('%3d '), col('cell-type') => "$leadchar ", col('inactive') => $_ ], :%meta)
+    $pane.put([ color('cell-type') => "$leadchar ".indent(4) ~ $_.raku ], :%meta) for $cell.conf.list;
+    $pane.put([ color('line') => ($line++).fmt('%3d '), color('cell-type') => "$leadchar ", color('inactive') => $_ ], :%meta)
           for $cell.source.lines;
   }
 
   method show-auto-cell(:$cell!, :$pane!, :$mode!, :$leadchar = '║', :%meta!) {
-    $pane.put: [ col('interp') => '╔═'.indent(4) ], :%meta;
+    $pane.put: [ color('interp') => '╔═'.indent(4) ], :%meta;
     self.show-cell-conf(:$cell, :$pane, :$leadchar, :%meta, color => 'interp');
     self.show-cell-body(:$cell, :$pane, :$mode, :$leadchar, :%meta, color => 'interp', lastchar => '╚');
   }
@@ -106,7 +106,7 @@ class Samaki::Page {
   method show-cell-conf(:$cell!, :$pane!, :$leadchar!, :%meta!, :$color = 'cell-type') {
     for $cell.conf.list {
       next if .key.starts-with('_');
-      $pane.put([ col($color) => "$leadchar ".indent(4) ~ "$_" ], :%meta) 
+      $pane.put([ color($color) => "$leadchar ".indent(4) ~ "$_" ], :%meta) 
     }
   }
 
@@ -122,15 +122,15 @@ class Samaki::Page {
        my $*page = self;
        my $out = $cell.get-content(:$mode, page => self);
        if $cell.errors {
-         $pane.put([ col($color) => "$leadchar ".indent(4), col('error') => "▶ $_" ], :%meta)
+         $pane.put([ color($color) => "$leadchar ".indent(4), color('error') => "▶ $_" ], :%meta)
                for $cell.errors.lines;
        }
        @body-lines := $cell.formatted-content-lines;
     }
     for @body-lines.kv -> $n, $line {
       $pane.put: [
-        col('line') => $n.fmt('%3d '),
-        col($color) => ($n == @body-lines - 1 ?? "$lastchar " !! "$leadchar "), |$line
+        color('line') => $n.fmt('%3d '),
+        color($color) => ($n == @body-lines - 1 ?? "$lastchar " !! "$leadchar "), |$line
       ], :%meta;
     }
   }
@@ -138,7 +138,7 @@ class Samaki::Page {
   method show-valid-cell(:$cell!, :$pane!, :$mode!, :@actions!, :$leadchar!, :%meta!) {
     my $lead = "┌── ".indent(4);
     my $post = $cell.write-output ?? (' (' ~ $cell.ext ~ ')') !! "";
-    $pane.put: [ col('cell-type') => $lead ~ ($cell.cell-type ~ $post).fmt('%-20s'), |@actions ], :%meta;
+    $pane.put: [ color('cell-type') => $lead ~ ($cell.cell-type ~ $post).fmt('%-20s'), |@actions ], :%meta;
     self.show-cell-conf(:$cell, :$pane, :$leadchar, :%meta);
     self.show-cell-body(:$cell, :$pane, :$mode, :$leadchar, :%meta);
   }
@@ -160,17 +160,17 @@ class Samaki::Page {
     my $mode = self.mode;
     my $page = self;
     if $mode eq 'raw' {
-       $pane.put: [ col('raw') => "-- { self.name } --" ], :center, meta => %( :$page );
+       $pane.put: [ color('raw') => "-- { self.name } --" ], :center, meta => %( :$page );
     } else {
-       $pane.put: [ col('title') => "〜 { self.name } 〜" ], :center, meta => %( :$page );
+       $pane.put: [ color('title') => "〜 { self.name } 〜" ], :center, meta => %( :$page );
     }
     unless self.load(:$plugins) {
       with $page.errors {
         $pane.put: 'sorry, got some errors!';
-        $pane.put([ col('error') => $_ ], meta => :$page) for $page.errors.lines
+        $pane.put([ color('error') => $_ ], meta => :$page) for $page.errors.lines
       };
       if $page.content -> $c {
-        $pane.put([ col('inactive') => ">$_" ], meta => :$page) for $c.lines;
+        $pane.put([ color('inactive') => ">$_" ], meta => :$page) for $c.lines;
       }
       return;
     }
@@ -183,10 +183,10 @@ class Samaki::Page {
         if $cell.is-valid {
           my $select-action = $cell.select-action;
           if $select-action -> $action {
-            @actions.push: t.color(%COLORS<button>) => " [$action]",
+            @actions.push: color('button') => " [$action]",
                             $cell.write-output ??
-                                (t.color(%COLORS<cell-name>) => " ➞  { $cell.name }.{ $cell.ext }")
-                             !! (t.color(%COLORS<cell-name>) => " { $cell.name }");
+                                (color('cell-name') => " ➞  { $cell.name }.{ $cell.ext }")
+                             !! (color('cell-name') => " { $cell.name }");
             %meta = ( :$action, cell => $cell );
           }
         }

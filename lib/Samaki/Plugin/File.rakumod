@@ -109,50 +109,50 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
   my IO::Path $path = $cell.output-file;
   if $path.e {
     my @lines;
-    self.stream:  txt => [ t.color(%COLORS<info>) => "file:".fmt('%10s'), t.color(%COLORS<link>) => "[" ~ $path.relative ~ "]" ],
+    self.stream:  txt => [ color('info') => "file:".fmt('%10s'), color('link') => "[" ~ $path.relative ~ "]" ],
                   meta => %( action => 'do_output', :$path  );
-    @lines.push: [ col('inactive') => 'Size:'.fmt('%10s'), col('title') => ' ', col('data') => format-size($path.s) ];
-    @lines.push: [ col('inactive') => 'Modified:'.fmt('%10s'), col('title') => ' ', col('data') => format-datetime($path.modified) ];
-    @lines.push: [ col('inactive') => 'Accessed:'.fmt('%10s'), col('title') => ' ', col('data') => format-datetime($path.accessed) ];
-    @lines.push: [ col('inactive') => 'Changed:'.fmt('%10s'), col('title') => ' ', col('data') => format-datetime($path.changed) ];
-    @lines.push: [ col('inactive') => 'Absolute:'.fmt('%10s'), col('title') => ' ', col('line') => $path.absolute ];
+    @lines.push: [ color('inactive') => 'Size:'.fmt('%10s'), color('title') => ' ', color('data') => format-size($path.s) ];
+    @lines.push: [ color('inactive') => 'Modified:'.fmt('%10s'), color('title') => ' ', color('data') => format-datetime($path.modified) ];
+    @lines.push: [ color('inactive') => 'Accessed:'.fmt('%10s'), color('title') => ' ', color('data') => format-datetime($path.accessed) ];
+    @lines.push: [ color('inactive') => 'Changed:'.fmt('%10s'), color('title') => ' ', color('data') => format-datetime($path.changed) ];
+    @lines.push: [ color('inactive') => 'Absolute:'.fmt('%10s'), color('title') => ' ', color('line') => $path.absolute ];
 
     # Check if it's a GeoJSON file and small enough to parse
     if $path.extension eq 'geojson' && $path.s < 100 * 1024 {
       try {
         my %geo = analyze-geojson($path);
         if %geo<type> {
-          @lines.push: [ col('title') => '' ];
-          @lines.push: [ col('inactive') => 'GeoJSON:'.fmt('%10s'), col('title') => ' ', col('yellow') => %geo<type> ];
+          @lines.push: [ color('title') => '' ];
+          @lines.push: [ color('inactive') => 'GeoJSON:'.fmt('%10s'), color('title') => ' ', color('yellow') => %geo<type> ];
 
           if %geo<features>:exists {
-            @lines.push: [ col('inactive') => 'Features:'.fmt('%10s'), col('title') => ' ', col('data') => ~%geo<features> ];
+            @lines.push: [ color('inactive') => 'Features:'.fmt('%10s'), color('title') => ' ', color('data') => ~%geo<features> ];
           }
           if %geo<geometry-types>:exists {
-            @lines.push: [ col('inactive') => 'Geometry:'.fmt('%10s'), col('title') => ' ', col('data') => %geo<geometry-types> ];
+            @lines.push: [ color('inactive') => 'Geometry:'.fmt('%10s'), color('title') => ' ', color('data') => %geo<geometry-types> ];
           }
           if %geo<geometry-type>:exists {
-            @lines.push: [ col('inactive') => 'Geometry:'.fmt('%10s'), col('title') => ' ', col('data') => %geo<geometry-type> ];
+            @lines.push: [ color('inactive') => 'Geometry:'.fmt('%10s'), color('title') => ' ', color('data') => %geo<geometry-type> ];
           }
           if %geo<total-coords>:exists {
-            @lines.push: [ col('inactive') => 'Coords:'.fmt('%10s'), col('title') => ' ', col('data') => ~%geo<total-coords> ];
+            @lines.push: [ color('inactive') => 'Coords:'.fmt('%10s'), color('title') => ' ', color('data') => ~%geo<total-coords> ];
           }
           if %geo<coords>:exists {
-            @lines.push: [ col('inactive') => 'Coords:'.fmt('%10s'), col('title') => ' ', col('data') => ~%geo<coords> ];
+            @lines.push: [ color('inactive') => 'Coords:'.fmt('%10s'), color('title') => ' ', color('data') => ~%geo<coords> ];
           }
           if %geo<property-names>:exists {
-            @lines.push: [ col('inactive') => 'Props:'.fmt('%10s'), col('title') => ' ', col('data') => %geo<property-names>.join(', ') ];
+            @lines.push: [ color('inactive') => 'Props:'.fmt('%10s'), color('title') => ' ', color('data') => %geo<property-names>.join(', ') ];
           }
           if %geo<bounds>:exists {
             my $b = %geo<bounds>;
             my $bbox = sprintf("lon: [%.4f, %.4f] lat: [%.4f, %.4f]",
               $b<min-lon>, $b<max-lon>, $b<min-lat>, $b<max-lat>);
-            @lines.push: [ col('inactive') => 'Bounds:'.fmt('%10s'), col('title') => ' ', col('data') => $bbox ];
+            @lines.push: [ color('inactive') => 'Bounds:'.fmt('%10s'), color('title') => ' ', color('data') => $bbox ];
           }
         }
         CATCH {
           default {
-            @lines.push: [ col('error') => "Error parsing JSON: $_" ];
+            @lines.push: [ color('error') => "Error parsing JSON: $_" ];
           }
         }
       }
@@ -162,7 +162,7 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
       $.output-stream.send: %( txt => $line );
     }
   } else {
-    $.output-stream.send: %( txt => [ col('error') => "file $path not found" ] );
+    $.output-stream.send: %( txt => [ color('error') => "file $path not found" ] );
   }
 }
 

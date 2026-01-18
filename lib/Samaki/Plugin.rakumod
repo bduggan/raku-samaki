@@ -51,16 +51,16 @@ multi method stream($stuff) {
 }
 
 method info(Str $what) {
-  self.stream: txt => [t.color(%COLORS<info>) => $what], level => 'info';
-  #self.stream: [t.color(%COLORS<info>) => $what];
+  self.stream: txt => [color('info') => $what], level => 'info';
+  #self.stream: [color('info') => $what];
 }
 
 method error(Str $what) {
-  self.stream: [t.color(%COLORS<error>) => $what]
+  self.stream: [color('error') => $what]
 }
 
 method warn(Str $what) {
-  self.stream: [t.color(%COLORS<warn>) => $what]
+  self.stream: [color('warn') => $what]
 }
 
 #| Run shutdown actions
@@ -135,7 +135,7 @@ multi method output-duckie(Duckie::Result $result-set, :$max-rows = 100) {
 multi method output-duckie(IO::Path $path) {
   $!res = Duckie.new.query("select * from read_csv('{$path}');");
   self.stream:
-    txt => [ t.color(%COLORS<normal>) => 'wrote to ', t.color(%COLORS<button>) => "[{ $path.basename }]" ],
+    txt => [ color('normal') => 'wrote to ', color('button') => "[{ $path.basename }]" ],
     meta => %( action => 'do_output', :$path );
 
   return self.output-duckie($!res);

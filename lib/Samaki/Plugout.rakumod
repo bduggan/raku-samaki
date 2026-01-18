@@ -11,5 +11,5 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) { ... }
 method setup { }
 
 method info(Str $what) {
-  self.pane.put: [t.color(%COLORS<info>) => $what]
+  self.pane.put: [color('info') => $what]
 }

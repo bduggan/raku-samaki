@@ -48,7 +48,7 @@ our %COLORS is export = (
   date => $dim-amber,
 ).map: { .key => .value.gist };
 
-sub col($name) is export {
+sub color($name) is export {
   t.color( %COLORS{ $name } )
 }
 

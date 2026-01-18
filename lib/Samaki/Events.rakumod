@@ -21,10 +21,10 @@ method set-events {
     my $cell = %meta<cell> // $page.current-cell;
     with $cell.output-file -> $file {
       if $file.IO.e {
-        btm.put: [ col('info') => "Opening output file ", col('link') => "[" ~ $file.IO.relative ~ "]" ];
+        btm.put: [ color('info') => "Opening output file ", color('link') => "[" ~ $file.IO.relative ~ "]" ];
         $.plugouts.dispatch($file, pane => btm, data-dir => self.data-dir, name => $cell.name );
       } else {
-        btm.put: [ col('error') => "Output file " ~ col('link') ~ "[" ~ $file.IO.relative ~ "]" ~ col('error') ~ " does not exist.  Run the cell first." ];
+        btm.put: [ color('error') => "Output file " ~ color('link') ~ "[" ~ $file.IO.relative ~ "]" ~ color('error') ~ " does not exist.  Run the cell first." ];
       }
     } else {
       btm.put: "Cell has no output.";
@@ -211,10 +211,10 @@ method set-events {
         my $row = %meta<row_data>;
         my $width = 50 min $cols.map(*.chars).max + 2;
         for @$cols Z, @$row -> ($c,$r) {
-          top.put: [ t.color(%COLORS<info>) => "$c".fmt("%-{$width}s") ~ " : ", t.color(%COLORS<data>) => show-datum($r) ];
+          top.put: [ color('info') => "$c".fmt("%-{$width}s") ~ " : ", color('data') => show-datum($r) ];
         }
-        top.put: [ t.color(%COLORS<button>) => "[save to cols.txt] ",
-                   t.color(%COLORS<data>) => $cols.join(',')
+        top.put: [ color('button') => "[save to cols.txt] ",
+                   color('data') => $cols.join(',')
                  ],
                    meta => %( action => 'write_file', file => 'cols.txt', content => $cols.join(',') );
       }
