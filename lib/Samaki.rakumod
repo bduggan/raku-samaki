@@ -114,7 +114,7 @@ multi method start-ui(Str :$page, Bool :$watch) {
 
 multi method start-ui(Samaki::Page :$page!, Bool :$watch) {
   $!current-page = $page;
-  $.ui.setup: :2panes;
+  $.ui.setup: ratios => [3,1];
   (top, btm) = $.ui.panes;
   top.auto-scroll = False;
   btm.auto-scroll = False;
