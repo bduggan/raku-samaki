@@ -45,9 +45,12 @@ Samaki::Plugin::Code -- Evaluate Raku code in the current process
 
 =head1 DESCRIPTION
 
-Evaluate Raku code in the same context as the page's auto-evaluated blocks (cells starting with just `--`). Variables and functions defined in other code cells or init blocks are available.
+Evaluate Raku code in the same context as the page's auto-evaluated blocks
+(cells starting with just `--`).
+Variables and functions defined in other code cells or init blocks are available.
 
-Unlike the Raku plugin which runs code in a separate process, this runs in the same process as Samaki itself, allowing shared state across code cells.
+Note that these cells run _after_ the auto cells and the interpolated cells,
+so defining variables etc, can't be done here for use in those cells.
 
 =head1 OPTIONS
 

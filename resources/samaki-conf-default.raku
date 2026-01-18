@@ -1,5 +1,10 @@
 use Samaki::Plugin::Process;
 
+# For plugins, the first match determines the plugin
+# that will handle a cell.
+#
+# For plugouts, all matches are shown when a file is selected.
+#
 %*samaki-conf =
   plugins => [
     / duckie / => 'Samaki::Plugin::Duckie',
@@ -10,8 +15,13 @@ use Samaki::Plugin::Process;
     / html /   => 'Samaki::Plugin::HTML',
     / file /   => 'Samaki::Plugin::File',
     / markdown / => 'Samaki::Plugin::Markdown',
+    / 'raku-repl' / => 'Samaki::Plugin::Repl::Raku',
     / raku /   => 'Samaki::Plugin::Raku',
     / code /   => 'Samaki::Plugin::Code',
+    / auto /   => 'Samaki::Plugin::Auto',
+    / postgres / => 'Samaki::Plugin::Postgres',
+    / 'R-repl' / => 'Samaki::Plugin::Repl::R',
+    / 'python-repl' / => 'Samaki::Plugin::Repl::Python',
     / python / => class SamakiPython does Samaki::Plugin::Process[
                        name => 'python',
                        cmd => 'python3' ] {
@@ -28,6 +38,7 @@ use Samaki::Plugin::Process;
     / txt  /   => 'Samaki::Plugout::Plain',
     / geojson / => 'Samaki::Plugout::Geojson',
     / json /    => 'Samaki::Plugout::JSON',
+    / json /    => 'Samaki::Plugout::TJLess',
     / .*   /   => 'Samaki::Plugout::Raw',
   ]
 ;
