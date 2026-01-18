@@ -186,6 +186,18 @@ sub human-size($bytes) {
 
 sub pad-width($str, $target-width, :$align = 'left') {
   my $current = wcswidth($str);
+  if $current > $target-width {
+    # Truncate to fit, accounting for display width
+    my $truncated = '';
+    my $width = 0;
+    for $str.comb -> $char {
+      my $char-width = wcwidth($char.ord);
+      last if $width + $char-width > $target-width - 1;  # Leave room for ellipsis
+      $truncated ~= $char;
+      $width += $char-width;
+    }
+    return $truncated ~ '…' ~ (' ' x ($target-width - $width - 1));
+  }
   my $padding = $target-width - $current;
   return $str if $padding <= 0;
   return $align eq 'left' ?? $str ~ (' ' x $padding) !! (' ' x $padding) ~ $str;
@@ -216,7 +228,7 @@ method show-dir(IO::Path $dir, :$suffix = 'samaki', :$pane = top, Bool :$header 
   my %shown = Set.new;
 
   my $width = pane.width;
-  my $name-width = ($width * 0.20).Int;
+  my $name-width = ($width * 0.60).Int;
   my $size-width = 10;
   my $date-width = $width - $name-width - $size-width - 2;  # 2 spaces between columns
 
@@ -241,7 +253,7 @@ method show-dir(IO::Path $dir, :$suffix = 'samaki', :$pane = top, Bool :$header 
       $page-date-width -= $size-width + 1;
     }
 
-    @row.push: t.color(%COLORS<info>) => " " ~ ago( (DateTime.now - $d.accessed).Int ).fmt("%{$page-date-width}s");
+    @row.push: t.color(%COLORS<date>) => " " ~ ago( (DateTime.now - $d.accessed).Int, 1 ).fmt("%{$page-date-width}s");
     pane.put: @row, :%meta, :!scroll-ok;
   }
 
@@ -251,14 +263,14 @@ method show-dir(IO::Path $dir, :$suffix = 'samaki', :$pane = top, Bool :$header 
     if $path.IO.d {
       my $dir-date-width = $date-width + $size-width + 1;  # directories don't show size
       pane.put: [ t.color(%COLORS<yellow>) => pad-width($path.basename ~ '/', $name-width),
-                  t.color(%COLORS<info>) => " " ~ ago( (DateTime.now - $path.accessed).Int).fmt("%{$dir-date-width}s") ],
+                  t.color(%COLORS<date>) => " " ~ ago( (DateTime.now - $path.accessed).Int, 1).fmt("%{$dir-date-width}s") ],
                   meta => %(dir => $path, action => 'chdir')
     } else {
       my $color = %COLORS<datafile>;
       $color = %COLORS<inactive> if $highlight-samaki;
       pane.put: [ t.color($color) => pad-width($path.basename, $name-width),
                   t.color(%COLORS<info>) => " " ~ human-size($path.IO.s).fmt("%{$size-width}s"),
-                  t.color(%COLORS<info>) => " " ~ ago( (DateTime.now - $path.accessed).Int).fmt("%{$date-width}s") ],
+                  t.color(%COLORS<date>) => " " ~ ago( (DateTime.now - $path.accessed).Int, 1).fmt("%{$date-width}s") ],
                   meta => %( :$path, action => "do_output", dir => $dir) :!scroll-ok;
     }
   }

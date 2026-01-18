@@ -21,6 +21,7 @@ my $red = Color.new("#fc5a50");
 my $yellow = Color.new('#ffff00');
 my $grey = Color.new('#888888');
 my $orange = Color.new('#ff9900');
+my $dim-amber = Color.new($mid).darken(30);
 
 our %COLORS is export = (
   prompt => $mid,
@@ -44,6 +45,7 @@ our %COLORS is export = (
   text => $white,
   line => $dark,
   interp => $orange,
+  date => $dim-amber,
 ).map: { .key => .value.gist };
 
 sub col($name) is export {
