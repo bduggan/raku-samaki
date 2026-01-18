@@ -13,3 +13,15 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   SH
 }
 
+=begin pod
+
+=head1 NAME
+
+Samaki::Plugout::TJLess -- View JSON with jless in a tmux window
+
+=head1 DESCRIPTION
+
+Open JSON output in jless (an interactive JSON viewer) in a new tmux window.
+
+=end pod
+

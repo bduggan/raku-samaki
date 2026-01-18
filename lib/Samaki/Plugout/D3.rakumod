@@ -1247,3 +1247,15 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
     shell-open $html-file;
 }
 
+=begin pod
+
+=head1 NAME
+
+Samaki::Plugout::D3 -- Interactive charts using D3.js
+
+=head1 DESCRIPTION
+
+Visualize CSV data as interactive charts in the browser using D3.js. Supports bar, line, pie, donut, treemap, and bubble charts with controls for switching chart types, selecting columns, and adjusting orientation.
+
+=end pod
+

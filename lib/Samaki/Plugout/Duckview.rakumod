@@ -33,3 +33,15 @@ method execute(IO::Path :$path!) {
   }
 }
 
+=begin pod
+
+=head1 NAME
+
+Samaki::Plugout::Duckview -- Display CSV data in the terminal using DuckDB
+
+=head1 DESCRIPTION
+
+Display CSV output in the terminal pane using the DuckDB CLI.
+
+=end pod
+

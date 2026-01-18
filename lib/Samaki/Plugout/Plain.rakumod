@@ -24,3 +24,15 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   shell-open $html-file;
 }
 
+=begin pod
+
+=head1 NAME
+
+Samaki::Plugout::Plain -- Display plain text in the browser
+
+=head1 DESCRIPTION
+
+Display plain text output in the browser as preformatted text with word wrapping.
+
+=end pod
+

@@ -303,6 +303,10 @@ The following plugouts are included with samaki:
 </tbody>
 </table>
 
+Plugout documentation:
+
+* [ChartJS](docs/lib/Samaki/Plugout/ChartJS.md) * [CSVGeo](docs/lib/Samaki/Plugout/CSVGeo.md) * [D3](docs/lib/Samaki/Plugout/D3.md) * [DataTable](docs/lib/Samaki/Plugout/DataTable.md) * [Duckview](docs/lib/Samaki/Plugout/Duckview.md) * [Geojson](docs/lib/Samaki/Plugout/Geojson.md) * [HTML](docs/lib/Samaki/Plugout/HTML.md) * [JSON](docs/lib/Samaki/Plugout/JSON.md) * [Plain](docs/lib/Samaki/Plugout/Plain.md) * [Raw](docs/lib/Samaki/Plugout/Raw.md) * [TJLess](docs/lib/Samaki/Plugout/TJLess.md)
+
 IMPORTS/EXPORTS
 ===============
 

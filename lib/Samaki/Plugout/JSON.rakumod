@@ -14,3 +14,15 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   }
 }
 
+=begin pod
+
+=head1 NAME
+
+Samaki::Plugout::JSON -- Display JSON in the terminal
+
+=head1 DESCRIPTION
+
+Pretty-print JSON output to the terminal pane.
+
+=end pod
+

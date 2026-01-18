@@ -45,4 +45,14 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
     shell-open "$temp-file";
 }
 
+=begin pod
 
+=head1 NAME
+
+Samaki::Plugout::Geojson -- Display GeoJSON on an interactive map
+
+=head1 DESCRIPTION
+
+Display GeoJSON output on an interactive Leaflet map in the browser.
+
+=end pod

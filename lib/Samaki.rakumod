@@ -671,6 +671,20 @@ Raw                     | Open file with system default application
 TJLess                  | View JSON in new tmux window (requires jless)
 =end table
 
+Plugout documentation:
+
+* L<ChartJS|docs/lib/Samaki/Plugout/ChartJS.md>
+* L<CSVGeo|docs/lib/Samaki/Plugout/CSVGeo.md>
+* L<D3|docs/lib/Samaki/Plugout/D3.md>
+* L<DataTable|docs/lib/Samaki/Plugout/DataTable.md>
+* L<Duckview|docs/lib/Samaki/Plugout/Duckview.md>
+* L<Geojson|docs/lib/Samaki/Plugout/Geojson.md>
+* L<HTML|docs/lib/Samaki/Plugout/HTML.md>
+* L<JSON|docs/lib/Samaki/Plugout/JSON.md>
+* L<Plain|docs/lib/Samaki/Plugout/Plain.md>
+* L<Raw|docs/lib/Samaki/Plugout/Raw.md>
+* L<TJLess|docs/lib/Samaki/Plugout/TJLess.md>
+
 =head1 IMPORTS/EXPORTS
 
 An entire samaki page can be exported as HTML or imported from Jupyter.  This is

@@ -238,3 +238,15 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   info "opening $html-file";
   shell-open $html-file;
 }
+
+=begin pod
+
+=head1 NAME
+
+Samaki::Plugout::DataTable -- Interactive HTML table view
+
+=head1 DESCRIPTION
+
+Display CSV data as an interactive HTML table in the browser. Supports sorting, searching, pagination, and expandable cells for long content.
+
+=end pod
