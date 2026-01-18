@@ -65,7 +65,7 @@ multi MAIN('docs') {
       my $path = $f.IO.relative($*PROGRAM.parent);
       my $out = 'docs'.IO.child: $path.subst(/\.rakumod$/, '.md');
       $out.dirname.IO.d or mkdir $out.dirname;
-      next unless $f.contains('Plugin');
+      next unless $f.contains('Plugin' | 'Plugout');
       shell qq:x[raku -Ilib --doc=Markdown $f > $out];
     }
   }
