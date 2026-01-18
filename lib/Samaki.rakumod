@@ -662,6 +662,7 @@ ChartJS                 | Display CSV as interactive charts in browser (via Char
 CSVGeo                  | Display CSV that has geojson data using a map in browser (via leaflet)
 D3                      | Display CSV as D3.js visualizations in browser
 DataTable               | Display CSV in browser with sorting/pagination/search
+DeckGLBin               | Display spatial bins (H3, geohash, GeoJSON) as 3D extrusions (via deck.gl)
 Duckview                | Show CSV summary in bottom pane (via duckdb)
 Geojson                 | Display GeoJSON on map in browser (via leaflet)
 HTML                    | Open HTML content in browser
@@ -677,6 +678,7 @@ Plugout documentation:
 * L<CSVGeo|docs/lib/Samaki/Plugout/CSVGeo.md>
 * L<D3|docs/lib/Samaki/Plugout/D3.md>
 * L<DataTable|docs/lib/Samaki/Plugout/DataTable.md>
+* L<DeckGLBin|docs/lib/Samaki/Plugout/DeckGLBin.md>
 * L<Duckview|docs/lib/Samaki/Plugout/Duckview.md>
 * L<Geojson|docs/lib/Samaki/Plugout/Geojson.md>
 * L<HTML|docs/lib/Samaki/Plugout/HTML.md>
