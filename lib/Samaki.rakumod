@@ -1,5 +1,6 @@
 use Terminal::ANSI::OO 't';
 use Terminal::UI;
+use Terminal::WCWidth;
 use Log::Async;
 use Time::Duration;
 
@@ -183,6 +184,13 @@ sub human-size($bytes) {
   return sprintf("%5.1f %s", $size, @units[$exp]);
 }
 
+sub pad-width($str, $target-width, :$align = 'left') {
+  my $current = wcswidth($str);
+  my $padding = $target-width - $current;
+  return $str if $padding <= 0;
+  return $align eq 'left' ?? $str ~ (' ' x $padding) !! (' ' x $padding) ~ $str;
+}
+
 method show-dir(IO::Path $dir, :$suffix = 'samaki', :$pane = top, Bool :$header = True, Bool :$highlight-samaki) {
   my \pane := $pane;
   $dir = $!wkdir unless $dir;
@@ -207,6 +215,11 @@ method show-dir(IO::Path $dir, :$suffix = 'samaki', :$pane = top, Bool :$header 
   my %subs = @subdirs.map({.basename}).Set;
   my %shown = Set.new;
 
+  my $width = pane.width;
+  my $name-width = ($width * 0.20).Int;
+  my $size-width = 10;
+  my $date-width = $width - $name-width - $size-width - 2;  # 2 spaces between columns
+
   my @pages = reverse $dir.IO.dir(test => { /'.' [ $suffix ] $$/ }).sort({ .accessed });
   for @pages -> $d {
     my $name = $d.basename.subst(/'.' $suffix/,'');
@@ -216,19 +229,19 @@ method show-dir(IO::Path $dir, :$suffix = 'samaki', :$pane = top, Bool :$header 
       action => "load_page",
       data_dir => $.wkdir.child($name),
     ;
-    my $width = pane.width;
-    my @row = t.color(%COLORS<title>) => $title.fmt('%-40s');
+    my $page-date-width = $date-width + $size-width + 1;  # pages don't show size, reclaim that space
+    my @row = t.color(%COLORS<title>) => pad-width($title, $name-width);
     %shown{$name} = True;
     my $data-dir = $dir.child($name);
     my $file-count = 0;
     if $data-dir.d {
       $file-count = $data-dir.dir.elems;
       my $s = $file-count == 1 ?? '' !! 's';
-      @row.push: t.color(%COLORS<info>) => "($file-count file{$s})".fmt('%-15s');
-      $width -= 15;
+      @row.push: t.color(%COLORS<info>) => " " ~ "($file-count file{$s})".fmt("%-{$size-width}s");
+      $page-date-width -= $size-width + 1;
     }
 
-    @row.push: t.color(%COLORS<info>) => ago( (DateTime.now - $d.accessed).Int ).fmt("%{$width - 45}s");
+    @row.push: t.color(%COLORS<info>) => " " ~ ago( (DateTime.now - $d.accessed).Int ).fmt("%{$page-date-width}s");
     pane.put: @row, :%meta, :!scroll-ok;
   }
 
@@ -236,15 +249,16 @@ method show-dir(IO::Path $dir, :$suffix = 'samaki', :$pane = top, Bool :$header 
   for @others -> $path {
     next if %shown{$path.basename};
     if $path.IO.d {
-      pane.put: [ t.color(%COLORS<yellow>) => ($path.basename ~ '/').fmt('%-40s'),
-                  t.color(%COLORS<info>) => ago( (DateTime.now - $path.accessed).Int).fmt("%{$pane.width - 43}s") ],
+      my $dir-date-width = $date-width + $size-width + 1;  # directories don't show size
+      pane.put: [ t.color(%COLORS<yellow>) => pad-width($path.basename ~ '/', $name-width),
+                  t.color(%COLORS<info>) => " " ~ ago( (DateTime.now - $path.accessed).Int).fmt("%{$dir-date-width}s") ],
                   meta => %(dir => $path, action => 'chdir')
     } else {
       my $color = %COLORS<datafile>;
       $color = %COLORS<inactive> if $highlight-samaki;
-      pane.put: [ t.color($color) => $path.basename.fmt('%-40s'),
-                  t.color(%COLORS<info>) => human-size($path.IO.s).fmt('%15s'),
-                  t.color(%COLORS<info>) => ago( (DateTime.now - $path.accessed).Int).fmt("%{$pane.width - 43 - 15}s") ],
+      pane.put: [ t.color($color) => pad-width($path.basename, $name-width),
+                  t.color(%COLORS<info>) => " " ~ human-size($path.IO.s).fmt("%{$size-width}s"),
+                  t.color(%COLORS<info>) => " " ~ ago( (DateTime.now - $path.accessed).Int).fmt("%{$date-width}s") ],
                   meta => %( :$path, action => "do_output", dir => $dir) :!scroll-ok;
     }
   }
