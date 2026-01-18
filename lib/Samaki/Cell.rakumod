@@ -114,7 +114,7 @@ class Samaki::Cell {
     }
 
     my $all-content;
-    for $.content.lines -> $content-line {
+    for $.content.lines.kv -> $line-number, $content-line {
       my $out;
       my @formatted;
       @formatted.push: col($text-color) => '';
@@ -135,12 +135,12 @@ class Samaki::Cell {
             indir self.data-dir, { $page.cu.eval($eval-str) }
           }
           $out ~= ( $res // "");
-          @formatted.push: t.color(%COLORS<interp>) => ($res.Str // "");
+          @formatted.push: t.color(%COLORS<interp>) => ($res // "").Str;
           @formatted.push: t.color(%COLORS<text>) => '';
           with $page.cu.exception {
             $out ~= " ❰$p❱ ";
             @formatted.push(t.color(%COLORS<error>) => "❰" ~ $eval-str ~ "❱ ");
-            $!errors ~= "sorry: " ~ .message.chomp ~ "\n";
+            $!errors ~= "sorry (line $line-number)): " ~ .message.chomp ~ "\n";
             $page.cu.exception = Nil;
           }
           CATCH {
