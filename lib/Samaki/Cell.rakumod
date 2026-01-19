@@ -220,6 +220,10 @@ class Samaki::Cell {
     }
   }
 
+  method json {
+    return try from-json slurp self.output-file;
+  }
+
   method res {
     given self.ext {
       when 'csv' {
