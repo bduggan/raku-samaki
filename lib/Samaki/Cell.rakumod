@@ -82,7 +82,12 @@ class Samaki::Cell {
     }
   }
 
-  method get-content(Str :$mode = 'eval', :$page!) {
+  #| Get the source content of the cell, with interpolated parts evaluated
+  method src {
+    self.get-content
+  }
+
+  method get-content(Str :$mode = 'eval', :$page = $*page) {
 
     @!formatted-content-lines = [];
 
@@ -119,6 +124,7 @@ class Samaki::Cell {
       my @formatted;
       @formatted.push: color($text-color) => '';
       my @pieces = $content-line.split( / <phrase> | <alt> /, :v);
+      my @extra-lines;
       for @pieces -> $p {
         if $p.isa(Str) {
           $out ~= $p;
@@ -135,7 +141,14 @@ class Samaki::Cell {
             indir self.data-dir, { $page.cu.eval($eval-str) }
           }
           $out ~= ( $res // "");
-          @formatted.push: color('interp') => ($res // "").Str;
+          if $res.?lines > 1 {
+            @formatted.push( color('interp') => $res.lines[0] );
+            for $res.lines.skip {
+              @extra-lines.push: color('interp') => $_;
+            }
+          } else { 
+            @formatted.push: color('interp') => ($res // "").Str;
+          }
           @formatted.push: color('text') => '';
           with $page.cu.exception {
             $out ~= " ❰$p❱ ";
@@ -154,6 +167,9 @@ class Samaki::Cell {
       }
       $out ~= "\n";
       @!formatted-content-lines.push(@formatted);
+      if @extra-lines {
+        @!formatted-content-lines.append(@extra-lines);
+      }
       $all-content ~= $out;
     }
     $!last-content = $all-content;
@@ -187,7 +203,7 @@ class Samaki::Cell {
     True
   }
 
-  method data {
+  method out {
     my $file = self.output-file;
     fail "no output yet" unless $file && $file.e;
     return $file.slurp.trim;

@@ -38,6 +38,7 @@ class Samaki::Page {
     multi cells(Int $i) { self.get-cell($i); }
     multi cells(Str $name) { self.get-cell($name); }
     sub current-page() { self }
+    my $*page = self;
 
     my $context = context;
     $!cu = CodeUnit.new(:$context,:keep-warnings);
