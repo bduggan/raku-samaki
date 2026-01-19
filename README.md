@@ -299,13 +299,13 @@ The following plugouts are included with samaki:
 <th>Plugout</th> <th>Description</th>
 </tr></thead>
 <tbody>
-<tr> <td>ChartJS</td> <td>Display CSV as interactive charts in browser (via Chart.js)</td> </tr> <tr> <td>CSVGeo</td> <td>Display CSV that has geojson data using a map in browser (via leaflet)</td> </tr> <tr> <td>D3</td> <td>Display CSV as D3.js visualizations in browser</td> </tr> <tr> <td>DataTable</td> <td>Display CSV in browser with sorting/pagination/search</td> </tr> <tr> <td>Duckview</td> <td>Show CSV summary in bottom pane (via duckdb)</td> </tr> <tr> <td>Geojson</td> <td>Display GeoJSON on map in browser (via leaflet)</td> </tr> <tr> <td>HTML</td> <td>Open HTML content in browser</td> </tr> <tr> <td>JSON</td> <td>Display prettified JSON in bottom pane</td> </tr> <tr> <td>Plain</td> <td>Display plain text in browser</td> </tr> <tr> <td>Raw</td> <td>Open file with system default application</td> </tr> <tr> <td>TJLess</td> <td>View JSON in new tmux window (requires jless)</td> </tr>
+<tr> <td>ChartJS</td> <td>Display CSV as interactive charts in browser (via Chart.js)</td> </tr> <tr> <td>CSVGeo</td> <td>Display CSV that has geojson data using a map in browser (via leaflet)</td> </tr> <tr> <td>D3</td> <td>Display CSV as D3.js visualizations in browser</td> </tr> <tr> <td>DataTable</td> <td>Display CSV in browser with sorting/pagination/search</td> </tr> <tr> <td>DeckGLBin</td> <td>Display spatial bins (H3, geohash, GeoJSON) as 3D extrusions (via deck.gl)</td> </tr> <tr> <td>Duckview</td> <td>Show CSV summary in bottom pane (via duckdb)</td> </tr> <tr> <td>Geojson</td> <td>Display GeoJSON on map in browser (via leaflet)</td> </tr> <tr> <td>HTML</td> <td>Open HTML content in browser</td> </tr> <tr> <td>JSON</td> <td>Display prettified JSON in bottom pane</td> </tr> <tr> <td>Plain</td> <td>Display plain text in browser</td> </tr> <tr> <td>Raw</td> <td>Open file with system default application</td> </tr> <tr> <td>TJLess</td> <td>View JSON in new tmux window (requires jless)</td> </tr>
 </tbody>
 </table>
 
 Plugout documentation:
 
-* [ChartJS](docs/lib/Samaki/Plugout/ChartJS.md) * [CSVGeo](docs/lib/Samaki/Plugout/CSVGeo.md) * [D3](docs/lib/Samaki/Plugout/D3.md) * [DataTable](docs/lib/Samaki/Plugout/DataTable.md) * [Duckview](docs/lib/Samaki/Plugout/Duckview.md) * [Geojson](docs/lib/Samaki/Plugout/Geojson.md) * [HTML](docs/lib/Samaki/Plugout/HTML.md) * [JSON](docs/lib/Samaki/Plugout/JSON.md) * [Plain](docs/lib/Samaki/Plugout/Plain.md) * [Raw](docs/lib/Samaki/Plugout/Raw.md) * [TJLess](docs/lib/Samaki/Plugout/TJLess.md)
+* [ChartJS](docs/lib/Samaki/Plugout/ChartJS.md) * [CSVGeo](docs/lib/Samaki/Plugout/CSVGeo.md) * [D3](docs/lib/Samaki/Plugout/D3.md) * [DataTable](docs/lib/Samaki/Plugout/DataTable.md) * [DeckGLBin](docs/lib/Samaki/Plugout/DeckGLBin.md) * [Duckview](docs/lib/Samaki/Plugout/Duckview.md) * [Geojson](docs/lib/Samaki/Plugout/Geojson.md) * [HTML](docs/lib/Samaki/Plugout/HTML.md) * [JSON](docs/lib/Samaki/Plugout/JSON.md) * [Plain](docs/lib/Samaki/Plugout/Plain.md) * [Raw](docs/lib/Samaki/Plugout/Raw.md) * [TJLess](docs/lib/Samaki/Plugout/TJLess.md)
 
 IMPORTS/EXPORTS
 ===============
