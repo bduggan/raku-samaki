@@ -84,7 +84,7 @@ class Samaki::Cell {
 
   #| Get the source content of the cell, with interpolated parts evaluated
   method src {
-    self.get-content
+    self.get-content(mode => 'eval');
   }
 
   method get-content(Str :$mode = 'eval', :$page = $*page) {
