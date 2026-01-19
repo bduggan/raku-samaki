@@ -141,7 +141,7 @@ class Samaki::Cell {
             indir self.data-dir, { $page.cu.eval($eval-str) }
           }
           $out ~= ( $res // "");
-          if $res.?lines > 1 {
+          if ($res.?lines // 0 ) > 1 {
             @formatted.push( color('interp') => $res.lines[0] );
             for $res.lines.skip {
               @extra-lines.push: color('interp') => $_;
