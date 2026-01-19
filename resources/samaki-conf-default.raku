@@ -34,6 +34,7 @@ use Samaki::Plugin::Process;
     / csv  /   => 'Samaki::Plugout::ChartJS',
     / csv  /   => 'Samaki::Plugout::D3',
     / csv  /   => 'Samaki::Plugout::CSVGeo',
+    / csv /    => 'Samaki::Plugout::DeckGLBin',
     / html /   => 'Samaki::Plugout::HTML',
     / txt  /   => 'Samaki::Plugout::Plain',
     / geojson / => 'Samaki::Plugout::Geojson',
