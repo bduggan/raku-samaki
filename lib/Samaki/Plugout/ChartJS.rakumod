@@ -269,12 +269,13 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         </div>
         <div class="control-item">
           <span class="control-label">Dim</span>
-          <select id="dimension-column">
-            <option value="">(none)</option>
-          </select>
+          <div class="values-container" id="dimensions-container"></div>
         </div>
-        <div class="values-container" id="values-container">
-          <select id="value-column" multiple style="display: none;"></select>
+        <div class="control-item">
+          <span class="control-label">Values</span>
+          <div class="values-container" id="values-container">
+            <select id="value-column" multiple style="display: none;"></select>
+          </div>
         </div>
         <div class="datetime-box" id="datetime-box" style="display: none;">
           <span class="control-label">Date</span>
@@ -381,18 +382,19 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
       const labelSelect = document.getElementById('label-column');
       const valueSelect = document.getElementById('value-column');
       const valuesContainer = document.getElementById('values-container');
-      const dimensionSelect = document.getElementById('dimension-column');
+      const dimensionsContainer = document.getElementById('dimensions-container');
       const chartTypeSelect = document.getElementById('chart-type');
       const orientationIcon = document.getElementById('orientation-icon');
       const legendBox = document.getElementById('legend-box');
 
-      // Track selected values
+      // Track selected values and dimensions
       let selectedValues = [];
+      let selectedDimensions = defaultDimensions.length > 0 ? [defaultDimensions[0]] : [];
 
       // Update value chips display
       function updateValueChips() {
         // Clear existing chips except the hidden select
-        valuesContainer.querySelectorAll('.value-chip, .value-add').forEach(el => el.remove());
+        valuesContainer.querySelectorAll('.value-chip, .value-add, .value-selector-popup').forEach(el => el.remove());
 
         // Add chip for each selected value
         selectedValues.forEach(val => {
@@ -411,12 +413,15 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
           valuesContainer.insertBefore(chip, valueSelect);
         });
 
-        // Add "+" button
-        const addBtn = document.createElement('div');
-        addBtn.className = 'value-add';
-        addBtn.textContent = '+';
-        addBtn.addEventListener('click', showValueSelector);
-        valuesContainer.insertBefore(addBtn, valueSelect);
+        // Only show + button if there are columns available to add
+        const availableValues = numericColumns.filter(col => !selectedValues.includes(col));
+        if (availableValues.length > 0) {
+          const addBtn = document.createElement('div');
+          addBtn.className = 'value-add';
+          addBtn.textContent = '+';
+          addBtn.addEventListener('click', showValueSelector);
+          valuesContainer.insertBefore(addBtn, valueSelect);
+        }
       }
 
       // Show value selector popup
@@ -485,18 +490,82 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
       // Initialize value chips
       updateValueChips();
 
-      // Dimension dropdown gets all columns (single select)
-      columns.forEach(col => {
-        const option3 = document.createElement('option');
-        option3.value = col;
-        option3.textContent = col;
-        dimensionSelect.appendChild(option3);
-      });
+      // Chip-based dimension selector
+      function updateDimensionChips() {
+        dimensionsContainer.querySelectorAll('.value-chip, .value-add, .value-selector-popup').forEach(el => el.remove());
 
-      // Set default dimension selection (first one from defaults, or none)
-      if (defaultDimensions.length > 0) {
-        dimensionSelect.value = defaultDimensions[0];
+        selectedDimensions.forEach(dim => {
+          const chip = document.createElement('div');
+          chip.className = 'value-chip';
+          chip.innerHTML = dim + ' <span class="value-chip-remove">×</span>';
+          chip.addEventListener('click', () => {
+            selectedDimensions = selectedDimensions.filter(d => d !== dim);
+            updateDimensionChips();
+            createChart(currentChartType, currentIndexAxis);
+          });
+          dimensionsContainer.appendChild(chip);
+        });
+
+        // Only show + button if there are dimensions available to add
+        const availableDimensions = columns.filter(col =>
+          !selectedDimensions.includes(col) &&
+          col !== labelSelect.value &&
+          !selectedValues.includes(col)
+        );
+
+        if (availableDimensions.length > 0) {
+          const addBtn = document.createElement('div');
+          addBtn.className = 'value-add';
+          addBtn.textContent = '+';
+          addBtn.addEventListener('click', showDimensionSelector);
+          dimensionsContainer.appendChild(addBtn);
+        }
       }
+
+      function showDimensionSelector(event) {
+        const availableDimensions = columns.filter(col =>
+          !selectedDimensions.includes(col) &&
+          col !== labelSelect.value &&
+          !selectedValues.includes(col)
+        );
+        if (availableDimensions.length === 0) return;
+
+        // Remove existing popup if any
+        document.querySelectorAll('.value-selector-popup').forEach(el => el.remove());
+
+        const popup = document.createElement('div');
+        popup.className = 'value-selector-popup';
+        popup.style.top = (event.target.offsetTop + event.target.offsetHeight + 2) + 'px';
+        popup.style.left = event.target.offsetLeft + 'px';
+
+        availableDimensions.forEach(col => {
+          const option = document.createElement('div');
+          option.className = 'value-option';
+          option.textContent = col;
+          option.addEventListener('click', () => {
+            selectedDimensions.push(col);
+            updateDimensionChips();
+            popup.remove();
+            createChart(currentChartType, currentIndexAxis);
+          });
+          popup.appendChild(option);
+        });
+
+        dimensionsContainer.appendChild(popup);
+
+        // Close popup when clicking outside
+        setTimeout(() => {
+          document.addEventListener('click', function closePopup(e) {
+            if (!popup.contains(e.target)) {
+              popup.remove();
+              document.removeEventListener('click', closePopup);
+            }
+          });
+        }, 0);
+      }
+
+      // Initialize dimension chips
+      updateDimensionChips();
 
       // Set default label selection
       labelSelect.value = '$default-label';
@@ -792,22 +861,19 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
       function getChartData(isScatter = false) {
         const labelCol = labelSelect.value;
         const valueCols = Array.from(valueSelect.selectedOptions).map(opt => opt.value);
-        const dimensionCol = dimensionSelect.value;
+        const dimensionCols = selectedDimensions;
 
         if (valueCols.length === 0) {
           console.warn('No value columns selected');
           return { labels: [], datasets: [] };
         }
 
-        console.log('Getting chart data for label="' + labelCol + '" values=' + JSON.stringify(valueCols) + ' dimension=' + dimensionCol + ' scatter=' + isScatter);
+        console.log('Getting chart data for label="' + labelCol + '" values=' + JSON.stringify(valueCols) + ' dimensions=' + JSON.stringify(dimensionCols) + ' scatter=' + isScatter);
 
         // No dimension → use current behavior
-        if (!dimensionCol || dimensionCol === '') {
+        if (dimensionCols.length === 0) {
           return getChartDataNoDimensions(isScatter, labelCol, valueCols);
         }
-
-        // WITH DIMENSION (single column):
-        const dimensionCols = [dimensionCol];
 
         // WITH DIMENSIONS:
         // 1. Group data by dimension key (combined dimension values)
@@ -1038,9 +1104,9 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
 
       // Update custom legend box
       function updateLegend(datasets) {
-        const dimensionCol = dimensionSelect.value;
+        const dimensionCols = selectedDimensions;
 
-        if (!dimensionCol || dimensionCol === '' || datasets.length <= 1) {
+        if (dimensionCols.length === 0 || datasets.length <= 1) {
           legendBox.style.display = 'none';
           return;
         }
@@ -1385,10 +1451,6 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
 
       // Column selector event listeners
       labelSelect.addEventListener('change', function() {
-        createChart(currentChartType, currentIndexAxis);
-      });
-
-      dimensionSelect.addEventListener('change', function() {
         createChart(currentChartType, currentIndexAxis);
       });
 

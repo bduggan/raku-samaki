@@ -26,6 +26,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
     my @default-values = @(%result<values>);
     my @numeric-cols = @(%result<numeric>);
     my @datetime-cols = @(%result<datetime>);
+    my @dimension-cols = @(%result<dimensions> // []);
 
     my $html-file = $data-dir.child("{$name}-d3.html");
 
@@ -37,6 +38,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
     my $numeric-columns-json = to-json(@numeric-cols);
     my $datetime-columns-json = to-json(@datetime-cols);
     my $default-values-json = to-json(@default-values);
+    my $default-dimensions-json = to-json(@dimension-cols);
     my $default-label = html-escape($label-col);
     my $default-value = html-escape($value-col);
 
@@ -47,6 +49,8 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>$title </title>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.5.43/moment-timezone-with-data.min.js"></script>
         <script src="https://d3js.org/d3.v7.min.js"></script>
         <style>
             body {
@@ -72,47 +76,158 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
             }
             .controls {
                 margin-bottom: 15px;
-                display: flex;
-                gap: 8px;
-                flex-wrap: wrap;
-            }
-            .controls button {
-                padding: 6px 12px;
-                font-family: ui-monospace, monospace;
-                font-size: 12px;
-                background: #f1f5f9;
+                padding: 10px;
+                background: #fafbfc;
                 border: 1px solid #e2e8f0;
-                border-radius: 3px;
-                cursor: pointer;
-                color: #2c3e50;
+                border-radius: 4px;
+                display: flex;
+                gap: 6px;
+                flex-wrap: nowrap;
+                align-items: center;
+                font-size: 11px;
             }
-            .controls button:hover {
-                background: #e2e8f0;
-            }
-            .controls button.active {
-                background: #3b82f6;
-                color: white;
-                border-color: #3b82f6;
-            }
-            .column-selector {
+            .control-item {
                 display: flex;
                 align-items: center;
                 gap: 4px;
+                height: 28px;
             }
-            .column-selector label {
+            .control-label {
                 font-size: 11px;
                 color: #64748b;
                 font-weight: 500;
             }
-            .column-selector select {
+            .control-item select {
                 padding: 4px 8px;
                 font-family: ui-monospace, monospace;
                 font-size: 11px;
-                border: 1px solid #e2e8f0;
+                border: 1px solid #cbd5e1;
                 border-radius: 3px;
                 background: white;
                 color: #2c3e50;
-                min-width: 120px;
+                min-width: 80px;
+                height: 28px;
+                box-sizing: border-box;
+            }
+            .orientation-icon {
+                width: 28px;
+                height: 28px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: white;
+                border: 1px solid #cbd5e1;
+                border-radius: 3px;
+                cursor: pointer;
+                font-size: 16px;
+                color: #64748b;
+                user-select: none;
+                transition: background 0.2s;
+            }
+            .orientation-icon:hover {
+                background: #f1f5f9;
+            }
+            .values-container {
+                display: flex;
+                gap: 4px;
+                align-items: center;
+                flex-wrap: wrap;
+            }
+            .value-chip {
+                padding: 4px 8px;
+                background: white;
+                border: 1px solid #cbd5e1;
+                border-radius: 3px;
+                font-size: 11px;
+                color: #2c3e50;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                height: 28px;
+                box-sizing: border-box;
+                transition: background 0.2s;
+            }
+            .value-chip:hover {
+                background: #fee;
+            }
+            .value-chip-remove {
+                color: #ef4444;
+                font-weight: bold;
+            }
+            .value-add {
+                width: 28px;
+                height: 28px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                background: white;
+                border: 1px solid #cbd5e1;
+                border-radius: 3px;
+                cursor: pointer;
+                font-size: 16px;
+                color: #64748b;
+                user-select: none;
+                transition: background 0.2s;
+            }
+            .value-add:hover {
+                background: #f1f5f9;
+            }
+            .value-selector-dropdown {
+                position: relative;
+            }
+            .value-selector-dropdown select {
+                padding: 4px 8px;
+                font-family: ui-monospace, monospace;
+                font-size: 11px;
+                border: 1px solid #cbd5e1;
+                border-radius: 3px;
+                background: white;
+                color: #2c3e50;
+                height: 28px;
+                box-sizing: border-box;
+            }
+            .legend-box {
+                position: absolute;
+                top: 20px;
+                right: 20px;
+                max-width: 200px;
+                max-height: 300px;
+                overflow-y: auto;
+                background: white;
+                border: 1px solid #e2e8f0;
+                border-radius: 4px;
+                padding: 8px;
+                font-size: 11px;
+                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            }
+            .legend-item {
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                margin-bottom: 4px;
+            }
+            .legend-color {
+                width: 12px;
+                height: 12px;
+                border-radius: 2px;
+                flex-shrink: 0;
+            }
+            .datetime-box {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+            .datetime-box select {
+                padding: 4px 8px;
+                font-family: ui-monospace, monospace;
+                font-size: 11px;
+                border: 1px solid #cbd5e1;
+                border-radius: 3px;
+                background: white;
+                color: #2c3e50;
+                height: 28px;
+                box-sizing: border-box;
             }
             #chart {
                 width: 100%;
@@ -186,20 +301,81 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         <div class="container">
             <h2>$title </h2>
             <div class="controls">
-                <button id="btn-bar">Bar</button>
-                <button id="btn-line">Line</button>
-                <button id="btn-pie">Pie Chart</button>
-                <button id="btn-donut">Donut Chart</button>
-                <button id="btn-treemap">Treemap</button>
-                <button id="btn-bubble">Bubble Chart</button>
-                <button id="btn-orientation">↔ Horizontal</button>
-                <div class="column-selector">
-                  <label>Label:</label>
-                  <select id="label-column"></select>
+                <div class="control-item">
+                    <select id="chart-type">
+                        <option value="bar">Bar</option>
+                        <option value="line">Line</option>
+                        <option value="pie">Pie</option>
+                        <option value="donut">Donut</option>
+                        <option value="treemap">Treemap</option>
+                        <option value="bubble">Bubble</option>
+                    </select>
                 </div>
-                <div class="column-selector">
-                  <label>Values:</label>
-                  <select id="value-column" multiple></select>
+                <div class="orientation-icon" id="orientation-icon">↔</div>
+                <div class="control-item">
+                    <span class="control-label">Label</span>
+                    <select id="label-column"></select>
+                </div>
+                <div class="control-item">
+                    <span class="control-label">Dim</span>
+                    <div class="values-container" id="dimensions-container"></div>
+                </div>
+                <div class="control-item">
+                    <span class="control-label">Values</span>
+                    <div class="values-container" id="values-container">
+                        <select id="value-column" multiple style="display: none;"></select>
+                    </div>
+                </div>
+                <div class="datetime-box" id="datetime-box" style="display: none;">
+                    <span class="control-label">Date</span>
+                    <select id="time-format">
+                        <option value="auto">Auto</option>
+                        <option value="time-only">HH:mm</option>
+                        <option value="time-seconds">HH:mm:ss</option>
+                        <option value="date-time">MMM d, HH:mm</option>
+                        <option value="date-time-seconds">MMM d, HH:mm:ss</option>
+                        <option value="date-only">MMM d, yyyy</option>
+                        <option value="month-year">MMM yyyy</option>
+                        <option value="month-only">MMM</option>
+                        <option value="year-only">yyyy</option>
+                    </select>
+                    <select id="source-timezone">
+                        <option value="America/New_York">US/Eastern (ET)</option>
+                        <option value="America/Chicago">US/Central (CT)</option>
+                        <option value="America/Denver">US/Mountain (MT)</option>
+                        <option value="America/Los_Angeles">US/Pacific (PT)</option>
+                        <option value="America/Anchorage">US/Alaska (AKT)</option>
+                        <option value="Pacific/Honolulu">US/Hawaii (HT)</option>
+                        <option value="UTC">UTC</option>
+                        <option value="Europe/London">Europe/London (GMT/BST)</option>
+                        <option value="Europe/Paris">Europe/Paris (CET/CEST)</option>
+                        <option value="Europe/Berlin">Europe/Berlin (CET/CEST)</option>
+                        <option value="Europe/Rome">Europe/Rome (CET/CEST)</option>
+                        <option value="Europe/Madrid">Europe/Madrid (CET/CEST)</option>
+                        <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+                        <option value="Asia/Shanghai">Asia/Shanghai (CST)</option>
+                        <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
+                        <option value="Australia/Sydney">Australia/Sydney (AEDT/AEST)</option>
+                    </select>
+                    <span class="control-label">to</span>
+                    <select id="timezone">
+                        <option value="America/New_York">US/Eastern (ET)</option>
+                        <option value="America/Chicago">US/Central (CT)</option>
+                        <option value="America/Denver">US/Mountain (MT)</option>
+                        <option value="America/Los_Angeles">US/Pacific (PT)</option>
+                        <option value="America/Anchorage">US/Alaska (AKT)</option>
+                        <option value="Pacific/Honolulu">US/Hawaii (HT)</option>
+                        <option value="UTC">UTC</option>
+                        <option value="Europe/London">Europe/London (GMT/BST)</option>
+                        <option value="Europe/Paris">Europe/Paris (CET/CEST)</option>
+                        <option value="Europe/Berlin">Europe/Berlin (CET/CEST)</option>
+                        <option value="Europe/Rome">Europe/Rome (CET/CEST)</option>
+                        <option value="Europe/Madrid">Europe/Madrid (CET/CEST)</option>
+                        <option value="Asia/Tokyo">Asia/Tokyo (JST)</option>
+                        <option value="Asia/Shanghai">Asia/Shanghai (CST)</option>
+                        <option value="Asia/Singapore">Asia/Singapore (SGT)</option>
+                        <option value="Australia/Sydney">Australia/Sydney (AEDT/AEST)</option>
+                    </select>
                 </div>
             </div>
             <div id="chart"></div>
@@ -212,16 +388,27 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
             const numericColumns = $numeric-columns-json;
             const datetimeColumns = $datetime-columns-json;
             const defaultValues = $default-values-json;
+            const defaultDimensions = $default-dimensions-json;
 
             const container = d3.select('#chart');
             const tooltip = d3.select('.tooltip');
 
             let currentChartType = defaultValues.length > 2 ? 'line' : 'bar';
             let currentOrientation = 'vertical';
+            let selectedValues = [...defaultValues];
+            let selectedDimensions = defaultDimensions.length > 0 ? [defaultDimensions[0]] : [];
 
             // Populate column selectors
+            const chartTypeSelect = document.getElementById('chart-type');
             const labelSelect = document.getElementById('label-column');
             const valueSelect = document.getElementById('value-column');
+            const dimensionsContainer = document.getElementById('dimensions-container');
+            const valuesContainer = document.getElementById('values-container');
+            const orientationIcon = document.getElementById('orientation-icon');
+            const timeFormatSelect = document.getElementById('time-format');
+            const sourceTimezoneSelect = document.getElementById('source-timezone');
+            const timezoneSelect = document.getElementById('timezone');
+            const datetimeBox = document.getElementById('datetime-box');
 
             // Label dropdown gets all columns
             columns.forEach(col => {
@@ -231,7 +418,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                 labelSelect.appendChild(option);
             });
 
-            // Value dropdown gets only numeric columns
+            // Value dropdown gets only numeric columns (hidden, used for chip management)
             numericColumns.forEach(col => {
                 const option = document.createElement('option');
                 option.value = col;
@@ -245,33 +432,363 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
             // Set default label selection
             labelSelect.value = '$default-label';
 
-            // Set initial active button
-            if (currentChartType === 'line') {
-                setActiveButton(document.getElementById('btn-line'));
-            } else {
-                setActiveButton(document.getElementById('btn-bar'));
+            // Set initial chart type
+            chartTypeSelect.value = currentChartType;
+
+            // Chip-based value selector
+            function updateValueChips() {
+                valuesContainer.querySelectorAll('.value-chip, .value-add, .value-selector-dropdown').forEach(el => el.remove());
+
+                selectedValues.forEach(val => {
+                    const chip = document.createElement('div');
+                    chip.className = 'value-chip';
+                    chip.innerHTML = val + ' <span class="value-chip-remove">×</span>';
+                    chip.addEventListener('click', () => {
+                        selectedValues = selectedValues.filter(v => v !== val);
+                        updateValueChips();
+                        Array.from(valueSelect.options).forEach(opt => {
+                            opt.selected = selectedValues.includes(opt.value);
+                        });
+                        refreshChart();
+                    });
+                    valuesContainer.insertBefore(chip, valueSelect);
+                });
+
+                // Only show + button if there are columns available to add
+                const availableValues = numericColumns.filter(col => !selectedValues.includes(col));
+                if (availableValues.length > 0) {
+                    const addBtn = document.createElement('div');
+                    addBtn.className = 'value-add';
+                    addBtn.textContent = '+';
+                    addBtn.addEventListener('click', showValueSelector);
+                    valuesContainer.insertBefore(addBtn, valueSelect);
+                }
             }
 
-            // Parse datetime strings to Date objects
-            function parseDatetime(dateStr) {
+            function showValueSelector() {
+                const availableValues = numericColumns.filter(col => !selectedValues.includes(col));
+                if (availableValues.length === 0) return;
+
+                // Remove any existing dropdown
+                const existingDropdown = valuesContainer.querySelector('.value-selector-dropdown');
+                if (existingDropdown) {
+                    existingDropdown.remove();
+                    updateValueChips();
+                    return;
+                }
+
+                // Hide the + button temporarily
+                const addBtn = valuesContainer.querySelector('.value-add');
+                if (addBtn) {
+                    addBtn.style.display = 'none';
+                }
+
+                // Create dropdown
+                const dropdownContainer = document.createElement('div');
+                dropdownContainer.className = 'value-selector-dropdown';
+
+                const select = document.createElement('select');
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = 'Add column...';
+                select.appendChild(defaultOption);
+
+                availableValues.forEach(col => {
+                    const option = document.createElement('option');
+                    option.value = col;
+                    option.textContent = col;
+                    select.appendChild(option);
+                });
+
+                select.addEventListener('change', function() {
+                    if (this.value) {
+                        selectedValues.push(this.value);
+                        Array.from(valueSelect.options).forEach(opt => {
+                            opt.selected = selectedValues.includes(opt.value);
+                        });
+                    }
+                    updateValueChips();
+                    refreshChart();
+                });
+
+                select.addEventListener('blur', function() {
+                    updateValueChips();
+                });
+
+                dropdownContainer.appendChild(select);
+                valuesContainer.insertBefore(dropdownContainer, valueSelect);
+
+                // Auto-focus and open
+                select.focus();
+            }
+
+            updateValueChips();
+
+            // Chip-based dimension selector
+            function updateDimensionChips() {
+                dimensionsContainer.querySelectorAll('.value-chip, .value-add, .value-selector-dropdown').forEach(el => el.remove());
+
+                selectedDimensions.forEach(dim => {
+                    const chip = document.createElement('div');
+                    chip.className = 'value-chip';
+                    chip.innerHTML = dim + ' <span class="value-chip-remove">×</span>';
+                    chip.addEventListener('click', () => {
+                        selectedDimensions = selectedDimensions.filter(d => d !== dim);
+                        updateDimensionChips();
+                        refreshChart();
+                    });
+                    dimensionsContainer.appendChild(chip);
+                });
+
+                // Only show + button if there are dimensions available to add
+                const availableDimensions = columns.filter(col =>
+                    !selectedDimensions.includes(col) &&
+                    col !== labelSelect.value &&
+                    !selectedValues.includes(col)
+                );
+
+                if (availableDimensions.length > 0) {
+                    const addBtn = document.createElement('div');
+                    addBtn.className = 'value-add';
+                    addBtn.textContent = '+';
+                    addBtn.addEventListener('click', showDimensionSelector);
+                    dimensionsContainer.appendChild(addBtn);
+                }
+            }
+
+            function showDimensionSelector() {
+                const availableDimensions = columns.filter(col =>
+                    !selectedDimensions.includes(col) &&
+                    col !== labelSelect.value &&
+                    !selectedValues.includes(col)
+                );
+                if (availableDimensions.length === 0) return;
+
+                // Remove any existing dropdown
+                const existingDropdown = dimensionsContainer.querySelector('.value-selector-dropdown');
+                if (existingDropdown) {
+                    existingDropdown.remove();
+                    updateDimensionChips();
+                    return;
+                }
+
+                // Hide the + button temporarily
+                const addBtn = dimensionsContainer.querySelector('.value-add');
+                if (addBtn) {
+                    addBtn.style.display = 'none';
+                }
+
+                // Create dropdown
+                const dropdownContainer = document.createElement('div');
+                dropdownContainer.className = 'value-selector-dropdown';
+
+                const select = document.createElement('select');
+                const defaultOption = document.createElement('option');
+                defaultOption.value = '';
+                defaultOption.textContent = 'Add dimension...';
+                select.appendChild(defaultOption);
+
+                availableDimensions.forEach(col => {
+                    const option = document.createElement('option');
+                    option.value = col;
+                    option.textContent = col;
+                    select.appendChild(option);
+                });
+
+                select.addEventListener('change', function() {
+                    if (this.value) {
+                        selectedDimensions.push(this.value);
+                    }
+                    updateDimensionChips();
+                    refreshChart();
+                });
+
+                select.addEventListener('blur', function() {
+                    updateDimensionChips();
+                });
+
+                dropdownContainer.appendChild(select);
+                dimensionsContainer.appendChild(dropdownContainer);
+
+                // Auto-focus and open
+                select.focus();
+            }
+
+            updateDimensionChips();
+
+            // Show/hide datetime controls based on label column
+            function updateDatetimeControls() {
+                const labelCol = labelSelect.value;
+                const isDatetime = datetimeColumns.includes(labelCol);
+                datetimeBox.style.display = isDatetime ? 'flex' : 'none';
+            }
+
+            // Parse datetime strings to Date objects with timezone handling
+            function parseDatetime(dateStr, sourceTimezone, targetTimezone) {
                 if (!dateStr) return null;
-                // Try parsing YYYY-MM-DD HH:mm:ss format
-                const parsed = new Date(dateStr.replace(' ', 'T'));
-                return isNaN(parsed.getTime()) ? null : parsed;
+
+                // Use moment-timezone for proper timezone handling
+                let m;
+                if (sourceTimezone === 'UTC') {
+                    m = moment.utc(dateStr, 'YYYY-MM-DD HH:mm:ss');
+                } else {
+                    m = moment.tz(dateStr, 'YYYY-MM-DD HH:mm:ss', sourceTimezone);
+                }
+
+                if (!m.isValid()) {
+                    // Fallback to ISO parsing
+                    const parsed = new Date(dateStr.replace(' ', 'T'));
+                    return isNaN(parsed.getTime()) ? null : parsed;
+                }
+
+                // Convert to target timezone if different
+                if (targetTimezone !== sourceTimezone) {
+                    m = m.tz(targetTimezone);
+                }
+
+                return m.toDate();
+            }
+
+            // Format datetime based on user selection
+            function formatDatetime(date, format) {
+                if (!date || !(date instanceof Date)) return '';
+
+                const m = moment(date);
+
+                switch(format) {
+                    case 'time-only':
+                        return m.format('HH:mm');
+                    case 'time-seconds':
+                        return m.format('HH:mm:ss');
+                    case 'date-time':
+                        return m.format('MMM D, HH:mm');
+                    case 'date-time-seconds':
+                        return m.format('MMM D, HH:mm:ss');
+                    case 'date-only':
+                        return m.format('MMM D, YYYY');
+                    case 'month-year':
+                        return m.format('MMM YYYY');
+                    case 'month-only':
+                        return m.format('MMM');
+                    case 'year-only':
+                        return m.format('YYYY');
+                    case 'auto':
+                    default:
+                        // Auto-detect based on time range (will be handled by existing smart formatter)
+                        return null;
+                }
+            }
+
+            // Set default timezones
+            sourceTimezoneSelect.value = 'UTC';
+            timezoneSelect.value = 'UTC';
+
+            // Update datetime controls visibility
+            updateDatetimeControls();
+
+            function refreshChart() {
+                if (currentChartType === 'bar') {
+                    createBarChart(currentOrientation === 'horizontal');
+                } else if (currentChartType === 'line') {
+                    createLineChart();
+                } else if (currentChartType === 'pie') {
+                    createPieChart(0);
+                } else if (currentChartType === 'donut') {
+                    createPieChart(80);
+                } else if (currentChartType === 'treemap') {
+                    createTreemap();
+                } else if (currentChartType === 'bubble') {
+                    createBubbleChart();
+                }
+            }
+
+            function getChartDataWithDimension(labelCol, valueCols, dimensionCols) {
+                const isLabelDatetime = datetimeColumns.includes(labelCol);
+                const sourceTimezone = sourceTimezoneSelect.value;
+                const targetTimezone = timezoneSelect.value;
+
+                // Group data by dimension key (combined dimension values)
+                const dimensionKey = (row) =>
+                    dimensionCols.map(dc => row[dc] || 'null').join('|');
+
+                const groupedData = {};
+                allData.forEach(row => {
+                    const key = dimensionKey(row);
+                    if (!groupedData[key]) {
+                        groupedData[key] = {
+                            rows: [],
+                            dimensionValues: dimensionCols.map(dc => row[dc] || 'null')
+                        };
+                    }
+                    groupedData[key].rows.push(row);
+                });
+
+                // Create series for each value column × dimension group
+                const series = [];
+                valueCols.forEach(valueCol => {
+                    Object.keys(groupedData).forEach(dimKey => {
+                        const group = groupedData[dimKey];
+
+                        // Dataset label
+                        let seriesName;
+                        if (valueCols.length === 1 && dimensionCols.length === 1) {
+                            seriesName = group.dimensionValues[0];  // "90146"
+                        } else if (dimensionCols.length === 1) {
+                            seriesName = valueCol + ': ' + group.dimensionValues[0];  // "num: 90146"
+                        } else {
+                            const dimParts = dimensionCols.map((dc, i) =>
+                                dc + ': ' + group.dimensionValues[i]
+                            ).join(', ');
+                            seriesName = valueCol + ' (' + dimParts + ')';
+                        }
+
+                        const values = group.rows.map(row => ({
+                            label: isLabelDatetime ? parseDatetime(row[labelCol], sourceTimezone, targetTimezone) : (row[labelCol] || ''),
+                            labelStr: row[labelCol] || '',
+                            value: parseFloat(row[valueCol]) || 0
+                        }));
+
+                        // Sort by label if datetime
+                        if (isLabelDatetime) {
+                            values.sort((a, b) => {
+                                if (a.label instanceof Date && b.label instanceof Date) {
+                                    return a.label - b.label;
+                                }
+                                return 0;
+                            });
+                        }
+
+                        series.push({
+                            name: seriesName,
+                            values: values,
+                            dimensionValues: group.dimensionValues
+                        });
+                    });
+                });
+
+                return series;
             }
 
             function getChartData() {
                 const labelCol = labelSelect.value;
-                const valueCols = Array.from(valueSelect.selectedOptions).map(opt => opt.value);
+                const valueCols = selectedValues;
+                const dimensionCols = selectedDimensions;
 
                 if (!valueCols.length) return [];
 
+                // If dimension selected, group by dimension
+                if (dimensionCols.length > 0) {
+                    return getChartDataWithDimension(labelCol, valueCols, dimensionCols);
+                }
+
                 const isLabelDatetime = datetimeColumns.includes(labelCol);
+                const sourceTimezone = sourceTimezoneSelect.value;
+                const targetTimezone = timezoneSelect.value;
 
                 // For single value column, return simple array for pie/donut/treemap/bubble
                 if (valueCols.length === 1) {
                     const data = allData.map(row => ({
-                        label: isLabelDatetime ? parseDatetime(row[labelCol]) : (row[labelCol] || ''),
+                        label: isLabelDatetime ? parseDatetime(row[labelCol], sourceTimezone, targetTimezone) : (row[labelCol] || ''),
                         labelStr: row[labelCol] || '',
                         value: parseFloat(row[valueCols[0]]) || 0
                     }));
@@ -293,7 +810,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                 const series = valueCols.map(col => ({
                     name: col,
                     values: allData.map(row => ({
-                        label: isLabelDatetime ? parseDatetime(row[labelCol]) : (row[labelCol] || ''),
+                        label: isLabelDatetime ? parseDatetime(row[labelCol], sourceTimezone, targetTimezone) : (row[labelCol] || ''),
                         labelStr: row[labelCol] || '',
                         value: parseFloat(row[col]) || 0
                     }))
@@ -322,6 +839,16 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
             function createSmartDateTimeFormat(dates) {
                 if (!dates || dates.length === 0) return d3.timeFormat("%b %d, %H:%M");
 
+                const format = timeFormatSelect.value;
+
+                // If user selected a specific format, use it
+                if (format !== 'auto') {
+                    return function(d) {
+                        return formatDatetime(d, format) || d3.timeFormat("%b %d, %H:%M")(d);
+                    };
+                }
+
+                // Auto-detect based on time range
                 const extent = d3.extent(dates);
                 const range = extent[1] - extent[0];
 
@@ -419,13 +946,19 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                             .style('fill', '#64748b')
                             .text(yLabel);
 
+                        // X-axis label shows value columns (or dimension if present)
+                        let xAxisLabel = seriesNames.join(', ');
+                        if (selectedDimensions.length > 0) {
+                            xAxisLabel = selectedValues.join(', ') + ' (by ' + selectedDimensions.join(', ') + ')';
+                        }
+
                         svg.append('text')
                             .attr('x', width / 2)
                             .attr('y', height + margin.bottom - 10)
                             .attr('text-anchor', 'middle')
                             .style('font-size', '11px')
                             .style('fill', '#64748b')
-                            .text(seriesNames.join(', '));
+                            .text(xAxisLabel);
 
                         data.forEach(series => {
                             svg.selectAll('.bar-' + series.name)
@@ -441,6 +974,9 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                                 .on('mouseover', (event, d) => showTooltip(event, series.name + ': ' + d.value))
                                 .on('mouseout', hideTooltip);
                         });
+
+                        // Add floating legend box
+                        createLegendBox(data, colorScale);
                     } else {
                         const maxValue = d3.max(data, series => d3.max(series.values, d => d.value));
                         const x0 = d3.scaleBand()
@@ -517,6 +1053,12 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                             .style('fill', '#64748b')
                             .text(xLabel);
 
+                        // Y-axis label shows value columns (or dimension if present)
+                        let yAxisLabel = seriesNames.join(', ');
+                        if (selectedDimensions.length > 0) {
+                            yAxisLabel = selectedValues.join(', ') + ' (by ' + selectedDimensions.join(', ') + ')';
+                        }
+
                         svg.append('text')
                             .attr('transform', 'rotate(-90)')
                             .attr('x', -height / 2)
@@ -524,7 +1066,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                             .attr('text-anchor', 'middle')
                             .style('font-size', '11px')
                             .style('fill', '#64748b')
-                            .text(seriesNames.join(', '));
+                            .text(yAxisLabel);
 
                         data.forEach(series => {
                             svg.selectAll('.bar-' + series.name)
@@ -540,6 +1082,9 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                                 .on('mouseover', (event, d) => showTooltip(event, series.name + ': ' + d.value))
                                 .on('mouseout', hideTooltip);
                         });
+
+                        // Add floating legend box
+                        createLegendBox(data, colorScale);
                     }
                 } else {
                     // Single value column
@@ -789,6 +1334,12 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                         .style('fill', '#64748b')
                         .text(xLabel);
 
+                    // Y-axis label shows value columns (or dimension if present)
+                    let yAxisLabel = seriesNames.join(', ');
+                    if (selectedDimensions.length > 0) {
+                        yAxisLabel = selectedValues.join(', ') + ' (by ' + selectedDimensions.join(', ') + ')';
+                    }
+
                     svg.append('text')
                         .attr('transform', 'rotate(-90)')
                         .attr('x', -height / 2)
@@ -796,7 +1347,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                         .attr('text-anchor', 'middle')
                         .style('font-size', '11px')
                         .style('fill', '#64748b')
-                        .text(seriesNames.join(', '));
+                        .text(yAxisLabel);
 
                     const line = d3.line()
                         .x(d => x(d.label))
@@ -822,24 +1373,8 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                             .on('mouseout', hideTooltip);
                     });
 
-                    // Add legend
-                    const legend = svg.selectAll('.legend')
-                        .data(seriesNames)
-                        .enter()
-                        .append('g')
-                        .attr('class', 'legend')
-                        .attr('transform', (d, i) => 'translate(' + (width + 10) + ',' + (i * 20) + ')');
-
-                    legend.append('rect')
-                        .attr('width', 12)
-                        .attr('height', 12)
-                        .attr('fill', d => colorScale(d));
-
-                    legend.append('text')
-                        .attr('x', 18)
-                        .attr('y', 10)
-                        .style('font-size', '10px')
-                        .text(d => d);
+                    // Add floating legend box
+                    createLegendBox(data, colorScale);
                 } else {
                     // Single value column
                     const allLabels = data.map(d => d.label);
@@ -1145,99 +1680,59 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                 tooltip.style('opacity', 0);
             }
 
-            function setActiveButton(activeBtn) {
-                document.querySelectorAll('.controls button').forEach(btn => {
-                    btn.classList.remove('active');
+            function createLegendBox(seriesData, colorScale) {
+                // Remove existing legend box
+                d3.select('.legend-box').remove();
+
+                if (!seriesData || seriesData.length === 0) return;
+
+                const legendBox = d3.select('#chart')
+                    .append('div')
+                    .attr('class', 'legend-box');
+
+                seriesData.forEach(series => {
+                    const legendItem = legendBox.append('div')
+                        .attr('class', 'legend-item');
+
+                    legendItem.append('div')
+                        .attr('class', 'legend-color')
+                        .style('background-color', colorScale(series.name));
+
+                    legendItem.append('span')
+                        .text(series.name);
                 });
-                activeBtn.classList.add('active');
             }
 
             // Initialize chart
-            if (currentChartType === 'line') {
-                createLineChart();
-            } else {
-                createBarChart(false);
-            }
+            refreshChart();
 
-            // Button event listeners
-            document.getElementById('btn-bar').addEventListener('click', function() {
-                currentChartType = 'bar';
-                createBarChart(currentOrientation === 'horizontal');
-                setActiveButton(this);
+            // Chart type selector event listener
+            chartTypeSelect.addEventListener('change', function() {
+                currentChartType = this.value;
+                refreshChart();
             });
 
-            document.getElementById('btn-orientation').addEventListener('click', function() {
+            // Orientation icon event listener
+            orientationIcon.addEventListener('click', function() {
                 if (currentChartType === 'bar' || currentChartType === 'line') {
                     currentOrientation = currentOrientation === 'vertical' ? 'horizontal' : 'vertical';
-                    this.textContent = currentOrientation === 'vertical' ? '↔ Horizontal' : '↕ Vertical';
+                    this.textContent = currentOrientation === 'vertical' ? '↔' : '↕';
                     if (currentChartType === 'bar') {
                         createBarChart(currentOrientation === 'horizontal');
                     }
                 }
             });
 
-            document.getElementById('btn-line').addEventListener('click', function() {
-                currentChartType = 'line';
-                createLineChart();
-                setActiveButton(this);
-            });
-
-            document.getElementById('btn-pie').addEventListener('click', function() {
-                currentChartType = 'pie';
-                createPieChart(0);
-                setActiveButton(this);
-            });
-
-            document.getElementById('btn-donut').addEventListener('click', function() {
-                currentChartType = 'donut';
-                createPieChart(80);
-                setActiveButton(this);
-            });
-
-            document.getElementById('btn-treemap').addEventListener('click', function() {
-                currentChartType = 'treemap';
-                createTreemap();
-                setActiveButton(this);
-            });
-
-            document.getElementById('btn-bubble').addEventListener('click', function() {
-                currentChartType = 'bubble';
-                createBubbleChart();
-                setActiveButton(this);
-            });
-
             // Column selector event listeners
             labelSelect.addEventListener('change', function() {
-                if (currentChartType === 'bar') {
-                    createBarChart(currentOrientation === 'horizontal');
-                } else if (currentChartType === 'line') {
-                    createLineChart();
-                } else if (currentChartType === 'pie') {
-                    createPieChart(0);
-                } else if (currentChartType === 'donut') {
-                    createPieChart(80);
-                } else if (currentChartType === 'treemap') {
-                    createTreemap();
-                } else if (currentChartType === 'bubble') {
-                    createBubbleChart();
-                }
+                updateDatetimeControls();
+                refreshChart();
             });
 
-            valueSelect.addEventListener('change', function() {
-                if (currentChartType === 'bar') {
-                    createBarChart(currentOrientation === 'horizontal');
-                } else if (currentChartType === 'line') {
-                    createLineChart();
-                } else if (currentChartType === 'pie') {
-                    createPieChart(0);
-                } else if (currentChartType === 'donut') {
-                    createPieChart(80);
-                } else if (currentChartType === 'treemap') {
-                    createTreemap();
-                } else if (currentChartType === 'bubble') {
-                    createBubbleChart();
-                }
-            });
+            // Datetime control event listeners
+            timeFormatSelect.addEventListener('change', refreshChart);
+            sourceTimezoneSelect.addEventListener('change', refreshChart);
+            timezoneSelect.addEventListener('change', refreshChart);
         </script>
     </body>
     </html>
