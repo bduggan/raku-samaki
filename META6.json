@@ -34,6 +34,7 @@
     "Samaki::Plugin::Process" : "lib/Samaki/Plugin/Process.rakumod",
     "Samaki::Plugouts" : "lib/Samaki/Plugouts.rakumod",
     "Samaki::Plugout" : "lib/Samaki/Plugout.rakumod",
+    "Samaki::Plugout::Common" : "lib/Samaki/Plugout/Common.rakumod",
     "Samaki::Plugout::ChartJS" : "lib/Samaki/Plugout/ChartJS.rakumod",
     "Samaki::Plugout::CSVGeo" : "lib/Samaki/Plugout/CSVGeo.rakumod",
     "Samaki::Plugout::DeckGLBin" : "lib/Samaki/Plugout/DeckGLBin.rakumod",
