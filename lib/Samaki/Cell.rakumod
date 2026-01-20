@@ -242,6 +242,10 @@ class Samaki::Cell {
   }
 
   method execute(:$mode = 'eval', :$page!, :$pane!, :$action) {
+    unless $!plugin.is-enabled {
+      $pane.put: "Sorry, plugin { $.plugin.name } is not enabled, check the log file for details.";
+      return;
+    }
     $!plugin.errors = Nil;
     $!errors = Nil;
     # $pane.put: "Executing cell { $.name } of type { $.cell-type }";

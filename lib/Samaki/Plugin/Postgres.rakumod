@@ -12,9 +12,14 @@ has $.version-info;
 has $.output-ext = 'csv';
 
 method setup(Samaki::Conf :$conf) {
+  $.is-enabled = False;
+  return False;
   info "Setting up postgres plugin";
   $!version-info = qqx[$!executable --version 2>/dev/null].trim;
-  die "could not find $!executable in path" unless $!version-info;
+  unless $!version-info {
+    warning "could not find $!executable in path";
+    return False;
+  }
   info "version $!version-info";
 }
 

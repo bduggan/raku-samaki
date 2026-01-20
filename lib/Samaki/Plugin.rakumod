@@ -12,6 +12,8 @@ use Samaki::Page;
 method name { ... }
 method description { ... }
 
+has $.is-enabled is rw = True;
+
 #| Action to run when the cell is selected
 method select-action { 'run' }
 
