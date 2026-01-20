@@ -283,9 +283,9 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
             <option value="auto">Auto</option>
             <option value="time-only">HH:mm</option>
             <option value="time-seconds">HH:mm:ss</option>
-            <option value="date-time">MMM d, HH:mm</option>
-            <option value="date-time-seconds">MMM d, HH:mm:ss</option>
-            <option value="date-only">MMM d, yyyy</option>
+            <option value="date-time">MMM D, HH:mm</option>
+            <option value="date-time-seconds">MMM D, HH:mm:ss</option>
+            <option value="date-only">MMM D, yyyy</option>
             <option value="month-year">MMM yyyy</option>
             <option value="month-only">MMM</option>
             <option value="year-only">yyyy</option>
@@ -613,34 +613,34 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
             year: 'HH:mm:ss'
           },
           'date-time': {
-            millisecond: 'MMM d, HH:mm:ss',
-            second: 'MMM d, HH:mm:ss',
-            minute: 'MMM d, HH:mm',
-            hour: 'MMM d, HH:mm',
-            day: 'MMM d, HH:mm',
-            week: 'MMM d',
+            millisecond: 'MMM D, HH:mm:ss',
+            second: 'MMM D, HH:mm:ss',
+            minute: 'MMM D, HH:mm',
+            hour: 'MMM D, HH:mm',
+            day: 'MMM D, HH:mm',
+            week: 'MMM D',
             month: 'MMM yyyy',
             quarter: 'MMM yyyy',
             year: 'yyyy'
           },
           'date-time-seconds': {
-            millisecond: 'MMM d, HH:mm:ss.SSS',
-            second: 'MMM d, HH:mm:ss',
-            minute: 'MMM d, HH:mm:ss',
-            hour: 'MMM d, HH:mm:ss',
-            day: 'MMM d, HH:mm:ss',
-            week: 'MMM d, HH:mm:ss',
+            millisecond: 'MMM D, HH:mm:ss.SSS',
+            second: 'MMM D, HH:mm:ss',
+            minute: 'MMM D, HH:mm:ss',
+            hour: 'MMM D, HH:mm:ss',
+            day: 'MMM D, HH:mm:ss',
+            week: 'MMM D, HH:mm:ss',
             month: 'MMM yyyy',
             quarter: 'MMM yyyy',
             year: 'yyyy'
           },
           'date-only': {
-            millisecond: 'MMM d, yyyy',
-            second: 'MMM d, yyyy',
-            minute: 'MMM d, yyyy',
-            hour: 'MMM d, yyyy',
-            day: 'MMM d, yyyy',
-            week: 'MMM d, yyyy',
+            millisecond: 'MMM D, yyyy',
+            second: 'MMM D, yyyy',
+            minute: 'MMM D, yyyy',
+            hour: 'MMM D, yyyy',
+            day: 'MMM D, yyyy',
+            week: 'MMM D, yyyy',
             month: 'MMM yyyy',
             quarter: 'MMM yyyy',
             year: 'yyyy'
