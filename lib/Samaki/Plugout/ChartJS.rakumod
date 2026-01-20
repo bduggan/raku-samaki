@@ -26,6 +26,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   my @default-values = @(%result<values>);
   my @numeric-cols = @(%result<numeric>);
   my @datetime-cols = @(%result<datetime>);
+  my @dimension-cols = @(%result<dimensions> // []);
 
   my $html-file = $data-dir.child("{$name}-chartjs.html");
 
@@ -37,6 +38,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   my $numeric-columns-json = to-json(@numeric-cols);
   my $datetime-columns-json = to-json(@datetime-cols);
   my $default-values-json = to-json(@default-values);
+  my $default-dimensions-json = to-json(@dimension-cols);
   my $default-label = html-escape($label-col);
   my $default-value = html-escape($value-col);
 
@@ -75,59 +77,175 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
       }
       .controls {
         margin-bottom: 15px;
-        display: flex;
-        gap: 8px;
-        flex-wrap: wrap;
-        align-items: center;
-      }
-      .controls button {
-        padding: 6px 12px;
-        font-family: ui-monospace, monospace;
-        font-size: 12px;
-        background: #f1f5f9;
+        padding: 10px;
+        background: #fafbfc;
         border: 1px solid #e2e8f0;
-        border-radius: 3px;
-        cursor: pointer;
-        color: #2c3e50;
+        border-radius: 4px;
+        display: flex;
+        gap: 6px;
+        flex-wrap: nowrap;
+        align-items: center;
+        font-size: 11px;
       }
-      .controls button:hover {
-        background: #e2e8f0;
-      }
-      .controls button.active {
-        background: #3b82f6;
-        color: white;
-        border-color: #3b82f6;
-      }
-      .column-selector {
+      .control-item {
         display: flex;
         align-items: center;
         gap: 4px;
-        font-size: 12px;
+        height: 28px;
       }
-      .column-selector label {
-        color: #64748b;
-        font-weight: 500;
-      }
-      .column-selector select {
-        padding: 6px 8px;
+      .control-item select {
+        padding: 4px 6px;
         font-family: ui-monospace, monospace;
-        font-size: 12px;
+        font-size: 11px;
         background: white;
-        border: 1px solid #e2e8f0;
+        border: 1px solid #cbd5e1;
         border-radius: 3px;
         color: #2c3e50;
         cursor: pointer;
+        height: 28px;
       }
-      .column-selector select:hover {
-        border-color: #cbd5e1;
+      .control-item select:hover {
+        border-color: #94a3b8;
       }
-      .column-selector select[multiple] {
-        min-height: 60px;
+      .control-label {
+        color: #64748b;
+        font-size: 11px;
+        font-weight: 500;
+      }
+      .orientation-icon {
+        width: 28px;
+        height: 28px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: white;
+        border: 1px solid #cbd5e1;
+        border-radius: 3px;
+        cursor: pointer;
+        font-size: 16px;
+        color: #64748b;
+        user-select: none;
+      }
+      .orientation-icon:hover {
+        background: #f8f9fa;
+        border-color: #94a3b8;
+      }
+      .values-container {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-wrap: wrap;
+      }
+      .value-chip {
+        padding: 4px 8px;
+        background: white;
+        border: 1px solid #cbd5e1;
+        border-radius: 3px;
+        font-size: 11px;
+        color: #2c3e50;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        height: 28px;
+        box-sizing: border-box;
+      }
+      .value-chip:hover {
+        background: #fee;
+        border-color: #fbb;
+      }
+      .value-chip-remove {
+        color: #94a3b8;
+        font-weight: bold;
+      }
+      .value-add {
+        padding: 4px 8px;
+        background: white;
+        border: 1px solid #cbd5e1;
+        border-radius: 3px;
+        font-size: 11px;
+        color: #64748b;
+        cursor: pointer;
+        height: 28px;
+        display: flex;
+        align-items: center;
+      }
+      .value-add:hover {
+        background: #f0fdf4;
+        border-color: #86efac;
+      }
+      .value-selector-popup {
+        position: absolute;
+        background: white;
+        border: 1px solid #cbd5e1;
+        border-radius: 3px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        padding: 4px;
+        z-index: 1000;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+      .value-option {
+        padding: 4px 8px;
+        cursor: pointer;
+        font-size: 11px;
+      }
+      .value-option:hover {
+        background: #f1f5f9;
+      }
+      .datetime-box {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        height: 28px;
+      }
+      .datetime-box select {
+        padding: 4px 6px;
+        font-family: ui-monospace, monospace;
+        font-size: 11px;
+        background: white;
+        border: 1px solid #cbd5e1;
+        border-radius: 3px;
+        color: #2c3e50;
+        cursor: pointer;
+        height: 28px;
       }
       .chart-container {
         position: relative;
         height: 70vh;
         width: 100%;
+      }
+      .legend-box {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        padding: 8px;
+        max-height: 300px;
+        max-width: 200px;
+        overflow-y: auto;
+        font-family: ui-monospace, monospace;
+        font-size: 11px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        z-index: 100;
+      }
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 0;
+        line-height: 1.3;
+      }
+      .legend-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+        flex-shrink: 0;
+      }
+      .legend-label {
+        color: #2c3e50;
       }
     </style>
   </head>
@@ -135,22 +253,31 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
     <div class="container">
       <h2>$title </h2>
       <div class="controls">
-        <button id="btn-bar">Bar</button>
-        <button id="btn-line">Line</button>
-        <button id="btn-scatter">Scatter</button>
-        <button id="btn-pie">Pie Chart</button>
-        <button id="btn-polar">Polar Area</button>
-        <button id="btn-orientation">↔ Horizontal</button>
-        <div class="column-selector">
-          <label>Label:</label>
+        <div class="control-item">
+          <select id="chart-type">
+            <option value="bar">Bar</option>
+            <option value="line">Line</option>
+            <option value="scatter">Scatter</option>
+            <option value="pie">Pie</option>
+            <option value="polarArea">Polar</option>
+          </select>
+        </div>
+        <div class="orientation-icon" id="orientation-icon" title="Toggle orientation">↔</div>
+        <div class="control-item">
+          <span class="control-label">Label</span>
           <select id="label-column"></select>
         </div>
-        <div class="column-selector">
-          <label>Values:</label>
-          <select id="value-column" multiple></select>
+        <div class="control-item">
+          <span class="control-label">Dim</span>
+          <select id="dimension-column">
+            <option value="">(none)</option>
+          </select>
         </div>
-        <div class="column-selector" id="time-format-selector" style="display: none;">
-          <label>Date Format:</label>
+        <div class="values-container" id="values-container">
+          <select id="value-column" multiple style="display: none;"></select>
+        </div>
+        <div class="datetime-box" id="datetime-box" style="display: none;">
+          <span class="control-label">Date</span>
           <select id="time-format">
             <option value="auto">Auto</option>
             <option value="time-only">HH:mm</option>
@@ -162,9 +289,6 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
             <option value="month-only">MMM</option>
             <option value="year-only">yyyy</option>
           </select>
-        </div>
-        <div class="column-selector" id="source-timezone-selector" style="display: none;">
-          <label>Source TZ:</label>
           <select id="source-timezone">
             <option value="America/New_York">US/Eastern (ET)</option>
             <option value="America/Chicago">US/Central (CT)</option>
@@ -191,9 +315,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
             <option value="Australia/Melbourne">Australia/Melbourne (AEST/AEDT)</option>
             <option value="Australia/Perth">Australia/Perth (AWST)</option>
           </select>
-        </div>
-        <div class="column-selector" id="timezone-selector" style="display: none;">
-          <label>Display TZ:</label>
+          <span class="control-label">to</span>
           <select id="timezone">
             <option value="America/New_York">US/Eastern (ET)</option>
             <option value="America/Chicago">US/Central (CT)</option>
@@ -220,10 +342,23 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
             <option value="Australia/Melbourne">Australia/Melbourne (AEST/AEDT)</option>
             <option value="Australia/Perth">Australia/Perth (AWST)</option>
           </select>
+          <select id="time-unit">
+            <option value="auto">Auto</option>
+            <option value="millisecond">Millisecond</option>
+            <option value="second">Second</option>
+            <option value="minute">Minute</option>
+            <option value="hour">Hour</option>
+            <option value="day">Day</option>
+            <option value="week">Week</option>
+            <option value="month">Month</option>
+            <option value="quarter">Quarter</option>
+            <option value="year">Year</option>
+          </select>
         </div>
       </div>
       <div class="chart-container">
         <canvas id="myChart"></canvas>
+        <div class="legend-box" id="legend-box" style="display: none;"></div>
       </div>
     </div>
     <script>
@@ -237,6 +372,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
       const numericColumns = $numeric-columns-json;
       const datetimeColumns = $datetime-columns-json;
       const defaultValues = $default-values-json;
+      const defaultDimensions = $default-dimensions-json;
 
       // Set initial chart type based on number of default values
       let currentChartType = defaultValues.length > 2 ? 'line' : 'bar';
@@ -244,6 +380,86 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
       // Populate column selectors
       const labelSelect = document.getElementById('label-column');
       const valueSelect = document.getElementById('value-column');
+      const valuesContainer = document.getElementById('values-container');
+      const dimensionSelect = document.getElementById('dimension-column');
+      const chartTypeSelect = document.getElementById('chart-type');
+      const orientationIcon = document.getElementById('orientation-icon');
+      const legendBox = document.getElementById('legend-box');
+
+      // Track selected values
+      let selectedValues = [];
+
+      // Update value chips display
+      function updateValueChips() {
+        // Clear existing chips except the hidden select
+        valuesContainer.querySelectorAll('.value-chip, .value-add').forEach(el => el.remove());
+
+        // Add chip for each selected value
+        selectedValues.forEach(val => {
+          const chip = document.createElement('div');
+          chip.className = 'value-chip';
+          chip.innerHTML = val + ' <span class="value-chip-remove">×</span>';
+          chip.addEventListener('click', () => {
+            selectedValues = selectedValues.filter(v => v !== val);
+            updateValueChips();
+            // Update hidden select
+            Array.from(valueSelect.options).forEach(opt => {
+              opt.selected = selectedValues.includes(opt.value);
+            });
+            createChart(currentChartType, currentIndexAxis);
+          });
+          valuesContainer.insertBefore(chip, valueSelect);
+        });
+
+        // Add "+" button
+        const addBtn = document.createElement('div');
+        addBtn.className = 'value-add';
+        addBtn.textContent = '+';
+        addBtn.addEventListener('click', showValueSelector);
+        valuesContainer.insertBefore(addBtn, valueSelect);
+      }
+
+      // Show value selector popup
+      function showValueSelector(event) {
+        // Remove existing popup if any
+        document.querySelectorAll('.value-selector-popup').forEach(el => el.remove());
+
+        const popup = document.createElement('div');
+        popup.className = 'value-selector-popup';
+        popup.style.top = (event.target.offsetTop + event.target.offsetHeight + 2) + 'px';
+        popup.style.left = event.target.offsetLeft + 'px';
+
+        numericColumns.forEach(col => {
+          if (!selectedValues.includes(col)) {
+            const option = document.createElement('div');
+            option.className = 'value-option';
+            option.textContent = col;
+            option.addEventListener('click', () => {
+              selectedValues.push(col);
+              updateValueChips();
+              // Update hidden select
+              Array.from(valueSelect.options).forEach(opt => {
+                opt.selected = selectedValues.includes(opt.value);
+              });
+              popup.remove();
+              createChart(currentChartType, currentIndexAxis);
+            });
+            popup.appendChild(option);
+          }
+        });
+
+        valuesContainer.appendChild(popup);
+
+        // Close popup when clicking outside
+        setTimeout(() => {
+          document.addEventListener('click', function closePopup(e) {
+            if (!popup.contains(e.target) && e.target !== event.target) {
+              popup.remove();
+              document.removeEventListener('click', closePopup);
+            }
+          });
+        }, 0);
+      }
 
       // Label dropdown gets all columns
       columns.forEach(col => {
@@ -253,7 +469,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         labelSelect.appendChild(option1);
       });
 
-      // Value dropdown gets only numeric columns
+      // Value dropdown gets only numeric columns (hidden, used for tracking)
       numericColumns.forEach(col => {
         const option2 = document.createElement('option');
         option2.value = col;
@@ -261,12 +477,32 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         // Select all columns in defaultValues array by default
         if (defaultValues.includes(col)) {
           option2.selected = true;
+          selectedValues.push(col);
         }
         valueSelect.appendChild(option2);
       });
 
+      // Initialize value chips
+      updateValueChips();
+
+      // Dimension dropdown gets all columns (single select)
+      columns.forEach(col => {
+        const option3 = document.createElement('option');
+        option3.value = col;
+        option3.textContent = col;
+        dimensionSelect.appendChild(option3);
+      });
+
+      // Set default dimension selection (first one from defaults, or none)
+      if (defaultDimensions.length > 0) {
+        dimensionSelect.value = defaultDimensions[0];
+      }
+
       // Set default label selection
       labelSelect.value = '$default-label';
+
+      // Set initial chart type
+      chartTypeSelect.value = currentChartType;
 
       console.log('=== ChartJS Debug ===');
       console.log('All Data:', allData);
@@ -277,11 +513,10 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
       console.log('Default Values:', defaultValues);
 
       const timeFormatSelect = document.getElementById('time-format');
-      const timeFormatSelector = document.getElementById('time-format-selector');
       const sourceTimezoneSelect = document.getElementById('source-timezone');
-      const sourceTimezoneSelector = document.getElementById('source-timezone-selector');
       const timezoneSelect = document.getElementById('timezone');
-      const timezoneSelector = document.getElementById('timezone-selector');
+      const timeUnitSelect = document.getElementById('time-unit');
+      const datetimeBox = document.getElementById('datetime-box');
 
       // Map format types to display format strings
       function getDisplayFormats(formatType) {
@@ -516,18 +751,170 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         };
       }
 
+      // Helper: convert datetime label
+      function convertDatetimeLabel(dateStr, sourceTimezone, targetTimezone) {
+        if (!dateStr) return '';
+        let m;
+        if (sourceTimezone === 'UTC') {
+          m = moment.utc(dateStr, 'YYYY-MM-DD HH:mm:ss');
+        } else {
+          m = moment.tz(dateStr, 'YYYY-MM-DD HH:mm:ss', sourceTimezone);
+        }
+        if (!m.isValid()) return dateStr;
+        if (targetTimezone !== sourceTimezone) {
+          m = m.tz(targetTimezone);
+        }
+        return m.format('YYYY-MM-DD HH:mm:ss');
+      }
+
+      // Helper: create scatter data from values
+      function createScatterData(values, labels, labelCol) {
+        const isLabelDatetime = datetimeColumns.includes(labelCol);
+        const isLabelNumeric = numericColumns.includes(labelCol);
+        const sourceTimezone = sourceTimezoneSelect.value;
+        const targetTimezone = timezoneSelect.value;
+
+        return values.map((y, i) => {
+          let x;
+          if (isLabelDatetime) {
+            const parsed = parseDateTime(labels[i], sourceTimezone, targetTimezone);
+            x = parsed ? parsed.getTime() : i;
+          } else if (isLabelNumeric) {
+            x = Number(labels[i]);
+            if (isNaN(x)) x = i;
+          } else {
+            x = i;
+          }
+          return { x, y };
+        });
+      }
+
       function getChartData(isScatter = false) {
         const labelCol = labelSelect.value;
-        const selectedOptions = Array.from(valueSelect.selectedOptions);
-        const valueCols = selectedOptions.map(opt => opt.value);
+        const valueCols = Array.from(valueSelect.selectedOptions).map(opt => opt.value);
+        const dimensionCol = dimensionSelect.value;
 
         if (valueCols.length === 0) {
           console.warn('No value columns selected');
           return { labels: [], datasets: [] };
         }
 
-        console.log('Getting chart data for label="' + labelCol + '" values=' + JSON.stringify(valueCols) + ' scatter=' + isScatter);
+        console.log('Getting chart data for label="' + labelCol + '" values=' + JSON.stringify(valueCols) + ' dimension=' + dimensionCol + ' scatter=' + isScatter);
 
+        // No dimension → use current behavior
+        if (!dimensionCol || dimensionCol === '') {
+          return getChartDataNoDimensions(isScatter, labelCol, valueCols);
+        }
+
+        // WITH DIMENSION (single column):
+        const dimensionCols = [dimensionCol];
+
+        // WITH DIMENSIONS:
+        // 1. Group data by dimension key (combined dimension values)
+        const dimensionKey = (row) =>
+          dimensionCols.map(dc => row[dc] || 'null').join('|');
+
+        const groupedData = {};
+        allData.forEach(row => {
+          const key = dimensionKey(row);
+          if (!groupedData[key]) {
+            groupedData[key] = {
+              rows: [],
+              dimensionValues: dimensionCols.map(dc => row[dc] || 'null')
+            };
+          }
+          groupedData[key].rows.push(row);
+        });
+
+        // 2. Collect all unique labels across all groups
+        const allLabelValues = new Set();
+        Object.values(groupedData).forEach(group => {
+          group.rows.forEach(row => allLabelValues.add(row[labelCol]));
+        });
+
+        // 3. Sort labels (datetime-aware)
+        let sortedLabels = Array.from(allLabelValues);
+        if (datetimeColumns.includes(labelCol)) {
+          const sourceTimezone = sourceTimezoneSelect.value;
+          const targetTimezone = timezoneSelect.value;
+          sortedLabels.sort((a, b) => {
+            const dateA = parseDateTime(a, sourceTimezone, targetTimezone) || new Date(0);
+            const dateB = parseDateTime(b, sourceTimezone, targetTimezone) || new Date(0);
+            return dateA - dateB;
+          });
+          // Convert to target timezone format
+          sortedLabels = sortedLabels.map(dateStr =>
+            convertDatetimeLabel(dateStr, sourceTimezone, targetTimezone)
+          );
+        }
+
+        // 4. Create datasets: one per (valueCol × dimensionGroup)
+        const colorPalette = [
+          { bg: 'rgba(54, 162, 235, 0.5)', border: 'rgba(54, 162, 235, 1)' },
+          { bg: 'rgba(255, 99, 132, 0.5)', border: 'rgba(255, 99, 132, 1)' },
+          { bg: 'rgba(75, 192, 192, 0.5)', border: 'rgba(75, 192, 192, 1)' },
+          { bg: 'rgba(255, 206, 86, 0.5)', border: 'rgba(255, 206, 86, 1)' },
+          { bg: 'rgba(153, 102, 255, 0.5)', border: 'rgba(153, 102, 255, 1)' },
+          { bg: 'rgba(255, 159, 64, 0.5)', border: 'rgba(255, 159, 64, 1)' },
+          { bg: 'rgba(199, 199, 199, 0.5)', border: 'rgba(199, 199, 199, 1)' },
+          { bg: 'rgba(83, 102, 255, 0.5)', border: 'rgba(83, 102, 255, 1)' }
+        ];
+
+        const datasets = [];
+        let colorIndex = 0;
+
+        valueCols.forEach(valueCol => {
+          Object.keys(groupedData).forEach(dimKey => {
+            const group = groupedData[dimKey];
+            const colors = colorPalette[colorIndex % colorPalette.length];
+            colorIndex++;
+
+            // Dataset label: dimension value, with value column name if multiple selected
+            let datasetLabel;
+            if (valueCols.length === 1) {
+              // Single value column: just show dimension value (e.g., "90146")
+              datasetLabel = group.dimensionValues[0];
+            } else {
+              // Multiple value columns: show both (e.g., "num: 90146")
+              datasetLabel = valueCol + ': ' + group.dimensionValues[0];
+            }
+
+            // Build data lookup for this group
+            const groupDataMap = {};
+            group.rows.forEach(row => {
+              const labelValue = row[labelCol];
+              const convertedLabel = datetimeColumns.includes(labelCol) ?
+                convertDatetimeLabel(labelValue, sourceTimezoneSelect.value, timezoneSelect.value) :
+                labelValue;
+              groupDataMap[convertedLabel] = row[valueCol];
+            });
+
+            // Create data array matching sortedLabels
+            const values = sortedLabels.map(label => {
+              const val = groupDataMap[label];
+              if (val === undefined || val === null) return null;
+              let numVal = Number(val);
+              return isNaN(numVal) ? 0 : numVal;
+            });
+
+            datasets.push({
+              label: datasetLabel,
+              data: isScatter ? createScatterData(values, sortedLabels, labelCol) : values,
+              backgroundColor: colors.bg,
+              borderColor: colors.border,
+              borderWidth: 1,
+              spanGaps: true
+            });
+          });
+        });
+
+        console.log('Labels:', sortedLabels.length, 'Datasets:', datasets.length);
+
+        return { labels: sortedLabels, datasets: datasets };
+      }
+
+      // Preserve existing logic for backward compatibility
+      function getChartDataNoDimensions(isScatter, labelCol, valueCols) {
         // Check if label column is datetime
         const isLabelDatetime = datetimeColumns.includes(labelCol);
         const isLabelNumeric = numericColumns.includes(labelCol);
@@ -641,13 +1028,33 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
           }
         });
 
-        console.log('Labels:', labels);
-        console.log('Datasets:', datasets.length);
+        console.log('Labels:', labels.length, 'Datasets:', datasets.length);
 
         return {
           labels: labels,
           datasets: datasets
         };
+      }
+
+      // Update custom legend box
+      function updateLegend(datasets) {
+        const dimensionCol = dimensionSelect.value;
+
+        if (!dimensionCol || dimensionCol === '' || datasets.length <= 1) {
+          legendBox.style.display = 'none';
+          return;
+        }
+
+        legendBox.style.display = 'block';
+        let html = '';
+        datasets.forEach(dataset => {
+          const color = dataset.borderColor || dataset.backgroundColor;
+          html += '<div class="legend-item">';
+          html += '<div class="legend-color" style="background-color: ' + color + ';"></div>';
+          html += '<div class="legend-label">' + dataset.label + '</div>';
+          html += '</div>';
+        });
+        legendBox.innerHTML = html;
       }
 
       function createChart(type, indexAxis = 'x') {
@@ -664,6 +1071,9 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         // Get fresh data based on selected columns
         const data = getChartData(isScatter);
 
+        // Update custom legend
+        updateLegend(data.datasets);
+
         // Check if label column is datetime
         const labelCol = labelSelect.value;
         const isLabelDatetime = datetimeColumns.includes(labelCol);
@@ -675,9 +1085,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         let dateContextText = '';
         if (isLabelDatetime) {
           timeAnalysis = analyzeTimeRange(labelCol);
-          timeFormatSelector.style.display = 'flex';
-          sourceTimezoneSelector.style.display = 'flex';
-          timezoneSelector.style.display = 'flex';
+          datetimeBox.style.display = 'flex';
 
           // Determine which format to use
           if (timeFormatSelect.value === 'auto') {
@@ -689,9 +1097,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
           // Save date context text for axis title
           dateContextText = timeAnalysis.dateContextText || '';
         } else {
-          timeFormatSelector.style.display = 'none';
-          sourceTimezoneSelector.style.display = 'none';
-          timezoneSelector.style.display = 'none';
+          datetimeBox.style.display = 'none';
         }
 
         // For pie and polar area charts with a single dataset, use multiple colors per slice
@@ -729,6 +1135,16 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
             if (dateContextText) {
               axisTitle += ' : ' + dateContextText;
             }
+            const timeConfig = {
+              displayFormats: displayFormats,
+            };
+
+            // Add unit if not auto
+            const selectedUnit = timeUnitSelect.value;
+            if (selectedUnit !== 'auto') {
+              timeConfig.unit = selectedUnit;
+            }
+
             scales.x = {
               type: 'time',
               adapters: {
@@ -736,9 +1152,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                   zone: selectedTimezone
                 }
               },
-              time: {
-                displayFormats: displayFormats,
-              },
+              time: timeConfig,
               title: {
                 display: true,
                 text: axisTitle,
@@ -820,6 +1234,16 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
             if (dateContextText) {
               axisTitle += ' : ' + dateContextText;
             }
+            const timeConfig = {
+              displayFormats: displayFormats,
+            };
+
+            // Add unit if not auto
+            const selectedUnit = timeUnitSelect.value;
+            if (selectedUnit !== 'auto') {
+              timeConfig.unit = selectedUnit;
+            }
+
             scales[labelAxis] = {
               type: 'time',
               adapters: {
@@ -827,9 +1251,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                   zone: selectedTimezone
                 }
               },
-              time: {
-                displayFormats: displayFormats,
-              },
+              time: timeConfig,
               title: {
                 display: true,
                 text: axisTitle,
@@ -913,14 +1335,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
             scales: scales,
             plugins: {
               legend: {
-                display: true,
-                position: isRadial ? 'right' : 'top',
-                labels: {
-                  font: {
-                    family: 'ui-monospace, monospace',
-                    size: 12
-                  }
-                }
+                display: false
               },
               tooltip: {
                 enabled: true,
@@ -953,44 +1368,19 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
       const initialChartType = defaultValues.length > 2 ? 'line' : 'bar';
       createChart(initialChartType, 'x');
 
-      // Set the initial active button
-      if (initialChartType === 'line') {
-        setActiveButton(document.getElementById('btn-line'));
-      } else {
-        setActiveButton(document.getElementById('btn-bar'));
-      }
-
-      // Button event listeners
-      document.getElementById('btn-bar').addEventListener('click', function() {
-        createChart('bar', currentIndexAxis);
-        setActiveButton(this);
+      // Chart type dropdown event listener
+      chartTypeSelect.addEventListener('change', function() {
+        const type = this.value;
+        createChart(type, currentIndexAxis);
       });
 
-      document.getElementById('btn-orientation').addEventListener('click', function() {
+      // Orientation icon event listener
+      orientationIcon.addEventListener('click', function() {
         // Toggle between horizontal and vertical
         currentIndexAxis = currentIndexAxis === 'x' ? 'y' : 'x';
-        this.textContent = currentIndexAxis === 'x' ? '↔ Horizontal' : '↕ Vertical';
+        this.textContent = currentIndexAxis === 'x' ? '↔' : '↕';
+        this.title = currentIndexAxis === 'x' ? 'Switch to vertical' : 'Switch to horizontal';
         createChart(currentChartType, currentIndexAxis);
-      });
-
-      document.getElementById('btn-line').addEventListener('click', function() {
-        createChart('line', 'x');
-        setActiveButton(this);
-      });
-
-      document.getElementById('btn-scatter').addEventListener('click', function() {
-        createChart('scatter', 'x');
-        setActiveButton(this);
-      });
-
-      document.getElementById('btn-pie').addEventListener('click', function() {
-        createChart('pie');
-        setActiveButton(this);
-      });
-
-      document.getElementById('btn-polar').addEventListener('click', function() {
-        createChart('polarArea');
-        setActiveButton(this);
       });
 
       // Column selector event listeners
@@ -998,7 +1388,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         createChart(currentChartType, currentIndexAxis);
       });
 
-      valueSelect.addEventListener('change', function() {
+      dimensionSelect.addEventListener('change', function() {
         createChart(currentChartType, currentIndexAxis);
       });
 
@@ -1014,12 +1404,9 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         createChart(currentChartType, currentIndexAxis);
       });
 
-      function setActiveButton(activeBtn) {
-        document.querySelectorAll('.controls button').forEach(btn => {
-          btn.classList.remove('active');
-        });
-        activeBtn.classList.add('active');
-      }
+      timeUnitSelect.addEventListener('change', function() {
+        createChart(currentChartType, currentIndexAxis);
+      });
     </script>
   </body>
   </html>

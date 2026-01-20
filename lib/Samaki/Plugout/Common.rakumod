@@ -112,6 +112,38 @@ method detect-columns(@columns, @rows, :@column-types) {
     %value-scores{ $col } = $score;
   }
 
+  # Score columns for dimension selection
+  # Lower score = better dimension candidate
+  my %dimension-scores;
+  for @valid-columns -> $col {
+    my $info = %col-info{ $col };
+    my $cardinality = $info<cardinality>.Numeric;
+    my $score = 0;
+
+    # Ideal cardinality: 2-50 unique values
+    if $cardinality < 2 {
+      $score += 10000;  # Single value = useless
+    } elsif $cardinality > 50 {
+      $score += ($cardinality - 50) * 100;  # Penalize high cardinality
+    } else {
+      $score = $cardinality;  # Sweet spot
+    }
+
+    # Strong preference for _id columns (but not pure IDs)
+    if $info<name-is-id> && !$info<looks-like-id> {
+      $score -= 1000;  # thing_id, product_id → highly preferred
+    }
+
+    # Avoid pure IDs and datetime columns
+    $score += 5000 if $info<looks-like-id>;
+    $score += 3000 if $info<is-datetime>;
+
+    # Slightly prefer integers
+    $score -= 50 if $info<is-integer>;
+
+    %dimension-scores{ $col } = $score;
+  }
+
   # Get list of datetime columns
   my @datetime-columns = @valid-columns.grep({ %col-info{ $_ }<is-datetime> });
 
@@ -132,6 +164,7 @@ method detect-columns(@columns, @rows, :@column-types) {
     self.debug: "  Name ends _id: {$info<name-is-id> // False}";
     self.debug: "  Label Score: {%label-scores{ $col } // 'N/A'}";
     self.debug: "  Value Score: {%value-scores{ $col } // 'N/A'}";
+    self.debug: "  Dimension Score: {%dimension-scores{ $col } // 'N/A'}";
   }
 
   # Select best label and value columns
@@ -148,9 +181,19 @@ method detect-columns(@columns, @rows, :@column-types) {
   # Legacy single value for backwards compatibility
   my $value-col = @default-values[0] // @numeric-columns[0] // $label-col;
 
+  # Select top 1-2 dimension candidates (exclude label and value columns)
+  my @sorted-dimensions = @valid-columns
+    .grep({ $_ ne $label-col && $_ ∉ @default-values })
+    .sort({ %dimension-scores{ $_ } });
+
+  my @default-dimensions = @sorted-dimensions
+    .grep({ %dimension-scores{ $_ } < 100 })
+    .head(2);
+
   self.debug: "Selected Label: $label-col";
   self.debug: "Selected Values (default): " ~ @default-values.join(', ');
   self.debug: "Selected Value (legacy): $value-col";
+  self.debug: "Selected Dimensions (default): " ~ @default-dimensions.join(', ');
   self.debug: "=== End Debug ===";
 
   return {
@@ -158,7 +201,8 @@ method detect-columns(@columns, @rows, :@column-types) {
     value => $value-col,
     values => @default-values,  # Multiple default values
     numeric => @numeric-columns,
-    datetime => @datetime-columns
+    datetime => @datetime-columns,
+    dimensions => @default-dimensions,
   };
 }
 
