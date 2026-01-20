@@ -1,3 +1,17 @@
+0.0.27 2026-01-20
+    - add is-enabled for plugins
+    - add all plugins as defaults
+    - json method for output from cells
+    - cell.src to get the content
+    - rename cell.data to cell.out
+    - better handling of multi-line interpolations
+    - internal naming
+    - improve padding and character width
+    - change ratios of panes
+    - add deckglbin plugin
+    - better error handling
+    - logging, doc updates
+
 0.0.26 2026-01-16
   - remove duplicate warns
   - add verbose and cell options to 'run'
