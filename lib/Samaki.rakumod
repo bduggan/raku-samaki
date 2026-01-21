@@ -335,14 +335,14 @@ Here's an example:
 
 =begin code
 
--- duck
+-- duck:hello
 select 'hello' as world;
 
--- duck
+-- duck:earth
 select 'earth' as planet;
 
--- llm
-Which planet from the sun is 〈 cells(1).rows[0]<planet> 〉?
+-- llm:planet.txt
+Which planet from the sun is 〈 cells('earth').rows[0]<planet> 〉?
 
 =end code
 
@@ -366,7 +366,7 @@ For more examples, check out the
 L<eg/|https://github.com/bduggan/raku-samaki/tree/main/eg> directory.
 
 Below is what the screen looks like during this interactive session before earth.csv
-is create, when the cell is in raw mode:
+is created, when the cell is in raw mode:
 
 =begin code
 
@@ -402,11 +402,11 @@ A samaki page (or notebook) consists of two things
 The directory name will be the same as the basename of the file, and it
 will be created if it doesn't exist.  e.g.
 
-    taxi-data.samaki
-    taxi-data/
-       cell-0.csv
-       cell-1.csv
-       ... other data files ...
+    planets.samaki
+    planets/
+       hello.txt
+       earth.csv
+       planet.txt
 
 The samaki file is a text file divided into cells, each of which looks like this:
 
@@ -438,7 +438,7 @@ Running the cell above creates `the_answer.csv` in the data directory.  Note tha
 if the extension is omitted, it is assumed to be `.csv`.  `the_answer.csv` could
 also have been written.
 
-Cells may reference other cells by using angle brackets, as shown above:
+Angle brackets are interpolated into cell content.  For instance :
 
     〈 cells(0).content 〉
 
@@ -450,16 +450,14 @@ Cells can be referenced by name or by number, e.g.
 
     〈 cells('the_answer').content 〉
 
-refers to the contents of the above cell.  Also `c` and `cell` are synonyms for `cells`, and the
-default Stringification will call `.content.trim`.  e.g.  this will also work:
+Also `c` and `cell` are synonyms for `cells`.  Also `out` and `src` refer
+to the output and source for the cell respectively.  For instance:
 
-    〈 c('the_answer') 〉
+    〈 c('the_answer').out 〉
 
-Calling `res` will return a C<Duckie::Result> object.  Calling `col`
-uses `res` and `column-data` to return a list of values from a named column.
+Calling `res` will return a C<Duckie::Result> object for cells with CSV data.
 
-The API is still evolving, but at a minimum, it has the name of an output file;
-plugins are responsible for writing to the output file.
+The API is still evolving, suggestions are welcome!
 
 =head1 CONFIGURATION
 
@@ -511,7 +509,9 @@ page loads, like this:
    select * from planets where name = '〈 $p 〉';
 
 The two dashes without a type indicate that this code should immediately
-be evalutead.  There can be many of these blocks anywhere in the page.
+be evaluated.  Blocks like this can be used throughout the page, and are
+executed when the page loads, at the same time that interpolated code
+is evaluated.
 
 =head1 PLUGINS
 
@@ -586,11 +586,11 @@ Plugin                  | Type     | Description
 Bash                    | Process  | Execute contents as a bash program
 Code                    |          | Evaluate raku code in the current process
 Duck                    | Process  | Run SQL queries via duckdb executable
-Duckie                  | inline   | Run SQL queries via L<Duckie> inline driver
+Duckie                  | inline   | Run SQL queries via Duckie inline driver
 File                    |          | Display file metadata and info
 HTML                    |          | Generate HTML from contents
-LLM                     | inline   | Send contents to LLM via L<LLM::DWIM>
-Markdown                | inline   | Generate HTML from markdown via L<Markdown::Grammar>
+LLM                     | inline   | Send contents to LLM via LLM::DWIM
+Markdown                | inline   | Generate HTML from markdown
 Postgres                | Process  | Execute SQL via psql process
 Raku                    | Process  | Run raku in a separate process
 Repl::Raku              | Repl     | Interactive raku REPL (persistent session)
@@ -618,22 +618,12 @@ Plugin documentation:
 
 =head1 PLUGIN OPTIONS
 
-When choosing a plugin, options may be given which are specific to the plugin, like
+Options may be given using a vertical line after the name of the plugin like this:
 
   -- llm
   | model: claude
 
-But there are some options that apply to all plugins.  They are
-
-* ext -- choose an extension for the filename.
-
-   | ext: csv
-
-Equivalent to name.csv
-
-* out -- suppress output
-
-   | out: none
+Options are plugin-specific.  See the documentation for each plugin for details.
 
 =head1 PLUGOUTS
 
