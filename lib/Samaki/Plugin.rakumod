@@ -85,6 +85,7 @@ sub format-cell($cell) {
     when 'DateTime' { $cell.truncated-to('second').Str }
     when 'Bool' { $cell ?? 'true'.fmt('%-15s ') !! 'false'.fmt('%-15s ') }
     when 'Nil' { 'NULL' }
+    when 'Any' { 'NULL' }
     default  { $cell.raku.fmt('%-15s ') }
   }
 }

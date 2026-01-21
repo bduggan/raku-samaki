@@ -93,7 +93,7 @@ class Samaki::Page {
             for .lines;
     }
     my $line = 0;
-    $pane.put([ color('cell-type') => "$leadchar ".indent(4) ~ $_.raku ], :%meta) for $cell.conf.list;
+    self.show-cell-conf(:$cell, :$pane, :$leadchar, :%meta);
     $pane.put([ color('line') => ($line++).fmt('%3d '), color('cell-type') => "$leadchar ", color('inactive') => $_ ], :%meta)
           for $cell.source.lines;
   }
@@ -105,9 +105,13 @@ class Samaki::Page {
   }
 
   method show-cell-conf(:$cell!, :$pane!, :$leadchar!, :%meta!, :$color = 'cell-type') {
+    my $width = $cell.conf.map: { .key.chars }.max // 10;
     for $cell.conf.list {
       next if .key.starts-with('_');
-      $pane.put([ color($color) => "$leadchar ".indent(4) ~ "$_" ], :%meta) 
+      $pane.put([
+          color($color) => "$leadchar ".indent(4),
+          color('cell-conf') => .key.fmt('%' ~ $width ~ 's') ~ ' : ' ~ .value
+        ], :%meta) 
     }
   }
 
