@@ -232,7 +232,7 @@ class Samaki::Page {
       $!errors = "failed to load page file: {self.path} - $!";
       return False;
     }
-    my regex cell-type { \h* [ <[a..zA..Z]> <[a..zA..Z0..9_-]>* ]? \h* }
+    my regex cell-type { \h* [ <[a..zA..Z]> <[a..zA..Z0..9_/-]>* ]? \h* }
     my regex cell-ext { <[a..zA..Z0..9_-]>+ }
     my regex cell-name { <[a..zA..Z0..9_-]>+ }
     my @dashes = "─", "―", "⸺", "–", "—", "﹣", "－", '--',

@@ -249,7 +249,8 @@ class Samaki::Cell {
     $!plugin.errors = Nil;
     $!errors = Nil;
     # $pane.put: "Executing cell { $.name } of type { $.cell-type }";
-    $pane.put: [ color('info') => "Executing cell ", color('cell-name') => $.name, color('info') => " of type ", color('cell-type') => $.cell-type ];
+    $.plugin.stream: txt => [ color('info') => "Executing cell ", color('cell-name') => $.name, color('info') => " of type ", color('cell-type') => $.cell-type ],
+                     level => 'info';
     return without $!plugin;
     info "Executing cell of type { $.cell-type }";
     indir self.cell-dir(:create), {
@@ -259,7 +260,7 @@ class Samaki::Cell {
         if $.plugin.write-output && !(self.get-conf('out') // '' eq 'none') {
           if $.plugin.clear-stream-before {
             $.plugin.stream:  txt => [ color('info') => "Writing to ", color('link') => "[" ~ self.output-file.IO.relative ~ "]" ],
-                              meta => %( action => 'do_output', path => self.output-file );
+                              meta => %( action => 'do_output', path => self.output-file ), level => 'info';
           }
           info "writing to " ~ self.output-file.basename;
           $out = self.output-file.open(:w) 
