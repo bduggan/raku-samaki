@@ -868,6 +868,68 @@ $timezone-detection-js
         };
       }
 
+      // Calculate nice step size for time unit
+      function getNiceStepSize(unit, rangeMs, numUniquePoints) {
+        if (!unit || unit === 'auto') return undefined;
+
+        const rangeDays = rangeMs / (1000 * 60 * 60 * 24);
+        const rangeHours = rangeMs / (1000 * 60 * 60);
+        const rangeMinutes = rangeMs / (1000 * 60);
+
+        // For each unit, choose a nice step size that gives a reasonable number of ticks
+        // Aim for 5-15 ticks on the chart
+        switch(unit) {
+          case 'millisecond':
+            if (rangeMs < 100) return 10;
+            if (rangeMs < 1000) return 100;
+            return 250;
+
+          case 'second':
+            if (rangeMinutes < 5) return 10;  // 10 second intervals
+            if (rangeMinutes < 15) return 30; // 30 second intervals
+            return 60; // 1 minute intervals
+
+          case 'minute':
+            if (rangeHours < 1) return 5;     // 5 minute intervals
+            if (rangeHours < 3) return 10;    // 10 minute intervals
+            if (rangeHours < 6) return 15;    // 15 minute intervals
+            if (rangeHours < 12) return 30;   // 30 minute intervals
+            return 60;                         // 1 hour intervals
+
+          case 'hour':
+            if (rangeDays < 2) return 1;      // 1 hour intervals
+            if (rangeDays < 4) return 2;      // 2 hour intervals
+            if (rangeDays < 7) return 3;      // 3 hour intervals
+            if (rangeDays < 14) return 6;     // 6 hour intervals
+            return 12;                         // 12 hour intervals
+
+          case 'day':
+            if (rangeDays < 14) return 1;     // 1 day intervals
+            if (rangeDays < 60) return 7;     // 1 week intervals
+            return 14;                         // 2 week intervals
+
+          case 'week':
+            return 1;
+
+          case 'month':
+            if (rangeDays < 365) return 1;    // 1 month intervals
+            if (rangeDays < 730) return 2;    // 2 month intervals
+            return 3;                          // 3 month intervals
+
+          case 'quarter':
+            return 1;
+
+          case 'year':
+            const rangeYears = rangeDays / 365;
+            if (rangeYears < 10) return 1;
+            if (rangeYears < 50) return 5;
+            return 10;
+
+          default:
+            return undefined;
+        }
+      }
+
       // Helper: convert datetime label
       function convertDatetimeLabel(dateStr, sourceTimezone, targetTimezone) {
         if (!dateStr) return '';
@@ -1197,6 +1259,7 @@ $timezone-detection-js
         let timeAnalysis = null;
         let selectedFormat = 'date-time'; // default
         let selectedUnit = null;
+        let stepSize = undefined;
         let dateContextText = '';
         if (isLabelDatetime) {
           timeAnalysis = analyzeTimeRange(labelCol);
@@ -1216,7 +1279,11 @@ $timezone-detection-js
             selectedUnit = timeUnitSelect.value;
           }
 
-          console.log('Selected time unit:', selectedUnit, '(from', timeUnitSelect.value + ')');
+          // Calculate nice step size based on unit and data range
+          const rangeMs = timeAnalysis.maxDate - timeAnalysis.minDate;
+          stepSize = getNiceStepSize(selectedUnit, rangeMs, data.labels.length);
+
+          console.log('Selected time unit:', selectedUnit, '(from', timeUnitSelect.value + ')', 'stepSize:', stepSize);
 
           // Save date context text for axis title
           dateContextText = timeAnalysis.dateContextText || '';
@@ -1270,7 +1337,23 @@ $timezone-detection-js
               timeConfig.minUnit = selectedUnit;
             }
 
-            console.log('Scatter X-axis time config:', timeConfig);
+            console.log('Scatter X-axis time config:', timeConfig, 'stepSize:', stepSize);
+
+            const tickConfig = {
+              source: 'auto',
+              autoSkip: false,
+              font: {
+                family: 'ui-monospace, monospace',
+                size: 11
+              },
+              maxRotation: 45,
+              minRotation: 45
+            };
+
+            // Add step size if determined
+            if (stepSize !== undefined) {
+              tickConfig.stepSize = stepSize;
+            }
 
             scales.x = {
               type: 'time',
@@ -1289,16 +1372,7 @@ $timezone-detection-js
                   weight: 'bold'
                 }
               },
-              ticks: {
-                source: 'auto',
-                autoSkip: true,
-                font: {
-                  family: 'ui-monospace, monospace',
-                  size: 11
-                },
-                maxRotation: 45,
-                minRotation: 45
-              }
+              ticks: tickConfig
             };
           } else {
             // Linear scale for scatter x-axis
@@ -1374,7 +1448,23 @@ $timezone-detection-js
               timeConfig.minUnit = selectedUnit;
             }
 
-            console.log('Chart time config:', timeConfig);
+            console.log('Chart time config:', timeConfig, 'stepSize:', stepSize);
+
+            const tickConfig = {
+              source: 'auto',
+              autoSkip: false,
+              font: {
+                family: 'ui-monospace, monospace',
+                size: 11
+              },
+              maxRotation: labelAxis === 'x' ? 45 : 0,
+              minRotation: labelAxis === 'x' ? 45 : 0
+            };
+
+            // Add step size if determined
+            if (stepSize !== undefined) {
+              tickConfig.stepSize = stepSize;
+            }
 
             scales[labelAxis] = {
               type: 'time',
@@ -1393,16 +1483,7 @@ $timezone-detection-js
                   weight: 'bold'
                 }
               },
-              ticks: {
-                source: 'auto',
-                autoSkip: true,
-                font: {
-                  family: 'ui-monospace, monospace',
-                  size: 11
-                },
-                maxRotation: labelAxis === 'x' ? 45 : 0,
-                minRotation: labelAxis === 'x' ? 45 : 0
-              }
+              ticks: tickConfig
             };
           } else {
             // Regular category scale
