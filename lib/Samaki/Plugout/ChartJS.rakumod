@@ -86,7 +86,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
         border-radius: 4px;
         display: flex;
         gap: 6px;
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
         align-items: center;
         font-size: 11px;
       }
