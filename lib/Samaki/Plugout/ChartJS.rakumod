@@ -42,6 +42,9 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   my $default-label = html-escape($label-col);
   my $default-value = html-escape($value-col);
 
+  # Get timezone detection JavaScript
+  my $timezone-detection-js = self.timezone-detection-js;
+
   my $html = Q:s:to/HTML/;
   <!DOCTYPE html>
   <html>
@@ -586,6 +589,8 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
       const timezoneSelect = document.getElementById('timezone');
       const timeUnitSelect = document.getElementById('time-unit');
       const datetimeBox = document.getElementById('datetime-box');
+
+$timezone-detection-js
 
       // Map format types to display format strings
       function getDisplayFormats(formatType) {

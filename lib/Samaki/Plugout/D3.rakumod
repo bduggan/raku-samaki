@@ -42,6 +42,9 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
     my $default-label = html-escape($label-col);
     my $default-value = html-escape($value-col);
 
+    # Get timezone detection JavaScript
+    my $timezone-detection-js = self.timezone-detection-js;
+
     my $html = Q:s:to/HTML/;
     <!DOCTYPE html>
     <html>
@@ -679,9 +682,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
                 }
             }
 
-            // Set default timezones
-            sourceTimezoneSelect.value = 'UTC';
-            timezoneSelect.value = 'UTC';
+$timezone-detection-js
 
             // Update datetime controls visibility
             updateDatetimeControls();

@@ -6,6 +6,106 @@ method debug($msg) {
     debug($msg) if %*ENV<SAMAKI_DEBUG>;
 }
 
+method timezone-detection-js() {
+    return Q:to/JS/;
+      // Rebuild timezone dropdowns with offsets and abbreviations
+      function rebuildTimezoneDropdown(selectElement) {
+        // Get all original timezone values
+        const allTimezones = Array.from(selectElement.options).map(opt => opt.value);
+
+        // Group by offset
+        const offsetGroups = {};
+        allTimezones.forEach(tz => {
+          const m = moment.tz(tz);
+          const offset = m.utcOffset();
+          const abbr = m.format('z');
+
+          if (!offsetGroups[offset]) {
+            offsetGroups[offset] = {
+              timezones: [],
+              abbrs: new Set()
+            };
+          }
+          offsetGroups[offset].timezones.push(tz);
+          offsetGroups[offset].abbrs.add(abbr);
+        });
+
+        // Sort by offset
+        const sortedOffsets = Object.keys(offsetGroups).map(Number).sort((a, b) => b - a);
+
+        // Clear and rebuild dropdown
+        selectElement.innerHTML = '';
+
+        sortedOffsets.forEach(offset => {
+          const group = offsetGroups[offset];
+          const firstTz = group.timezones[0];
+          const hours = Math.floor(Math.abs(offset) / 60);
+          const minutes = Math.abs(offset) % 60;
+          const sign = offset >= 0 ? '+' : '-';
+          const offsetStr = sign + String(hours).padStart(2, '0') + (minutes > 0 ? ':' + String(minutes).padStart(2, '0') : '');
+
+          // Combine abbreviations
+          const abbrStr = Array.from(group.abbrs).join('/');
+
+          // Create option with format: "+01 CET/CEST (Europe/Paris)"
+          const option = document.createElement('option');
+          option.value = firstTz;
+          option.textContent = offsetStr + ' ' + abbrStr + ' (' + firstTz + ')';
+          selectElement.appendChild(option);
+        });
+      }
+
+      rebuildTimezoneDropdown(sourceTimezoneSelect);
+      rebuildTimezoneDropdown(timezoneSelect);
+
+      // Set destination timezone to browser's timezone
+      const browserTimezone = moment.tz.guess();
+      if (browserTimezone) {
+        // Find the option that contains this timezone
+        Array.from(timezoneSelect.options).some(option => {
+          if (option.value === browserTimezone) {
+            timezoneSelect.value = browserTimezone;
+            console.log('Set destination timezone to browser timezone:', browserTimezone);
+            return true;
+          }
+        });
+      }
+
+      // Detect and set default source timezone from data using moment
+      if (datetimeColumns.length > 0 && allData.length > 0) {
+        const firstDatetimeCol = datetimeColumns[0];
+        const firstValue = allData[0][firstDatetimeCol];
+        if (firstValue) {
+          // Use moment.parseZone to preserve the original timezone offset
+          const m = moment.parseZone(firstValue);
+          if (m.isValid()) {
+            const offset = m.utcOffset();
+            console.log('Detected offset from data:', offset, 'minutes');
+
+            // Try to find a timezone in our dropdown that matches this offset at this date/time
+            const availableTimezones = Array.from(sourceTimezoneSelect.options).map(opt => opt.value);
+            let foundMatch = false;
+
+            for (const tz of availableTimezones) {
+              // Check what offset this timezone has at the parsed date/time
+              const tzOffset = moment.tz(m.format('YYYY-MM-DD HH:mm:ss'), tz).utcOffset();
+              if (tzOffset === offset) {
+                sourceTimezoneSelect.value = tz;
+                console.log('Detected timezone from data:', tz, '(offset =', offset, 'minutes)');
+                foundMatch = true;
+                break;
+              }
+            }
+
+            if (!foundMatch) {
+              console.log('No matching timezone found in dropdown for offset', offset);
+            }
+          }
+        }
+      }
+    JS
+}
+
 method detect-columns(@columns, @rows, :@column-types) {
   # DuckDB numeric types:
   # Integer types: TINYINT SMALLINT INTEGER BIGINT UTINYINT USMALLINT UINTEGER UBIGINT HUGEINT UHUGEINT
