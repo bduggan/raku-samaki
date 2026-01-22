@@ -167,6 +167,8 @@ method detect-columns(@columns, @rows, :@column-types) {
     my $info = %col-info{ $col };
     my $score = $info<cardinality>.Numeric;  # Base score is cardinality
 
+    $score -= 5000 if $info<is-datetime>;  # Strongly prefer datetime columns as labels
+
     # Penalize single-value columns (useless as labels)
     $score += 1000 if $info<cardinality> == 1;
 
