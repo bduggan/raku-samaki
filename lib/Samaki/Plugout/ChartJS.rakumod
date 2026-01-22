@@ -723,11 +723,49 @@ $timezone-detection-js
         }
 
         dates.sort((a, b) => a - b);
-        const minDate = dates[0];
-        const maxDate = dates[dates.length - 1];
+
+        // Get unique dates to handle dimensional data correctly
+        const uniqueDates = [...new Set(dates.map(d => d.getTime()))].map(t => new Date(t));
+        uniqueDates.sort((a, b) => a - b);
+
+        const minDate = uniqueDates[0];
+        const maxDate = uniqueDates[uniqueDates.length - 1];
         const rangeMs = maxDate - minDate;
         const rangeDays = rangeMs / (1000 * 60 * 60 * 24);
         const numPoints = dates.length;
+
+        // Calculate average spacing between consecutive UNIQUE time points
+        let totalSpacingMs = 0;
+        for (let i = 1; i < uniqueDates.length; i++) {
+          totalSpacingMs += uniqueDates[i] - uniqueDates[i - 1];
+        }
+        const avgSpacingMs = uniqueDates.length > 1 ? totalSpacingMs / (uniqueDates.length - 1) : rangeMs;
+        const avgSpacingSeconds = avgSpacingMs / 1000;
+        const avgSpacingMinutes = avgSpacingSeconds / 60;
+        const avgSpacingHours = avgSpacingMinutes / 60;
+        const avgSpacingDays = avgSpacingHours / 24;
+
+        // Determine recommended time unit based on average spacing
+        let recommendedUnit;
+        if (avgSpacingSeconds < 1) {
+          recommendedUnit = 'millisecond';
+        } else if (avgSpacingSeconds < 60) {
+          recommendedUnit = 'second';
+        } else if (avgSpacingMinutes < 60) {
+          recommendedUnit = 'minute';
+        } else if (avgSpacingHours < 24) {
+          recommendedUnit = 'hour';
+        } else if (avgSpacingDays < 7) {
+          recommendedUnit = 'day';
+        } else if (avgSpacingDays < 30) {
+          recommendedUnit = 'week';
+        } else if (avgSpacingDays < 90) {
+          recommendedUnit = 'month';
+        } else if (avgSpacingDays < 365) {
+          recommendedUnit = 'quarter';
+        } else {
+          recommendedUnit = 'year';
+        }
 
         // Check if all dates are on the same day
         const allSameDay = dates.every(d =>
@@ -812,12 +850,17 @@ $timezone-detection-js
           maxDate: maxDate.toISOString(),
           rangeDays,
           numPoints,
+          uniquePoints: uniqueDates.length,
           allSameDay,
-          recommendedFormat
+          recommendedFormat,
+          recommendedUnit,
+          avgSpacingHours: avgSpacingHours.toFixed(2),
+          avgSpacingMinutes: avgSpacingMinutes.toFixed(2)
         });
 
         return {
           recommendedFormat,
+          recommendedUnit,
           dateContextText,
           minDate,
           maxDate,
@@ -1153,6 +1196,7 @@ $timezone-detection-js
         // Analyze time range and update UI for datetime labels
         let timeAnalysis = null;
         let selectedFormat = 'date-time'; // default
+        let selectedUnit = null;
         let dateContextText = '';
         if (isLabelDatetime) {
           timeAnalysis = analyzeTimeRange(labelCol);
@@ -1164,6 +1208,15 @@ $timezone-detection-js
           } else {
             selectedFormat = timeFormatSelect.value;
           }
+
+          // Determine which unit to use
+          if (timeUnitSelect.value === 'auto') {
+            selectedUnit = timeAnalysis.recommendedUnit;
+          } else {
+            selectedUnit = timeUnitSelect.value;
+          }
+
+          console.log('Selected time unit:', selectedUnit, '(from', timeUnitSelect.value + ')');
 
           // Save date context text for axis title
           dateContextText = timeAnalysis.dateContextText || '';
@@ -1208,13 +1261,16 @@ $timezone-detection-js
             }
             const timeConfig = {
               displayFormats: displayFormats,
+              round: true,
             };
 
-            // Add unit if not auto
-            const selectedUnit = timeUnitSelect.value;
-            if (selectedUnit !== 'auto') {
+            // Add unit if determined
+            if (selectedUnit) {
               timeConfig.unit = selectedUnit;
+              timeConfig.minUnit = selectedUnit;
             }
+
+            console.log('Scatter X-axis time config:', timeConfig);
 
             scales.x = {
               type: 'time',
@@ -1234,6 +1290,8 @@ $timezone-detection-js
                 }
               },
               ticks: {
+                source: 'auto',
+                autoSkip: true,
                 font: {
                   family: 'ui-monospace, monospace',
                   size: 11
@@ -1307,13 +1365,16 @@ $timezone-detection-js
             }
             const timeConfig = {
               displayFormats: displayFormats,
+              round: true,
             };
 
-            // Add unit if not auto
-            const selectedUnit = timeUnitSelect.value;
-            if (selectedUnit !== 'auto') {
+            // Add unit if determined
+            if (selectedUnit) {
               timeConfig.unit = selectedUnit;
+              timeConfig.minUnit = selectedUnit;
             }
+
+            console.log('Chart time config:', timeConfig);
 
             scales[labelAxis] = {
               type: 'time',
@@ -1333,6 +1394,8 @@ $timezone-detection-js
                 }
               },
               ticks: {
+                source: 'auto',
+                autoSkip: true,
                 font: {
                   family: 'ui-monospace, monospace',
                   size: 11
