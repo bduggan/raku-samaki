@@ -54,7 +54,10 @@ method start-control-client($pane) {
   $!control-proc = Proc::Async.new(:w, 'tmux', '-C', 'attach');
   $!buffer = '';
 
-  # Create a supplier for output and stream it to the pane (like Repl does)
+  with $!output-supplier {
+    $!output-supplier.done;
+  }
+
   $!output-supplier = Supplier::Preserving.new;
   $pane.stream: $!output-supplier.Supply;
 
@@ -122,7 +125,7 @@ method process-control-output {
     if $line ~~ /^ '%output' \s+ ('%' \d+) \s+ (.*)/ {
       my $pane-id = ~$0;
 
-      if $pane-id.defined && $tmux-pane-id.defined && $pane-id eq $!tmux-pane-id && $.initial-output-captured {
+      if $pane-id.defined && $!tmux-pane-id.defined && $pane-id eq $!tmux-pane-id && $.initial-output-captured {
         # Decode the octal-escaped output to raw bytes and emit to supplier
         my $bytes = self.decode-tmux-output(~$1);
         $!output-supplier.emit: $bytes;
