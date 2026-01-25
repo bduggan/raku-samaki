@@ -9,6 +9,7 @@ unit role Samaki::Plugin::Tmux[
 ] does Samaki::Plugin;
 
 method command { $cmd }
+
 has Str $.tmux-pane-id is rw;
 has Str $.tmux-window-id is rw;
 has Proc::Async $!control-proc;
@@ -121,7 +122,7 @@ method process-control-output {
     if $line ~~ /^ '%output' \s+ ('%' \d+) \s+ (.*)/ {
       my $pane-id = ~$0;
 
-      if $pane-id eq $!tmux-pane-id && $.initial-output-captured {
+      if $pane-id.defined && $tmux-pane-id.defined && $pane-id eq $!tmux-pane-id && $.initial-output-captured {
         # Decode the octal-escaped output to raw bytes and emit to supplier
         my $bytes = self.decode-tmux-output(~$1);
         $!output-supplier.emit: $bytes;
@@ -182,6 +183,12 @@ method send-to-pane(Str $text) {
   run 'tmux', 'send-keys', '-t', $!tmux-pane-id, 'Enter';
 }
 
+method kill-window {
+  info "maybe killing window";
+  return unless self.window-exists;
+  run 'tmux', 'kill-window', '-t', $!tmux-window-id;
+}
+
 method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane, Str :$action) {
   # Check we're in tmux
   unless self.check-tmux-session {
@@ -198,10 +205,11 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
   info "launching {self.name} tmux session";
 
   # Create the tmux window if we don't have one
-  unless $!tmux-pane-id {
+  unless $!tmux-pane-id && self.window-exists {
+    $pane.clear;
     $!tmux-pane-id = self.create-tmux-window($pane, :$cell);
     self.stream: [color('info') => "started tmux window {$!tmux-window-id} (pane {$!tmux-pane-id}) for {self.name}"];
-    self.stream: txt => [color('button') => "[exit]"], meta => %( action => 'exit_proc' );
+    self.stream: txt => [color('button') => "[exit]"], meta => %( action => 'plugin_call', method => 'kill-window', plugin => self );
 
     # Start the control client for output streaming
     self.start-control-client($pane);

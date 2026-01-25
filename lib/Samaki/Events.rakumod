@@ -224,6 +224,13 @@ method set-events {
           $proc.put: "exit";
         }
       }
+      when 'plugin_call' {
+        with %meta<method> -> $method {
+          with %meta<plugin> -> $plugin {
+            $plugin."$method"();
+          }
+        }
+      }
     }
   }
 
