@@ -1,0 +1,75 @@
+#!raku
+
+use Test;
+use Samaki::Plugin::Tmux::Bash;
+use Samaki::Cell;
+use lib $?FILE.IO.parent;
+use helpers;
+
+# Check if tmux is available
+my $tmux-available = try {
+  my $proc = run 'tmux', '-V', :out, :err;
+  $proc.exitcode == 0;
+}
+
+unless $tmux-available {
+  plan :skip-all<tmux executable not found>;
+}
+
+my $in-tmux = %*ENV<TMUX>:exists && %*ENV<TMUX>.chars > 0;
+
+plan $in-tmux ?? 10 !! 8;
+
+my $p = Samaki::Plugin::Tmux::Bash.new;
+
+ok $p, 'plugin instantiated';
+is $p.name, 'tmux-bash', 'plugin name';
+is $p.command, 'bash', 'command';
+
+# decode-tmux-output: plain text
+my $blob1 = $p.decode-tmux-output('hello world');
+is $blob1.decode, 'hello world', 'decode plain text';
+
+# decode-tmux-output: octal escape for newline (\012)
+my $blob2 = $p.decode-tmux-output('hello\\012world');
+is $blob2.decode, "hello\nworld", 'decode octal newline';
+
+# decode-tmux-output: tab and newline
+my $blob3 = $p.decode-tmux-output('a\\011b\\012c');
+is $blob3.decode, "a\tb\nc", 'decode multiple octal escapes';
+
+# check-tmux-session without TMUX env
+my $saved-tmux = %*ENV<TMUX>:delete;
+nok $p.check-tmux-session, 'check-tmux-session false without TMUX';
+
+# check-tmux-session with TMUX env
+%*ENV<TMUX> = '/tmp/tmux-1000/default,12345,0';
+ok $p.check-tmux-session, 'check-tmux-session true with TMUX';
+
+# restore
+%*ENV<TMUX> = $_ with $saved-tmux;
+
+if $in-tmux {
+  my $pane = MockPane.new;
+  my $cell = Samaki::Cell.new:
+    page-name => 'test', cell-type => 'tmux-bash', name => 'test',
+    data-dir => $*TMPDIR, wkdir => $*TMPDIR,
+    content => 'echo hello-from-tmux-test',
+    plugin => $p;
+
+  lives-ok { $p.execute(:$cell, :mode<raw>, :$pane) }, 'execute runs';
+
+  # wait for output
+  my $found = False;
+  for ^20 {
+    sleep 0.25;
+    $found = $pane.output.join.contains('hello-from-tmux-test');
+    last if $found;
+  }
+  diag "pane output: " ~ $pane.output.raku unless $found;
+  ok $found, 'output captured';
+
+  $p.shutdown;
+}
+
+done-testing;
