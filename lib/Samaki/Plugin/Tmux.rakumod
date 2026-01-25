@@ -17,7 +17,7 @@ has Promise $!control-promise;
 has $!line-delay-seconds = 0.1;
 has $!buffer = '';
 has $.initial-output-captured is rw = False;
-has Supplier::Preserving $!output-supplier;
+has Supplier $!output-supplier;
 
 method write-output { False }
 method name { $name // $cmd }
@@ -51,6 +51,13 @@ method decode-tmux-output(Str $s --> Blob) {
 
 method start-control-client($pane) {
   info "starting tmux control client";
+
+  # Kill any existing control client first
+  with $!control-proc {
+    debug "killing old control client";
+    try $!control-proc.kill(SIGTERM);
+  }
+
   $!control-proc = Proc::Async.new(:w, 'tmux', '-C', 'attach');
   $!buffer = '';
 
@@ -58,7 +65,7 @@ method start-control-client($pane) {
     $!output-supplier.done;
   }
 
-  $!output-supplier = Supplier::Preserving.new;
+  $!output-supplier = Supplier.new;
   $pane.stream: $!output-supplier.Supply;
 
   # Buffer for accumulating bytes until we have complete UTF-8 sequences
