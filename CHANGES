@@ -1,3 +1,9 @@
+0.0.28 2026-01-26
+   - tmux, tmux+bash and tmux+python plugins
+   - improvements to csv-geo plugout (time zones, ticks)
+   - and d3 plugout (time zones)
+   - dimensions for csv/d3 plugouts
+
 0.0.27 2026-01-20
     - add is-enabled for plugins
     - add all plugins as defaults
