@@ -2,7 +2,7 @@
 
 use Test;
 
-plan 41;
+plan 42;
 
 # Check Rakudo version
 my $rakudo-version = $*RAKU.compiler.version;
@@ -35,6 +35,7 @@ use-ok 'Samaki::Plugin::Repl::Python';
 use-ok 'Samaki::Plugin::Repl::R';
 use-ok 'Samaki::Plugin::Repl::Raku';
 use-ok 'Samaki::Plugin::Text';
+use-ok 'Samaki::Plugin::URL';
 use-ok 'Samaki::Plugins';
 use-ok 'Samaki::Plugout';
 use-ok 'Samaki::Plugout::ChartJS';

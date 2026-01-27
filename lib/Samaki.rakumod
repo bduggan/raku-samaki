@@ -597,6 +597,7 @@ Repl::Raku              | Repl     | Interactive raku REPL (persistent session)
 Repl::Python            | Repl     | Interactive python REPL (persistent session)
 Repl::R                 | Repl     | Interactive R REPL (persistent session)
 Text                    |          | Write contents to a text file
+URL                     |          | Fetch a URL using curl
 =end table
 
 Plugin documentation:
@@ -615,6 +616,7 @@ Plugin documentation:
 * L<Repl::Python|docs/lib/Samaki/Plugin/Repl/Python.md>
 * L<Repl::R|docs/lib/Samaki/Plugin/Repl/R.md>
 * L<Text|docs/lib/Samaki/Plugin/Text.md>
+* L<Text|docs/lib/Samaki/Plugin/URL.md>
 
 =head1 PLUGIN OPTIONS
 

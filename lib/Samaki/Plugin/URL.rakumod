@@ -33,3 +33,27 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
   self.stream: [color('info') => "wrote to file: " ~ $output-file.relative ];
 }
 
+=begin pod
+
+=head1 NAME
+
+Samaki::Plugin::URL -- Fetch a URL using curl
+
+=head1 DESCRIPTION
+
+Use curl to fetch a url and write it into the output file.
+
+=head1 CONFIGURATION
+
+None.
+
+=head1 EXAMPLE
+
+    ```
+    -- url:data.json
+    https://example.com/data.json
+    ```
+
+This will write to data.json.  Note that the output file is take from the cell output name + extension.
+ 
+=end pod
