@@ -35,6 +35,7 @@
     "Samaki::Plugin::Tmux" : "lib/Samaki/Plugin/Tmux.rakumod",
     "Samaki::Plugin::Tmux::Bash" : "lib/Samaki/Plugin/Tmux/Bash.rakumod",
     "Samaki::Plugin::Tmux::Python" : "lib/Samaki/Plugin/Tmux/Python.rakumod",
+    "Samaki::Plugin::URL" : "lib/Samaki/Plugin/URL.rakumod",
     "Samaki::Plugouts" : "lib/Samaki/Plugouts.rakumod",
     "Samaki::Plugout" : "lib/Samaki/Plugout.rakumod",
     "Samaki::Plugout::Common" : "lib/Samaki/Plugout/Common.rakumod",
