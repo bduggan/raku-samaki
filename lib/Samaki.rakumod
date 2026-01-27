@@ -597,6 +597,8 @@ Repl::Raku              | Repl     | Interactive raku REPL (persistent session)
 Repl::Python            | Repl     | Interactive python REPL (persistent session)
 Repl::R                 | Repl     | Interactive R REPL (persistent session)
 Text                    |          | Write contents to a text file
+Tmux::Bash              |          | Run bash code in a new tmux window
+Tmux::Python            |          | Run python code in a new tmux window
 URL                     |          | Fetch a URL using curl
 =end table
 
@@ -617,6 +619,9 @@ Plugin documentation:
 * L<Repl::R|docs/lib/Samaki/Plugin/Repl/R.md>
 * L<Text|docs/lib/Samaki/Plugin/Text.md>
 * L<Text|docs/lib/Samaki/Plugin/URL.md>
+* <Tmux::Bash|docs/lib/Samaki/Plugin/Tmux/Bash.md>
+* <Tmux::Python|docs/lib/Samaki/Plugin/Tmux/Python.md>
+
 
 =head1 PLUGIN OPTIONS
 
