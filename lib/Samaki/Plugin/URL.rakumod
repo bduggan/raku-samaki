@@ -7,6 +7,14 @@ unit class Samaki::Plugin::URL does Samaki::Plugin;
 
 has $.name = 'url';
 has $.description = 'Fetch a URL';
+has $version-info;
+
+method setup(Samaki::Conf :$conf) {
+  info "Setting up URL plugin";
+  $!version-info = qqx[curl --version 2>/dev/null].trim.split("\n").[0];
+  die "could not find curl in path" unless $!version-info;
+  info "version $!version-info";
+}
 
 method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane, Str :$action) {
   my Str $url = $cell.get-content(:$mode, :$page).trim;
