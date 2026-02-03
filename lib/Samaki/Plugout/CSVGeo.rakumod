@@ -169,6 +169,7 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
         display: flex;
         gap: 8px;
         align-items: center;
+        flex-wrap: wrap;
       }
 
       #show-all-btn {
@@ -186,7 +187,7 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
         background: #2563eb;
       }
 
-      #tile-selector, #palette-selector {
+      #tile-selector, #palette-selector, #key-selector {
         padding: 5px 8px;
         font-family: inherit;
         font-size: 12px;
@@ -196,8 +197,46 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
         cursor: pointer;
       }
 
-      #tile-selector:hover, #palette-selector:hover {
+      #tile-selector:hover, #palette-selector:hover, #key-selector:hover {
         border-color: #cbd5e1;
+      }
+
+      #legend-box {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        background: rgba(255, 255, 255, 0.95);
+        border: 1px solid #e2e8f0;
+        border-radius: 4px;
+        padding: 8px;
+        max-height: 300px;
+        max-width: 200px;
+        overflow-y: auto;
+        font-family: inherit;
+        font-size: 11px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        display: none;
+      }
+
+      .legend-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 3px 0;
+        line-height: 1.3;
+      }
+
+      .legend-color {
+        width: 12px;
+        height: 12px;
+        border-radius: 2px;
+        flex-shrink: 0;
+      }
+
+      .legend-label {
+        color: #2c3e50;
+        word-break: break-word;
       }
 
       #divider {
@@ -303,7 +342,11 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
           <option value="blackborders">Black Borders</option>
           <option value="whiteborders">White Borders</option>
         </select>
+        <select id="key-selector">
+          <option value="none" selected>Key: none</option>
+        </select>
       </div>
+      <div id="legend-box"></div>
     </div>
 
     <div id="divider"></div>
@@ -555,6 +598,26 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
         // Detect geo columns using wkx
         geoColumns = detectGeoColumns(parsed.data, columns);
 
+        // Build set of columns to exclude from key selector
+        const excludedCols = new Set(geoColumns);
+
+        // Also exclude lat/lon columns from latlonPairs
+        latlonPairs.forEach(function(pair) {
+          excludedCols.add(pair.lat);
+          excludedCols.add(pair.lon);
+        });
+
+        // Populate key selector with non-geo columns
+        const keySelector = document.getElementById('key-selector');
+        columns.forEach(function(col) {
+          if (!excludedCols.has(col)) {
+            const option = document.createElement('option');
+            option.value = col;
+            option.textContent = 'Key: ' + col;
+            keySelector.appendChild(option);
+          }
+        });
+
         // Build rowData array
         parsed.data.forEach(function(row, index) {
           const rowObj = {
@@ -633,6 +696,8 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
       let dataTable;
       let currentTileLayer;
       let currentPalette = 'muted';
+      let currentKey = 'none';
+      let keyColorMap = {};
 
       // Color palettes
       const colorPalettes = {
@@ -705,10 +770,70 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
         }
       };
 
+      // Build key color map when key changes
+      function buildKeyColorMap() {
+        keyColorMap = {};
+
+        if (currentKey === 'none') {
+          return;
+        }
+
+        // Collect unique values in the key column
+        const uniqueValues = new Set();
+        rowData.forEach(function(row) {
+          const value = row.data[currentKey] || 'null';
+          uniqueValues.add(value);
+        });
+
+        // Assign colors to each unique value
+        const palette = colorPalettes[currentPalette];
+        const sortedValues = Array.from(uniqueValues).sort();
+        sortedValues.forEach(function(value, index) {
+          keyColorMap[value] = palette[index % palette.length];
+        });
+
+        console.log('Built key color map for', currentKey, ':', keyColorMap);
+      }
+
       // Helper function to get color for a row index
       function getColorForRow(rowIndex) {
         const palette = colorPalettes[currentPalette];
-        return palette[rowIndex % palette.length];
+
+        if (currentKey === 'none') {
+          // Original behavior: color by row index
+          return palette[rowIndex % palette.length];
+        } else {
+          // Key behavior: color by key value
+          const row = rowData[rowIndex];
+          const keyValue = row.data[currentKey] || 'null';
+          return keyColorMap[keyValue] || palette[0];
+        }
+      }
+
+      // Update legend box
+      function updateLegend() {
+        const legendBox = document.getElementById('legend-box');
+
+        if (currentKey === 'none') {
+          legendBox.style.display = 'none';
+          return;
+        }
+
+        legendBox.style.display = 'block';
+
+        // Sort key values for consistent display
+        const sortedKeys = Object.keys(keyColorMap).sort();
+
+        let html = '<div style="font-weight: 500; margin-bottom: 4px;">' + currentKey + '</div>';
+        sortedKeys.forEach(function(value) {
+          const color = keyColorMap[value];
+          html += '<div class="legend-item">';
+          html += '<div class="legend-color" style="background-color: ' + color + ';"></div>';
+          html += '<div class="legend-label">' + value + '</div>';
+          html += '</div>';
+        });
+
+        legendBox.innerHTML = html;
       }
 
       // Helper function to create geo data summary
@@ -1012,6 +1137,11 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
           switchPalette(e.target.value);
         });
 
+        // Key selector
+        document.getElementById('key-selector').addEventListener('change', function(e) {
+          switchKey(e.target.value);
+        });
+
         // Divider drag handler
         setupDividerDrag();
       }
@@ -1035,93 +1165,128 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
         currentTileLayer.bringToBack();
       }
 
-      function switchPalette(paletteKey) {
-        if (!colorPalettes[paletteKey]) return;
+      // Helper function to update layer colors
+      function updateLayerColors(layerGroup, newColor) {
+        const isBorderPalette = !!borderPalettes[currentPalette];
+        const borderStyle = borderPalettes[currentPalette];
 
-        currentPalette = paletteKey;
+        layerGroup.eachLayer(function(layer) {
+          // For geoJSON layers that contain multiple sub-layers, iterate through them
+          if (layer.eachLayer) {
+            layer.eachLayer(function(subLayer) {
+              // Check if sublayer is a marker
+              if (subLayer.setIcon && subLayer.options && subLayer.options.icon) {
+                const oldIcon = subLayer.options.icon;
+                if (oldIcon.options && oldIcon.options.className === 'custom-marker-icon') {
+                  const markerBorder = isBorderPalette ? borderStyle.borderColor : '#ffffff';
+                  const newIcon = L.divIcon({
+                    className: 'custom-marker-icon',
+                    html: '<div style="background-color: ' + newColor + '; width: 20px; height: 20px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid ' + markerBorder + '; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+                    iconSize: [24, 24],
+                    iconAnchor: [12, 24],
+                    popupAnchor: [0, -24]
+                  });
+                  subLayer.setIcon(newIcon);
+                }
+              }
+              // Update sublayer style for circle markers, polygons, lines, etc.
+              else if (subLayer.setStyle) {
+                if (isBorderPalette) {
+                  subLayer.setStyle({
+                    color: borderStyle.borderColor,
+                    fillColor: newColor,
+                    weight: borderStyle.borderWidth,
+                    fillOpacity: 0.6
+                  });
+                } else {
+                  subLayer.setStyle({
+                    color: newColor,
+                    fillColor: newColor,
+                    weight: 2,
+                    fillOpacity: 0.3
+                  });
+                }
+              }
+            });
+          }
+          // Check if this layer itself is a direct marker (not wrapped in geoJSON)
+          else if (layer.setIcon && layer.options && layer.options.icon) {
+            const oldIcon = layer.options.icon;
+            if (oldIcon.options && oldIcon.options.className === 'custom-marker-icon') {
+              const markerBorder = isBorderPalette ? borderStyle.borderColor : '#ffffff';
+              const newIcon = L.divIcon({
+                className: 'custom-marker-icon',
+                html: '<div style="background-color: ' + newColor + '; width: 20px; height: 20px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid ' + markerBorder + '; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+                iconSize: [24, 24],
+                iconAnchor: [12, 24],
+                popupAnchor: [0, -24]
+              });
+              layer.setIcon(newIcon);
+            }
+          }
+          // Update the layer's style for direct polygons, lines, etc. (not wrapped in geoJSON)
+          else if (layer.setStyle) {
+            if (isBorderPalette) {
+              layer.setStyle({
+                color: borderStyle.borderColor,
+                fillColor: newColor,
+                weight: borderStyle.borderWidth,
+                fillOpacity: 0.6
+              });
+            } else {
+              layer.setStyle({
+                color: newColor,
+                fillColor: newColor,
+                weight: 2,
+                fillOpacity: 0.3
+              });
+            }
+          }
+        });
+      }
 
-        // Check if this is a border-based palette
-        const borderStyle = borderPalettes[paletteKey];
-        const isBorderPalette = !!borderStyle;
+      function switchKey(keyCol) {
+        currentKey = keyCol;
+
+        // Rebuild key color map
+        buildKeyColorMap();
+
+        // Update legend
+        updateLegend();
 
         // Update all map features
         Object.keys(allLayerGroups).forEach(function(rowIndex) {
           const layerGroup = allLayerGroups[rowIndex];
           const newColor = getColorForRow(parseInt(rowIndex));
 
-          layerGroup.eachLayer(function(layer) {
-            // For geoJSON layers that contain multiple sub-layers, iterate through them
-            if (layer.eachLayer) {
-              layer.eachLayer(function(subLayer) {
-                // Check if sublayer is a marker
-                if (subLayer.setIcon && subLayer.options && subLayer.options.icon) {
-                  const oldIcon = subLayer.options.icon;
-                  if (oldIcon.options && oldIcon.options.className === 'custom-marker-icon') {
-                    const markerBorder = isBorderPalette ? borderStyle.borderColor : '#ffffff';
-                    const newIcon = L.divIcon({
-                      className: 'custom-marker-icon',
-                      html: '<div style="background-color: ' + newColor + '; width: 20px; height: 20px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid ' + markerBorder + '; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
-                      iconSize: [24, 24],
-                      iconAnchor: [12, 24],
-                      popupAnchor: [0, -24]
-                    });
-                    subLayer.setIcon(newIcon);
-                  }
-                }
-                // Update sublayer style for circle markers, polygons, lines, etc.
-                else if (subLayer.setStyle) {
-                  if (isBorderPalette) {
-                    subLayer.setStyle({
-                      color: borderStyle.borderColor,
-                      fillColor: newColor,
-                      weight: borderStyle.borderWidth,
-                      fillOpacity: 0.6
-                    });
-                  } else {
-                    subLayer.setStyle({
-                      color: newColor,
-                      fillColor: newColor,
-                      weight: 2,
-                      fillOpacity: 0.3
-                    });
-                  }
-                }
-              });
-            }
-            // Check if this layer itself is a direct marker (not wrapped in geoJSON)
-            else if (layer.setIcon && layer.options && layer.options.icon) {
-              const oldIcon = layer.options.icon;
-              if (oldIcon.options && oldIcon.options.className === 'custom-marker-icon') {
-                const markerBorder = isBorderPalette ? borderStyle.borderColor : '#ffffff';
-                const newIcon = L.divIcon({
-                  className: 'custom-marker-icon',
-                  html: '<div style="background-color: ' + newColor + '; width: 20px; height: 20px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid ' + markerBorder + '; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
-                  iconSize: [24, 24],
-                  iconAnchor: [12, 24],
-                  popupAnchor: [0, -24]
-                });
-                layer.setIcon(newIcon);
-              }
-            }
-            // Update the layer's style for direct polygons, lines, etc. (not wrapped in geoJSON)
-            else if (layer.setStyle) {
-              if (isBorderPalette) {
-                layer.setStyle({
-                  color: borderStyle.borderColor,
-                  fillColor: newColor,
-                  weight: borderStyle.borderWidth,
-                  fillOpacity: 0.6
-                });
-              } else {
-                layer.setStyle({
-                  color: newColor,
-                  fillColor: newColor,
-                  weight: 2,
-                  fillOpacity: 0.3
-                });
-              }
-            }
-          });
+          updateLayerColors(layerGroup, newColor);
+        });
+
+        // Update table color indicators
+        document.querySelectorAll('.color-indicator').forEach(function(indicator, index) {
+          if (index < rowData.length) {
+            indicator.style.backgroundColor = getColorForRow(rowData[index].index);
+          }
+        });
+      }
+
+      function switchPalette(paletteKey) {
+        if (!colorPalettes[paletteKey]) return;
+
+        currentPalette = paletteKey;
+
+        // Rebuild key color map with new palette
+        buildKeyColorMap();
+
+        // Update legend
+        updateLegend();
+
+        // Update all map features
+        Object.keys(allLayerGroups).forEach(function(rowIndex) {
+          const layerGroup = allLayerGroups[rowIndex];
+          const newColor = getColorForRow(parseInt(rowIndex));
+
+          updateLayerColors(layerGroup, newColor);
         });
 
         // Update table color indicators
