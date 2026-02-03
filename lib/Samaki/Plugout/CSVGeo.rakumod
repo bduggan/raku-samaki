@@ -52,31 +52,45 @@ method detect-latlon-pairs(@columns) {
   for @columns -> $col {
     next if %used-cols{$col};
 
-    # Check if this is a latitude column
-    my $col-lc = $col.lc;
-    my $is-lat = $col-lc eq 'lat'
-              || $col-lc eq 'latitude'
-              || $col ~~ /'_lat' $/
-              || $col ~~ /'_latitude' $/;
+    # Check if this is a latitude column (case-insensitive using fc for Unicode case folding)
+    my $col-fc = $col.fc;
+    my $is-lat = $col-fc eq 'lat'.fc
+              || $col-fc eq 'latitude'.fc
+              || $col-fc ~~ /'_lat' $/
+              || $col-fc ~~ /'_latitude' $/;
 
     next unless $is-lat;
 
     # Try to find matching longitude column
-    # Extract base name (e.g., "start_lat" -> "start")
+    # Extract base/prefix (e.g., "start_lat" -> "start", "abc_lat" -> "abc", "LAT" -> "")
     my $base = $col;
-    $base ~~ s/_?lat(itude)?$//;
+    $base ~~ s/:i '_'? lat(itude)? $//;
 
-    # Try to find matching longitude column with various patterns
+    # Build longitude candidates preserving the case pattern of the original column
     my $lon-col;
     my @candidates;
-    if $base {
-      @candidates = ($base ~ '_lon', $base ~ '_lng', $base ~ '_longitude');
-    }
-    @candidates.append('lon', 'lng', 'longitude');
 
+    if $base {
+      # For prefixed columns (e.g., "abc_lat"), try suffix variations
+      # Try to preserve the case pattern
+      @candidates = (
+        $base ~ '_lon',      # abc_lon
+        $base ~ '_lng',      # abc_lng
+        $base ~ '_longitude' # abc_longitude
+      );
+    }
+
+    # Always try standard variations without prefix
+    @candidates.append('lon', 'lng', 'longitude', 'LON', 'LNG', 'LONGITUDE');
+
+    # Find matching column using case-insensitive comparison
     for @candidates -> $candidate {
-      if $candidate ~~ any(@columns) && !%used-cols{$candidate} {
-        $lon-col = $candidate;
+      my $matched = @columns.first: -> $c {
+        !%used-cols{$c} && $c.fc eq $candidate.fc
+      };
+
+      if $matched {
+        $lon-col = $matched;
         last;
       }
     }
@@ -322,29 +336,68 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
       let columns = [];
       let geoColumns = [];
 
-      // Try to parse a value as geo data using wkx
-      function tryParseGeo(value, debug) {
-        if (!value || typeof value !== 'string') return null;
-        const trimmed = value.trim();
-        if (!trimmed) return null;
+      // Unescape CSV-escaped JSON: replace literal \n with newlines and "" with "
+      // This handles JSON that was escaped when exported from databases/tools
+      function unescapeCSVJSON(str) {
+        // Replace backslash-n (char codes 92,110) with newline (char code 10)
+        const backslashN = String.fromCharCode(92) + String.fromCharCode(110);
+        const newline = String.fromCharCode(10);
+        let result = str;
+        while (result.indexOf(backslashN) >= 0) {
+          result = result.replace(backslashN, newline);
+        }
+        // Replace doubled quotes with single quotes
+        while (result.indexOf('""') >= 0) {
+          result = result.replace('""', '"');
+        }
+        return result;
+      }
 
-        // First try: if it's valid JSON with geo keywords, use it directly
+      // Check if a string might benefit from CSV unescaping
+      function needsUnescaping(str) {
+        // Check for backslash-n sequence (char codes 92,110)
+        for (let i = 0; i < str.length - 1; i++) {
+          if (str.charCodeAt(i) === 92 && str.charCodeAt(i+1) === 110) {
+            return true;
+          }
+        }
+        // Check for doubled quotes
+        return str.indexOf('""') >= 0;
+      }
+
+      // Try to parse a JSON string and check if it's GeoJSON
+      function tryParseAsGeoJSON(jsonStr, debug) {
         try {
-          const json = JSON.parse(trimmed);
-          const jsonStr = JSON.stringify(json).toLowerCase();
-          const hasGeoKeywords = jsonStr.includes('feature') ||
-                                 jsonStr.includes('coordinates') ||
-                                 jsonStr.includes('geometry') ||
-                                 jsonStr.includes('polygon') ||
-                                 jsonStr.includes('point') ||
-                                 jsonStr.includes('linestring');
+          const json = JSON.parse(jsonStr);
 
-          if (hasGeoKeywords) {
-            if (debug) console.log('✓ Detected as GeoJSON (direct)');
+          // Check for coordinates property anywhere in the object
+          const hasCoordinates = json.coordinates !== undefined ||
+                                 (json.geometry && json.geometry.coordinates !== undefined);
+
+          // Check for GeoJSON type keywords
+          const hasGeoType = json.type && (
+            json.type === 'Point' ||
+            json.type === 'LineString' ||
+            json.type === 'Polygon' ||
+            json.type === 'MultiPoint' ||
+            json.type === 'MultiLineString' ||
+            json.type === 'MultiPolygon' ||
+            json.type === 'GeometryCollection' ||
+            json.type === 'Feature' ||
+            json.type === 'FeatureCollection'
+          );
+
+          // Check for geometry with type
+          const hasGeometry = json.geometry && json.geometry.type;
+
+          if (hasCoordinates || hasGeoType || hasGeometry) {
+            if (debug) console.log('✓ Detected as GeoJSON');
+
             // Return directly if it's already a Feature or FeatureCollection
             if (json.type === 'Feature' || json.type === 'FeatureCollection') {
               return json;
             }
+
             // If it has geometry type and coordinates, wrap it as a Feature
             if (json.type && json.coordinates) {
               return {
@@ -353,13 +406,40 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
                 properties: {}
               };
             }
+
+            // If it has a geometry property, wrap it
+            if (json.geometry) {
+              return {
+                type: 'Feature',
+                geometry: json.geometry,
+                properties: json.properties || {}
+              };
+            }
+
             // Otherwise, just return it and let Leaflet handle it
             return json;
           }
         } catch (e) {
-          // Not valid JSON, continue to other parsers
+          // Not valid JSON or not GeoJSON
+          if (debug) console.log('✗ JSON parse failed:', e.message);
+        }
+        return null;
+      }
+
+      // Try to parse a value as geo data using wkx
+      function tryParseGeo(value, debug) {
+        if (!value || typeof value !== 'string') return null;
+        const trimmed = value.trim();
+        if (!trimmed) return null;
+
+        // First, try to parse as regular JSON (most common case)
+        let result = tryParseAsGeoJSON(trimmed, debug);
+        if (result) {
+          if (debug) console.log('✓ Parsed as regular JSON');
+          return result;
         }
 
+        // Try WKT/WKB formats
         const parsers = [
           // WKT/EWKT string
           { name: 'WKT/EWKT', fn: () => wkx.Geometry.parse(trimmed).toGeoJSON() },
@@ -378,6 +458,32 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
             }
           } catch (e) {
             if (debug) console.log('✗', parser.name, 'failed:', e.message);
+          }
+        }
+
+        // If all parsing attempts failed, check if the value might be CSV-escaped JSON
+        if (needsUnescaping(trimmed)) {
+          if (debug) console.log('Detected CSV escaping, trying to unescape...');
+          const unescaped = unescapeCSVJSON(trimmed);
+
+          // Try parsing the unescaped version as GeoJSON
+          result = tryParseAsGeoJSON(unescaped, debug);
+          if (result) {
+            if (debug) console.log('✓ Parsed after unescaping CSV-escaped JSON');
+            return result;
+          }
+
+          // Try WKT/WKB on unescaped version too
+          for (const parser of parsers) {
+            try {
+              const result = parser.fn.call(null);
+              if (result) {
+                if (debug) console.log('✓ Parsed as', parser.name, 'after unescaping');
+                return result;
+              }
+            } catch (e) {
+              // Silently fail on retry
+            }
           }
         }
 

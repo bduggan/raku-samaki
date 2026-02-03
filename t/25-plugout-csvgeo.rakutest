@@ -22,13 +22,133 @@ is @prefix-pairs.elems, 1, 'detected prefixed lat/lon pair';
 is @prefix-pairs[0]<lat>, 'start_lat', 'detected start_lat';
 is @prefix-pairs[0]<lon>, 'start_lon', 'detected start_lon';
 
+my @uppercase-cols = <FISH_ID GEOHASH ZONE_NAME FISH_LOCATION LAT LON>;
+my @uppercase-pairs = $plugout.detect-latlon-pairs(@uppercase-cols);
+is @uppercase-pairs.elems, 1, 'detected uppercase LAT/LON pair';
+is @uppercase-pairs[0]<lat>, 'LAT', 'detected LAT column';
+is @uppercase-pairs[0]<lon>, 'LON', 'detected LON column';
+
+# Test mixed case variations
+my @mixed-cols = <name Lat Lon>;
+my @mixed-pairs = $plugout.detect-latlon-pairs(@mixed-cols);
+is @mixed-pairs.elems, 1, 'detected mixed case Lat/Lon pair';
+is @mixed-pairs[0]<lat>, 'Lat', 'detected Lat column';
+is @mixed-pairs[0]<lon>, 'Lon', 'detected Lon column';
+
+# Test uppercase prefix (START_LAT/START_LON)
+my @upper-prefix-cols = <ID START_LAT START_LON END_LAT END_LON>;
+my @upper-prefix-pairs = $plugout.detect-latlon-pairs(@upper-prefix-cols);
+is @upper-prefix-pairs.elems, 2, 'detected two uppercase prefixed pairs';
+is @upper-prefix-pairs[0]<lat>, 'START_LAT', 'detected START_LAT';
+is @upper-prefix-pairs[0]<lon>, 'START_LON', 'detected START_LON';
+is @upper-prefix-pairs[1]<lat>, 'END_LAT', 'detected END_LAT';
+is @upper-prefix-pairs[1]<lon>, 'END_LON', 'detected END_LON';
+
+# Test that GeoJSON columns are NOT detected as lat/lon pairs
+my @geo-cols = <FISH_ID GEO_DATA LAT LON>;
+my @geo-pairs = $plugout.detect-latlon-pairs(@geo-cols);
+is @geo-pairs.elems, 1, 'only lat/lon pair detected, not GeoJSON column';
+is @geo-pairs[0]<lat>, 'LAT', 'LAT column detected';
+is @geo-pairs[0]<lon>, 'LON', 'LON column detected';
+
+# Test longitude variations (lng, longitude)
+my @lng-cols = <name lat lng>;
+my @lng-pairs = $plugout.detect-latlon-pairs(@lng-cols);
+is @lng-pairs.elems, 1, 'detected lat/lng pair';
+is @lng-pairs[0]<lon>, 'lng', 'detected lng column';
+
+my @longitude-cols = <name latitude longitude>;
+my @longitude-pairs = $plugout.detect-latlon-pairs(@longitude-cols);
+is @longitude-pairs.elems, 1, 'detected latitude/longitude pair';
+is @longitude-pairs[0]<lat>, 'latitude', 'detected latitude column';
+is @longitude-pairs[0]<lon>, 'longitude', 'detected longitude column';
+
+# Test arbitrary prefix with _lat/_lon (abc_lat / abc_lon)
+my @abc-cols = <id abc_lat abc_lon>;
+my @abc-pairs = $plugout.detect-latlon-pairs(@abc-cols);
+is @abc-pairs.elems, 1, 'detected abc_lat/abc_lon pair';
+is @abc-pairs[0]<lat>, 'abc_lat', 'detected abc_lat column';
+is @abc-pairs[0]<lon>, 'abc_lon', 'detected abc_lon column';
+
+# Test arbitrary prefix with _lat/_lng (abc_lat / abc_lng)
+my @abc-lng-cols = <id abc_lat abc_lng>;
+my @abc-lng-pairs = $plugout.detect-latlon-pairs(@abc-lng-cols);
+is @abc-lng-pairs.elems, 1, 'detected abc_lat/abc_lng pair';
+is @abc-lng-pairs[0]<lat>, 'abc_lat', 'detected abc_lat column';
+is @abc-lng-pairs[0]<lon>, 'abc_lng', 'detected abc_lng column';
+
+# Test arbitrary prefix with _latitude/_longitude (data_latitude / data_longitude)
+my @data-cols = <id data_latitude data_longitude>;
+my @data-pairs = $plugout.detect-latlon-pairs(@data-cols);
+is @data-pairs.elems, 1, 'detected data_latitude/data_longitude pair';
+is @data-pairs[0]<lat>, 'data_latitude', 'detected data_latitude column';
+is @data-pairs[0]<lon>, 'data_longitude', 'detected data_longitude column';
+
+# Test uppercase prefix with _LAT/_LON (ABC_LAT / ABC_LON)
+my @abc-upper-cols = <ID ABC_LAT ABC_LON>;
+my @abc-upper-pairs = $plugout.detect-latlon-pairs(@abc-upper-cols);
+is @abc-upper-pairs.elems, 1, 'detected ABC_LAT/ABC_LON pair';
+is @abc-upper-pairs[0]<lat>, 'ABC_LAT', 'detected ABC_LAT column';
+is @abc-upper-pairs[0]<lon>, 'ABC_LON', 'detected ABC_LON column';
+
+# Test uppercase prefix with _LAT/_LNG (ABC_LAT / ABC_LNG)
+my @abc-upper-lng-cols = <ID ABC_LAT ABC_LNG>;
+my @abc-upper-lng-pairs = $plugout.detect-latlon-pairs(@abc-upper-lng-cols);
+is @abc-upper-lng-pairs.elems, 1, 'detected ABC_LAT/ABC_LNG pair';
+is @abc-upper-lng-pairs[0]<lat>, 'ABC_LAT', 'detected ABC_LAT column';
+is @abc-upper-lng-pairs[0]<lon>, 'ABC_LNG', 'detected ABC_LNG column';
+
+# Test location prefix (location_lat / location_lng)
+my @location-cols = <id location_lat location_lng address>;
+my @location-pairs = $plugout.detect-latlon-pairs(@location-cols);
+is @location-pairs.elems, 1, 'detected location_lat/location_lng pair';
+is @location-pairs[0]<lat>, 'location_lat', 'detected location_lat column';
+is @location-pairs[0]<lon>, 'location_lng', 'detected location_lng column';
+
+# Test mixed case prefix (Pickup_Lat / Pickup_Lon)
+my @pickup-cols = <id Pickup_Lat Pickup_Lon>;
+my @pickup-pairs = $plugout.detect-latlon-pairs(@pickup-cols);
+is @pickup-pairs.elems, 1, 'detected Pickup_Lat/Pickup_Lon pair';
+is @pickup-pairs[0]<lat>, 'Pickup_Lat', 'detected Pickup_Lat column';
+is @pickup-pairs[0]<lon>, 'Pickup_Lon', 'detected Pickup_Lon column';
+
+# Test multiple pairs in same dataset (origin/destination)
+my @multi-cols = <id origin_lat origin_lon dest_lat dest_lng>;
+my @multi-pairs = $plugout.detect-latlon-pairs(@multi-cols);
+is @multi-pairs.elems, 2, 'detected two pairs (origin and dest)';
+is @multi-pairs[0]<lat>, 'origin_lat', 'detected origin_lat';
+is @multi-pairs[0]<lon>, 'origin_lon', 'detected origin_lon';
+is @multi-pairs[1]<lat>, 'dest_lat', 'detected dest_lat';
+is @multi-pairs[1]<lon>, 'dest_lng', 'detected dest_lng';
+
+# Test case mismatch between lat and lon (abc_lat / ABC_LON should still match)
+my @case-mismatch-cols = <id abc_lat ABC_LON>;
+my @case-mismatch-pairs = $plugout.detect-latlon-pairs(@case-mismatch-cols);
+is @case-mismatch-pairs.elems, 1, 'detected case-mismatched abc_lat/ABC_LON pair';
+is @case-mismatch-pairs[0]<lat>, 'abc_lat', 'detected abc_lat column';
+is @case-mismatch-pairs[0]<lon>, 'ABC_LON', 'detected ABC_LON column';
+
+# Test geographic prefix (geo_latitude / geo_longitude)
+my @geo-prefix-cols = <id geo_latitude geo_longitude>;
+my @geo-prefix-pairs = $plugout.detect-latlon-pairs(@geo-prefix-cols);
+is @geo-prefix-pairs.elems, 1, 'detected geo_latitude/geo_longitude pair';
+is @geo-prefix-pairs[0]<lat>, 'geo_latitude', 'detected geo_latitude column';
+is @geo-prefix-pairs[0]<lon>, 'geo_longitude', 'detected geo_longitude column';
+
+# Test fish prefix (fish_lat / fish_lng)
+my @fish-cols = <id fish_lat fish_lng>;
+my @fish-pairs = $plugout.detect-latlon-pairs(@fish-cols);
+is @fish-pairs.elems, 1, 'detected fish_lat/fish_lng pair';
+is @fish-pairs[0]<lat>, 'fish_lat', 'detected fish_lat column';
+is @fish-pairs[0]<lon>, 'fish_lng', 'detected fish_lng column';
+
 # Test HTML generation
 my $temp-dir = $*TMPDIR.child('csvgeo-test-' ~ $*PID);
 $temp-dir.mkdir;
 
 my $csv-file = $temp-dir.child('test.csv');
 spurt $csv-file, "point,name\n" ~
-  '"{\"type\":\"Point\",\"coordinates\":[4.37,50.81]}",Brussels' ~ "\n";
+  '"{\"type\":\"Point\",\"coordinates\":[36.817223,-1.286389]}",Nairobi' ~ "\n";
 
 $plugout.execute(path => $csv-file, data-dir => $temp-dir, name => 'test');
 my $html-file = $temp-dir.child('test-csv-geo.html');
@@ -39,5 +159,82 @@ ok $html ~~ /'Papa.parse'/, 'HTML contains Papa Parse';
 ok $html ~~ /'Leaflet'/, 'HTML contains Leaflet';
 ok $html ~~ /'wkx'/, 'HTML contains wkx library';
 ok $html ~~ /'tryParseGeo'/, 'HTML contains geo parsing function';
+
+# Test with cell-4.csv format (uppercase LAT/LON + GeoJSON)
+my $fishes-dir = $*TMPDIR.child('csvgeo-fishes-' ~ $*PID);
+$fishes-dir.mkdir;
+
+my $fishes-csv = $fishes-dir.child('records.csv');
+# Create data similar to cell-4.csv format
+my $fishes-data = q:to/CSV/;
+"FISH_ID","GEOHASH","PLACE","LOCATION","LAT","LON"
+"100001","","Nairobi","{\"coordinates\":[36.817223,-1.286389],\"type\":\"Point\"}","-1.286389","36.817223"
+"100002","","Mombasa","{\"coordinates\":[39.668207,-4.043740],\"type\":\"Point\"}","-4.043740","39.668207"
+"100003","","Kisumu","{\"coordinates\":[34.767956,-0.091702],\"type\":\"Point\"}","-0.091702","34.767956"
+CSV
+spurt $fishes-csv, $fishes-data;
+
+# Execute plugout
+$plugout.execute(path => $fishes-csv, data-dir => $fishes-dir, name => 'records');
+my $fishes-html-file = $fishes-dir.child('records-csv-geo.html');
+ok $fishes-html-file.e, 'HTML file created for cell-4 format';
+
+# Verify HTML has lat/lon pair metadata
+my $fishes-html = slurp $fishes-html-file;
+ok $fishes-html ~~ /'latlonPairs'/, 'HTML contains latlonPairs metadata';
+ok $fishes-html ~~ /'"lat"' \s* ':' \s* '"LAT"'/, 'HTML contains LAT column reference';
+ok $fishes-html ~~ /'"lon"' \s* ':' \s* '"LON"'/, 'HTML contains LON column reference';
+
+# Verify CSV content is embedded
+ok $fishes-html ~~ /'FISH_ID'/, 'HTML contains FISH_ID column';
+ok $fishes-html ~~ /'Nairobi'/, 'HTML contains Nairobi data';
+ok $fishes-html ~~ /'Mombasa'/, 'HTML contains Mombasa data';
+
+# Verify LOCATION column is present (will be detected as geo by JavaScript)
+ok $fishes-html ~~ /'LOCATION'/, 'HTML contains LOCATION column';
+
+# Test comprehensive CSV with multiple prefix variants in actual data
+my $variants-dir = $*TMPDIR.child('csvgeo-variants-' ~ $*PID);
+$variants-dir.mkdir;
+
+my $variants-csv = $variants-dir.child('variants.csv');
+my $variants-data = q:to/CSV/;
+"trip_id","pickup_lat","pickup_lng","dropoff_lat","dropoff_lon","distance_km"
+"T001","-1.2921","36.8219","-1.2864","36.8172","2.1"
+"T002","-4.0435","39.6682","-4.0519","39.6594","1.5"
+"T003","-0.0917","34.7680","-0.0823","34.7559","1.8"
+CSV
+spurt $variants-csv, $variants-data;
+
+# Execute plugout
+$plugout.execute(path => $variants-csv, data-dir => $variants-dir, name => 'trips');
+my $variants-html = $variants-dir.child('trips-csv-geo.html');
+ok $variants-html.e, 'HTML file created for multi-prefix variants';
+
+# Verify both pairs are detected
+my $variants-html-content = slurp $variants-html;
+ok $variants-html-content ~~ /'pickup_lat'/, 'HTML contains pickup_lat';
+ok $variants-html-content ~~ /'pickup_lng'/, 'HTML contains pickup_lng';
+ok $variants-html-content ~~ /'dropoff_lat'/, 'HTML contains dropoff_lat';
+ok $variants-html-content ~~ /'dropoff_lon'/, 'HTML contains dropoff_lon';
+
+# Test CSV with uppercase variants
+my $upper-variants-csv = $variants-dir.child('upper-variants.csv');
+my $upper-variants-data = q:to/CSV/;
+"FISH_ID","FISH_A_LAT","FISH_A_LNG","FISH_B_LATITUDE","FISH_B_LONGITUDE"
+"R001","-0.3031","36.0800","-0.2825","36.0658"
+"R002","0.5143","35.2698","0.5265","35.2821"
+CSV
+spurt $upper-variants-csv, $upper-variants-data;
+
+$plugout.execute(path => $upper-variants-csv, data-dir => $variants-dir, name => 'points');
+my $upper-html = $variants-dir.child('points-csv-geo.html');
+ok $upper-html.e, 'HTML file created for uppercase variants';
+
+my $upper-html-content = slurp $upper-html;
+ok $upper-html-content ~~ /'FISH_A_LAT'/, 'HTML contains FISH_A_LAT';
+ok $upper-html-content ~~ /'FISH_A_LNG'/, 'HTML contains FISH_A_LNG';
+ok $upper-html-content ~~ /'FISH_B_LATITUDE'/, 'HTML contains FISH_B_LATITUDE';
+ok $upper-html-content ~~ /'FISH_B_LONGITUDE'/, 'HTML contains FISH_B_LONGITUDE';
 
 done-testing;
