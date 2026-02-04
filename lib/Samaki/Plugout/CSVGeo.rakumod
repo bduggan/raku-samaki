@@ -496,9 +496,11 @@ method build-html($title, @dataset-info) {
 
       .json-viewer-header {
         margin: 0;
-        padding: 0 8px 4px 8px;
+        padding: 4px 8px 4px 8px;
         border-bottom: 1px solid #e2e8f0;
         flex-shrink: 0;
+        display: flex;
+        align-items: center;
       }
 
       .json-viewer-content {
@@ -546,6 +548,7 @@ method build-html($title, @dataset-info) {
         border-radius: 3px;
         cursor: pointer;
         transition: all 0.2s;
+        box-sizing: border-box;
       }
 
       .color-radio-label:hover {
@@ -555,8 +558,8 @@ method build-html($title, @dataset-info) {
 
       .color-radio-input:checked + .color-radio-label {
         border-color: #1e293b;
-        border-width: 3px;
-        box-shadow: 0 0 0 1px #1e293b;
+        border-width: 2px;
+        box-shadow: 0 0 0 2px #1e293b;
       }
 
       .json-key {
