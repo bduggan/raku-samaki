@@ -1,3 +1,11 @@
+0.0.29 2026-02-04
+  - docs updates
+  - url plugin
+  - better geojson handling (literal \n)
+  - better lat/lon detection
+  - add key column for csvgeo
+  - link to fosdem talk
+
 0.0.28 2026-01-26
    - tmux, tmux+bash and tmux+python plugins
    - improvements to csv-geo plugout (time zones, ticks)
