@@ -7,41 +7,54 @@ use Log::Async;
 unit class Samaki::Plugout::CSVGeo does Samaki::Plugout;
 
 has $.name = 'csv-geo';
-has $.description = 'View CSV data with GeoJSON columns on an interactive map';
+has $.description = 'View CSV data with GeoJSON columns or GeoJSON files on an interactive map';
 has $.clear-before = False;
 
 method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   info "executing CSVGeo with $path";
 
-  # Derive name from CSV filename (not from the passed $name parameter)
-  my $csv-basename = $path.basename.subst(/'.csv'$/, '');
+  # Derive name from filename (not from the passed $name parameter)
+  my $file-basename = $path.basename.subst(/\. <[a..z A..Z]>+ $/, '');
 
-  # Read CSV
-  my @rows = read-csv("$path");
-  return unless @rows;
+  # Determine file type
+  my $is-geojson = $path ~~ /\. [geojson|json] $/;
+  my $file-type = $is-geojson ?? 'geojson' !! 'csv';
 
-  # Get column names
-  my @columns = @rows[0].keys.sort;
+  my ($content, $latlon-pairs-json);
 
-  # Detect lat/lon column pairs (still useful for lat/lon columns)
-  my @latlon-pairs = self.detect-latlon-pairs(@columns);
+  if $is-geojson {
+    # Read GeoJSON file
+    $content = slurp $path;
+    $latlon-pairs-json = to-json([]);
+    info "Processing GeoJSON file";
+  } else {
+    # Read CSV
+    my @rows = read-csv("$path");
+    return unless @rows;
 
-  info "Detected lat/lon pairs: {@latlon-pairs.map({ $_<lat> ~ '/' ~ $_<lon> }).join(', ')}" if @latlon-pairs;
+    # Get column names
+    my @columns = @rows[0].keys.sort;
 
-  # Read the raw CSV content
-  my $csv-content = slurp $path;
+    # Detect lat/lon column pairs (still useful for lat/lon columns)
+    my @latlon-pairs = self.detect-latlon-pairs(@columns);
 
-  # Prepare metadata for JavaScript
-  my $latlon-pairs-json = to-json(@latlon-pairs);
+    info "Detected lat/lon pairs: {@latlon-pairs.map({ $_<lat> ~ '/' ~ $_<lon> }).join(', ')}" if @latlon-pairs;
+
+    # Read the raw CSV content
+    $content = slurp $path;
+
+    # Prepare metadata for JavaScript
+    $latlon-pairs-json = to-json(@latlon-pairs);
+  }
 
   # Create out/ subdirectory
   my $out-dir = $data-dir.child('out');
   $out-dir.mkdir unless $out-dir.e;
 
-  # Generate file paths using CSV filename
-  my $js-file = $out-dir.child("{$csv-basename}-csv-geo-data.js");
-  my $html-file = $out-dir.child("{$csv-basename}-csv-geo.html");
-  my $title = html-escape($data-dir.basename ~ " : " ~ $csv-basename);
+  # Generate file paths using filename
+  my $js-file = $out-dir.child("{$file-basename}-csv-geo-data.js");
+  my $html-file = $out-dir.child("{$file-basename}-csv-geo.html");
+  my $title = html-escape($data-dir.basename ~ " : " ~ $file-basename);
 
   # Find all existing csv-geo-data.js files in the out directory
   my @all-data-files;
@@ -55,16 +68,16 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
     @dataset-info.push(%(
       filename => $basename,
       name => $dataset-name,
-      is-current => ($basename eq "{$csv-basename}-csv-geo-data.js")
+      is-current => ($basename eq "{$file-basename}-csv-geo-data.js")
     ));
   }
 
   # Add current file if it's not in the list yet
-  unless @all-data-files.grep("{$csv-basename}-csv-geo-data.js") {
-    @all-data-files.push("{$csv-basename}-csv-geo-data.js");
+  unless @all-data-files.grep("{$file-basename}-csv-geo-data.js") {
+    @all-data-files.push("{$file-basename}-csv-geo-data.js");
     @dataset-info.push(%(
-      filename => "{$csv-basename}-csv-geo-data.js",
-      name => $csv-basename,
+      filename => "{$file-basename}-csv-geo-data.js",
+      name => $file-basename,
       is-current => True
     ));
   }
@@ -75,7 +88,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   info "Found {@all-data-files.elems} data file(s): {@all-data-files.join(', ')}";
 
   # Build JavaScript data file
-  my $js-content = self.build-js-data($csv-basename, $csv-content, $latlon-pairs-json);
+  my $js-content = self.build-js-data($file-basename, $content, $latlon-pairs-json, $file-type);
 
   # Build HTML content with all data files
   my $html = self.build-html($title, @dataset-info);
@@ -150,18 +163,28 @@ method detect-latlon-pairs(@columns) {
 }
 
 
-method build-js-data($dataset-name, $csv-content, $latlon-pairs-json) {
-  # Escape the CSV content for embedding in JavaScript
-  # Need to escape backslashes, quotes, and newlines for JavaScript string literals
-  my $csv-escaped = $csv-content.trans(['\\', '"', "\n", "\r"] => ['\\\\', '\\"', '\\n', '']);
+method build-js-data($dataset-name, $content, $latlon-pairs-json, $type) {
+  my $escaped-content;
+  my $data-field;
+
+  if $type eq 'geojson' {
+    # For GeoJSON, we can embed it directly as JSON (no escaping needed for string)
+    $escaped-content = $content.trans(['\\', '"', "\n", "\r"] => ['\\\\', '\\"', '\\n', '']);
+    $data-field = qq[geojsonContent: "$escaped-content"];
+  } else {
+    # Escape the CSV content for embedding in JavaScript
+    $escaped-content = $content.trans(['\\', '"', "\n", "\r"] => ['\\\\', '\\"', '\\n', '']);
+    $data-field = qq[csvContent: "$escaped-content"];
+  }
 
   return qq:to/JS/;
-  // CSV data and metadata for dataset: $dataset-name
+  // Data and metadata for dataset: $dataset-name (type: $type)
   if (typeof window.datasets === 'undefined') \{
     window.datasets = \{\};
   \}
   window.datasets['$dataset-name'] = \{
-    csvContent: "$csv-escaped",
+    type: '$type',
+    $data-field,
     latlonPairs: $latlon-pairs-json
   \};
   JS
@@ -333,6 +356,12 @@ method build-html($title, @dataset-info) {
         min-height: 100px;
       }
 
+      #table-wrappers {
+        flex: 1;
+        overflow: hidden;
+        position: relative;
+      }
+
       #tabs {
         display: flex;
         gap: 4px;
@@ -371,9 +400,13 @@ method build-html($title, @dataset-info) {
       }
 
       .table-wrapper {
-        flex: 1;
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
         overflow: auto;
-        padding: 20px;
+        padding: 0 20px 20px 20px;
         display: none;
       }
 
@@ -424,9 +457,173 @@ method build-html($title, @dataset-info) {
         vertical-align: middle;
       }
 
+      /* DataTables controls - make them smaller */
+      .dataTables_wrapper .dataTables_length,
+      .dataTables_wrapper .dataTables_filter,
+      .dataTables_wrapper .dataTables_info,
+      .dataTables_wrapper .dataTables_paginate {
+        font-size: 10px;
+        padding: 2px;
+      }
+
+      .dataTables_wrapper .dataTables_length select,
+      .dataTables_wrapper .dataTables_filter input {
+        font-size: 10px;
+        padding: 2px 4px;
+      }
+
+      .dataTables_wrapper .dataTables_paginate .paginate_button {
+        font-size: 10px;
+        padding: 2px 6px;
+      }
+
       .custom-marker-icon {
         background: transparent;
         border: none;
+      }
+
+      /* JSON Tree Viewer Styles */
+      .json-viewer {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.5;
+        overflow: auto;
+        padding: 0;
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .json-viewer-header {
+        margin: 0;
+        padding: 0 8px 4px 8px;
+        border-bottom: 1px solid #e2e8f0;
+        flex-shrink: 0;
+      }
+
+      .json-viewer-content {
+        flex: 1;
+        overflow: auto;
+        padding: 8px 12px;
+      }
+
+      .json-fit-button {
+        padding: 2px 8px;
+        font-family: inherit;
+        font-size: 11px;
+        background: #3b82f6;
+        color: white;
+        border: none;
+        border-radius: 2px;
+        cursor: pointer;
+        transition: background 0.2s;
+      }
+
+      .json-fit-button:hover {
+        background: #2563eb;
+      }
+
+      .json-color-picker {
+        display: inline-flex;
+        gap: 4px;
+        margin-left: 8px;
+        align-items: center;
+      }
+
+      .color-radio-wrapper {
+        display: inline-block;
+      }
+
+      .color-radio-input {
+        display: none;
+      }
+
+      .color-radio-label {
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        border: 2px solid #cbd5e1;
+        border-radius: 3px;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+
+      .color-radio-label:hover {
+        border-color: #64748b;
+        transform: scale(1.1);
+      }
+
+      .color-radio-input:checked + .color-radio-label {
+        border-color: #1e293b;
+        border-width: 3px;
+        box-shadow: 0 0 0 1px #1e293b;
+      }
+
+      .json-key {
+        color: #8b5cf6;
+        font-weight: 500;
+      }
+
+      .json-string {
+        color: #10b981;
+      }
+
+      .json-number {
+        color: #3b82f6;
+      }
+
+      .json-boolean {
+        color: #ef4444;
+      }
+
+      .json-null {
+        color: #94a3b8;
+      }
+
+      .json-item {
+        margin-left: 20px;
+      }
+
+      .json-expandable {
+        cursor: pointer;
+        user-select: none;
+      }
+
+      .json-expandable::before {
+        content: '▶';
+        display: inline-block;
+        width: 12px;
+        margin-right: 4px;
+        color: #64748b;
+        transition: transform 0.2s;
+      }
+
+      .json-expandable.expanded::before {
+        transform: rotate(90deg);
+      }
+
+      .json-collapsed {
+        display: none;
+      }
+
+      .json-bracket {
+        color: #64748b;
+      }
+
+      .json-feature {
+        cursor: pointer;
+        padding: 2px 4px;
+        margin: -2px -4px;
+        border-radius: 3px;
+        transition: background-color 0.2s;
+      }
+
+      .json-feature:hover {
+        background-color: #f1f5f9;
+      }
+
+      .json-feature-selected {
+        background-color: #dbeafe !important;
       }
     </style>
   </head>
@@ -690,6 +887,76 @@ method build-html($title, @dataset-info) {
 
         datasetNames.forEach(function(datasetName) {
           const dataset = window.datasets[datasetName];
+          const datasetType = dataset.type || 'csv';
+
+          if (datasetType === 'geojson') {
+            parseGeoJSONDataset(datasetName, dataset, colorOffset);
+          } else {
+            parseCSVDataset(datasetName, dataset, colorOffset);
+          }
+
+          colorOffset += colorsPerDataset;
+        });
+
+        // Set first dataset as active
+        if (datasetNames.length > 0) {
+          activeDatasetName = datasetNames[0];
+        }
+      }
+
+      function parseGeoJSONDataset(datasetName, dataset, colorOffset) {
+        const geojsonContent = dataset.geojsonContent;
+        let geojson;
+
+        try {
+          geojson = JSON.parse(geojsonContent);
+        } catch (e) {
+          console.error('Failed to parse GeoJSON for', datasetName, ':', e);
+          return;
+        }
+
+        // Build rowData array from GeoJSON features
+        const rowData = [];
+        let features = [];
+
+        if (geojson.type === 'FeatureCollection') {
+          features = geojson.features || [];
+        } else if (geojson.type === 'Feature') {
+          features = [geojson];
+        } else if (geojson.type && geojson.coordinates) {
+          // Bare geometry - wrap in Feature
+          features = [{
+            type: 'Feature',
+            geometry: geojson,
+            properties: {}
+          }];
+        }
+
+        features.forEach(function(feature, index) {
+          const rowObj = {
+            index: index,
+            datasetName: datasetName,
+            features: [feature],
+            data: feature.properties || {}
+          };
+          rowData.push(rowObj);
+        });
+
+        // Store dataset info
+        allDatasets[datasetName] = {
+          name: datasetName,
+          type: 'geojson',
+          rowData: rowData,
+          columns: [],
+          geoColumns: [],
+          latlonPairs: [],
+          colorOffset: colorOffset,
+          dataTable: null,
+          rawGeoJSON: geojson
+        };
+      }
+
+      function parseCSVDataset(datasetName, dataset, colorOffset) {
           const csvContent = dataset.csvContent;
           const latlonPairs = dataset.latlonPairs;
 
@@ -784,6 +1051,7 @@ method build-html($title, @dataset-info) {
           // Store dataset info
           allDatasets[datasetName] = {
             name: datasetName,
+            type: 'csv',
             rowData: rowData,
             columns: columns,
             geoColumns: geoColumns,
@@ -791,14 +1059,6 @@ method build-html($title, @dataset-info) {
             colorOffset: colorOffset,
             dataTable: null
           };
-
-          colorOffset += colorsPerDataset;
-        });
-
-        // Set first dataset as active
-        if (datasetNames.length > 0) {
-          activeDatasetName = datasetNames[0];
-        }
       }
 
       // Global state
@@ -910,13 +1170,15 @@ method build-html($title, @dataset-info) {
 
       // Helper function to get color for a row in a dataset
       function getColorForRow(datasetName, rowIndex) {
-        const palette = colorPalettes[currentPalette];
         const dataset = allDatasets[datasetName];
-        if (!dataset) return palette[0];
+        if (!dataset) return colorPalettes[currentPalette][0];
+
+        const palette = colorPalettes[currentPalette];
 
         if (currentKey === 'none') {
-          // Use dataset color offset + row index
-          const colorIndex = (dataset.colorOffset + rowIndex) % palette.length;
+          // Use dataset color offset + row index + any manual color offset adjustment
+          const colorOffsetAdjustment = dataset.colorOffsetAdjustment || 0;
+          const colorIndex = (dataset.colorOffset + rowIndex + colorOffsetAdjustment) % palette.length;
           return palette[colorIndex];
         } else {
           // Key behavior: color by key value
@@ -1009,6 +1271,7 @@ method build-html($title, @dataset-info) {
         parseAllDatasets();
         initializeMap();
         initializeTable();
+        setupJSONExpanders();
         setupEventHandlers();
       });
 
@@ -1171,7 +1434,7 @@ method build-html($title, @dataset-info) {
           }
         });
 
-        // Create a tab and table for each dataset
+        // Create a tab and table/viewer for each dataset
         Object.values(allDatasets).forEach(function(dataset, idx) {
           // Create tab
           const tab = document.createElement('div');
@@ -1184,11 +1447,86 @@ method build-html($title, @dataset-info) {
           };
           tabsContainer.appendChild(tab);
 
-          // Create table wrapper
+          // Create wrapper
           const wrapper = document.createElement('div');
           wrapper.className = 'table-wrapper';
           if (idx === 0) wrapper.classList.add('active');
           wrapper.id = 'wrapper-' + dataset.name;
+
+          if (dataset.type === 'geojson') {
+            // Create JSON viewer for GeoJSON
+            const jsonViewer = document.createElement('div');
+            jsonViewer.className = 'json-viewer';
+
+            // Add header with fit button
+            const header = document.createElement('div');
+            header.className = 'json-viewer-header';
+
+            const fitButton = document.createElement('button');
+            fitButton.className = 'json-fit-button';
+            fitButton.textContent = 'Jump';
+            fitButton.dataset.datasetName = dataset.name;
+            fitButton.addEventListener('click', function() {
+              fitToDataset(this.dataset.datasetName);
+            });
+
+            header.appendChild(fitButton);
+
+            // Add color picker with radio buttons
+            const colorPicker = document.createElement('div');
+            colorPicker.className = 'json-color-picker';
+            colorPicker.dataset.datasetName = dataset.name;
+
+            // Get current palette to show color options
+            const palette = colorPalettes[currentPalette];
+            for (let i = 0; i < palette.length; i++) {
+              const wrapper = document.createElement('span');
+              wrapper.className = 'color-radio-wrapper';
+
+              const input = document.createElement('input');
+              input.type = 'radio';
+              input.name = 'color-' + dataset.name;
+              input.value = i;
+              input.id = 'color-' + dataset.name + '-' + i;
+              input.className = 'color-radio-input';
+              if (i === 0) {
+                input.checked = true;
+              }
+
+              const label = document.createElement('label');
+              label.htmlFor = input.id;
+              label.className = 'color-radio-label';
+              label.style.backgroundColor = palette[i];
+              label.title = 'Color ' + (i + 1);
+
+              input.addEventListener('change', function() {
+                if (this.checked) {
+                  switchDatasetColorOffset(colorPicker.dataset.datasetName, parseInt(this.value));
+                }
+              });
+
+              wrapper.appendChild(input);
+              wrapper.appendChild(label);
+              colorPicker.appendChild(wrapper);
+            }
+
+            header.appendChild(colorPicker);
+
+            // Store the color picker reference for this dataset
+            dataset.colorPicker = colorPicker;
+            dataset.colorOffsetAdjustment = 0;
+            jsonViewer.appendChild(header);
+
+            // Add content
+            const content = document.createElement('div');
+            content.className = 'json-viewer-content';
+            content.innerHTML = renderJSON(dataset.rawGeoJSON, 0, dataset.name);
+            jsonViewer.appendChild(content);
+
+            wrapper.appendChild(jsonViewer);
+            wrappersContainer.appendChild(wrapper);
+          } else {
+            // Create table for CSV
 
           // Create table
           const table = document.createElement('table');
@@ -1289,18 +1627,150 @@ method build-html($title, @dataset-info) {
             tbody.appendChild(tr);
           });
 
-          table.appendChild(tbody);
-          wrapper.appendChild(table);
-          wrappersContainer.appendChild(wrapper);
+            table.appendChild(tbody);
+            wrapper.appendChild(table);
+            wrappersContainer.appendChild(wrapper);
 
-          // Initialize DataTable
-          const dt = $('#dataTable-' + dataset.name).DataTable({
-            pageLength: 10,
-            searching: true,
-            ordering: true
+            // Initialize DataTable
+            const dt = $('#dataTable-' + dataset.name).DataTable({
+              pageLength: 10,
+              searching: true,
+              ordering: true
+            });
+
+            dataset.dataTable = dt;
+          }
+        });
+      }
+
+      // Track feature indices while rendering
+      let featureIndexCounter = 0;
+
+      // Render JSON as collapsible HTML
+      function renderJSON(obj, depth = 0, datasetName = null, resetCounter = true) {
+        if (resetCounter && depth === 0) {
+          featureIndexCounter = 0;
+        }
+
+        const indent = '  '.repeat(depth);
+        let html = '';
+
+        if (obj === null) {
+          return '<span class="json-null">null</span>';
+        }
+
+        if (typeof obj !== 'object') {
+          if (typeof obj === 'string') {
+            return '<span class="json-string">"' + escapeHtml(obj) + '"</span>';
+          } else if (typeof obj === 'number') {
+            return '<span class="json-number">' + obj + '</span>';
+          } else if (typeof obj === 'boolean') {
+            return '<span class="json-boolean">' + obj + '</span>';
+          }
+          return String(obj);
+        }
+
+        const isArray = Array.isArray(obj);
+        const openBracket = isArray ? '[' : '{';
+        const closeBracket = isArray ? ']' : '}';
+        const entries = isArray ? obj.map((v, i) => [i, v]) : Object.entries(obj);
+
+        if (entries.length === 0) {
+          return '<span class="json-bracket">' + openBracket + closeBracket + '</span>';
+        }
+
+        // Check if this is a Feature
+        const isFeature = obj.type === 'Feature' && obj.geometry;
+        const featureIndex = isFeature ? featureIndexCounter++ : -1;
+
+        const wrapperClass = isFeature ? 'json-feature' : '';
+        const wrapperAttrs = isFeature && datasetName
+          ? ` data-dataset="${datasetName}" data-feature-index="${featureIndex}"`
+          : '';
+
+        if (wrapperClass) {
+          html += '<span class="' + wrapperClass + '"' + wrapperAttrs + '>';
+        }
+
+        html += '<span class="json-expandable">';
+        html += '<span class="json-bracket">' + openBracket + '</span>';
+        html += '</span>';
+        html += '<div class="json-item json-collapsed">';
+
+        entries.forEach(function([key, value], index) {
+          const isLast = index === entries.length - 1;
+
+          html += '<div>';
+          if (!isArray) {
+            html += '<span class="json-key">"' + escapeHtml(String(key)) + '"</span>: ';
+          }
+
+          if (value && typeof value === 'object') {
+            html += renderJSON(value, depth + 1, datasetName, false);
+          } else {
+            html += renderJSON(value, depth + 1, datasetName, false);
+          }
+
+          if (!isLast) {
+            html += ',';
+          }
+          html += '</div>';
+        });
+
+        html += '</div>';
+        html += '<span class="json-bracket">' + closeBracket + '</span>';
+
+        if (wrapperClass) {
+          html += '</span>';
+        }
+
+        return html;
+      }
+
+      function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      // Setup JSON tree expand/collapse
+      function setupJSONExpanders() {
+        document.querySelectorAll('.json-expandable').forEach(function(el) {
+          el.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const item = this.nextElementSibling;
+            if (item && item.classList.contains('json-item')) {
+              if (this.classList.contains('expanded')) {
+                this.classList.remove('expanded');
+                item.classList.add('json-collapsed');
+              } else {
+                this.classList.add('expanded');
+                item.classList.remove('json-collapsed');
+              }
+            }
           });
+        });
 
-          dataset.dataTable = dt;
+        // Setup feature click handlers
+        document.querySelectorAll('.json-feature').forEach(function(el) {
+          el.addEventListener('click', function(e) {
+            e.stopPropagation();
+            const datasetName = this.dataset.dataset;
+            const featureIndex = parseInt(this.dataset.featureIndex);
+
+            if (datasetName && !isNaN(featureIndex)) {
+              // Clear previous selection
+              document.querySelectorAll('.json-feature-selected').forEach(function(sel) {
+                sel.classList.remove('json-feature-selected');
+              });
+
+              // Mark this feature as selected
+              this.classList.add('json-feature-selected');
+
+              // Select the row (which zooms to the feature)
+              selectRow(datasetName, featureIndex);
+            }
+          });
         });
       }
 
@@ -1516,6 +1986,44 @@ method build-html($title, @dataset-info) {
               indicator.style.backgroundColor = getColorForRow(dataset.name, dataset.rowData[index].index);
             }
           });
+
+          // Rebuild color picker for the new palette
+          if (dataset.colorPicker) {
+            const palette = colorPalettes[paletteKey];
+            const currentOffset = dataset.colorOffsetAdjustment || 0;
+
+            dataset.colorPicker.innerHTML = '';
+            for (let i = 0; i < palette.length; i++) {
+              const wrapper = document.createElement('span');
+              wrapper.className = 'color-radio-wrapper';
+
+              const input = document.createElement('input');
+              input.type = 'radio';
+              input.name = 'color-' + dataset.name;
+              input.value = i;
+              input.id = 'color-' + dataset.name + '-' + i;
+              input.className = 'color-radio-input';
+              if (i === currentOffset) {
+                input.checked = true;
+              }
+
+              const label = document.createElement('label');
+              label.htmlFor = input.id;
+              label.className = 'color-radio-label';
+              label.style.backgroundColor = palette[i];
+              label.title = 'Color ' + (i + 1);
+
+              input.addEventListener('change', function() {
+                if (this.checked) {
+                  switchDatasetColorOffset(dataset.colorPicker.dataset.datasetName, parseInt(this.value));
+                }
+              });
+
+              wrapper.appendChild(input);
+              wrapper.appendChild(label);
+              dataset.colorPicker.appendChild(wrapper);
+            }
+          }
         });
       }
 
@@ -1652,6 +2160,70 @@ method build-html($title, @dataset-info) {
 
         currentSelection = null;
       }
+
+      function fitToDataset(datasetName) {
+        const dataset = allDatasets[datasetName];
+        if (!dataset) return;
+
+        // Clear table/JSON selection highlighting
+        $('.table-wrapper tbody tr').removeClass('selected');
+        document.querySelectorAll('.json-feature-selected').forEach(function(sel) {
+          sel.classList.remove('json-feature-selected');
+        });
+
+        // Keep all layers visible (don't hide anything)
+        Object.values(allLayerGroups).forEach(function(lg) {
+          lg.addTo(map);
+        });
+
+        // Collect bounds for this dataset only
+        const datasetBounds = [];
+        dataset.rowData.forEach(function(row) {
+          const layerKey = datasetName + '::' + row.index;
+          const layerGroup = allLayerGroups[layerKey];
+
+          if (layerGroup) {
+            layerGroup.eachLayer(function(layer) {
+              if (layer.getBounds) {
+                datasetBounds.push(layer.getBounds());
+              } else if (layer.getLatLng) {
+                const latlng = layer.getLatLng();
+                datasetBounds.push(L.latLngBounds([latlng, latlng]));
+              }
+            });
+          }
+        });
+
+        // Fit to dataset bounds
+        if (datasetBounds.length > 0) {
+          const combinedBounds = datasetBounds[0];
+          datasetBounds.slice(1).forEach(function(b) {
+            combinedBounds.extend(b);
+          });
+          map.fitBounds(combinedBounds, { padding: [50, 50] });
+        }
+
+        currentSelection = null;
+      }
+
+      function switchDatasetColorOffset(datasetName, offset) {
+        const dataset = allDatasets[datasetName];
+        if (!dataset) return;
+
+        // Store the color offset adjustment for this dataset
+        dataset.colorOffsetAdjustment = offset;
+
+        // Update colors for all features in this dataset
+        dataset.rowData.forEach(function(row) {
+          const layerKey = datasetName + '::' + row.index;
+          const layerGroup = allLayerGroups[layerKey];
+
+          if (layerGroup) {
+            const newColor = getColorForRow(datasetName, row.index);
+            updateLayerColors(layerGroup, newColor);
+          }
+        });
+      }
     </script>
   </body>
   </html>
@@ -1668,10 +2240,16 @@ method build-html($title, @dataset-info) {
 
 =head1 NAME
 
-Samaki::Plugout::CSVGeo -- Display CSV data on an interactive map
+Samaki::Plugout::CSVGeo -- Display CSV data or GeoJSON files on an interactive map
 
 =head1 DESCRIPTION
 
-Visualize CSV data containing geographic columns on an interactive map with a synchronized data table. Auto-detects lat/lon pairs, GeoJSON, WKT, and WKB formats. Includes map tile options, color palettes, and linked selection between map features and table rows.
+Visualize CSV data containing geographic columns or GeoJSON files on an interactive map.
+
+For CSV files: displays with a synchronized data table. Auto-detects lat/lon pairs, GeoJSON, WKT, and WKB formats in columns.
+
+For GeoJSON files: displays with a collapsible JSON tree viewer for exploring the structure.
+
+Includes map tile options, color palettes, and linked selection between map features and table rows. Multiple datasets can be loaded simultaneously with tabbed navigation.
 
 =end pod
