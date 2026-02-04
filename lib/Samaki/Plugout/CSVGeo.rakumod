@@ -13,6 +13,9 @@ has $.clear-before = False;
 method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   info "executing CSVGeo with $path";
 
+  # Derive name from CSV filename (not from the passed $name parameter)
+  my $csv-basename = $path.basename.subst(/'.csv'$/, '');
+
   # Read CSV
   my @rows = read-csv("$path");
   return unless @rows;
@@ -31,14 +34,54 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   # Prepare metadata for JavaScript
   my $latlon-pairs-json = to-json(@latlon-pairs);
 
-  # Generate HTML file
-  my $html-file = $data-dir.child("{$name}-csv-geo.html");
-  my $title = html-escape($data-dir.basename ~ " : " ~ $name);
+  # Create out/ subdirectory
+  my $out-dir = $data-dir.child('out');
+  $out-dir.mkdir unless $out-dir.e;
 
-  # Build HTML content
-  my $html = self.build-html($title, $csv-content, $latlon-pairs-json);
+  # Generate file paths using CSV filename
+  my $js-file = $out-dir.child("{$csv-basename}-csv-geo-data.js");
+  my $html-file = $out-dir.child("{$csv-basename}-csv-geo.html");
+  my $title = html-escape($data-dir.basename ~ " : " ~ $csv-basename);
 
-  # Write and open
+  # Find all existing csv-geo-data.js files in the out directory
+  my @all-data-files;
+  my @dataset-info;
+
+  for $out-dir.dir.sort -> $file {
+    next unless $file ~~ /'-csv-geo-data.js'$/;
+    my $basename = $file.basename;
+    my $dataset-name = $basename.subst('-csv-geo-data.js', '');
+    @all-data-files.push($basename);
+    @dataset-info.push(%(
+      filename => $basename,
+      name => $dataset-name,
+      is-current => ($basename eq "{$csv-basename}-csv-geo-data.js")
+    ));
+  }
+
+  # Add current file if it's not in the list yet
+  unless @all-data-files.grep("{$csv-basename}-csv-geo-data.js") {
+    @all-data-files.push("{$csv-basename}-csv-geo-data.js");
+    @dataset-info.push(%(
+      filename => "{$csv-basename}-csv-geo-data.js",
+      name => $csv-basename,
+      is-current => True
+    ));
+  }
+
+  # Move current dataset to the front so it's the active tab
+  @dataset-info = @dataset-info.sort: { -$_<is-current> };
+
+  info "Found {@all-data-files.elems} data file(s): {@all-data-files.join(', ')}";
+
+  # Build JavaScript data file
+  my $js-content = self.build-js-data($csv-basename, $csv-content, $latlon-pairs-json);
+
+  # Build HTML content with all data files
+  my $html = self.build-html($title, @dataset-info);
+
+  # Write both files
+  spurt $js-file, $js-content;
   spurt $html-file, $html;
   info "opening $html-file";
   shell-open $html-file;
@@ -107,10 +150,28 @@ method detect-latlon-pairs(@columns) {
 }
 
 
-method build-html($title, $csv-content, $latlon-pairs-json) {
-  # Escape the CSV content for embedding in HTML/JavaScript
+method build-js-data($dataset-name, $csv-content, $latlon-pairs-json) {
+  # Escape the CSV content for embedding in JavaScript
   # Need to escape backslashes, quotes, and newlines for JavaScript string literals
   my $csv-escaped = $csv-content.trans(['\\', '"', "\n", "\r"] => ['\\\\', '\\"', '\\n', '']);
+
+  return qq:to/JS/;
+  // CSV data and metadata for dataset: $dataset-name
+  if (typeof window.datasets === 'undefined') \{
+    window.datasets = \{\};
+  \}
+  window.datasets['$dataset-name'] = \{
+    csvContent: "$csv-escaped",
+    latlonPairs: $latlon-pairs-json
+  \};
+  JS
+}
+
+method build-html($title, @dataset-info) {
+  # Build script tags for all datasets
+  my $script-tags = @dataset-info.map(-> $ds {
+    qq[    <script src="{$ds<filename>}"></script>]
+  }).join("\n");
 
   my $html = q:to/HTML/;
   <!DOCTYPE html>
@@ -265,10 +326,59 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
 
       #table-container {
         flex: 1;
-        overflow: auto;
-        padding: 20px;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
         background: white;
         min-height: 100px;
+      }
+
+      #tabs {
+        display: flex;
+        gap: 4px;
+        padding: 10px 20px 0 20px;
+        background: #f8f9fa;
+        border-bottom: 2px solid #cbd5e1;
+        flex-shrink: 0;
+        position: relative;
+      }
+
+      .tab {
+        padding: 8px 16px;
+        background: #e2e8f0;
+        border: 1px solid #cbd5e1;
+        border-bottom: 2px solid #cbd5e1;
+        border-radius: 4px 4px 0 0;
+        cursor: pointer;
+        font-size: 13px;
+        color: #64748b;
+        transition: all 0.2s;
+        position: relative;
+        margin-bottom: -2px;
+      }
+
+      .tab:hover {
+        background: #f1f5f9;
+      }
+
+      .tab.active {
+        background: white;
+        color: #2c3e50;
+        font-weight: 500;
+        border-color: #cbd5e1;
+        border-bottom: 2px solid white;
+        z-index: 1;
+      }
+
+      .table-wrapper {
+        flex: 1;
+        overflow: auto;
+        padding: 20px;
+        display: none;
+      }
+
+      .table-wrapper.active {
+        display: block;
       }
 
       h2 {
@@ -278,30 +388,30 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
         font-weight: 500;
       }
 
-      #dataTable {
+      .table-wrapper table {
         width: 100% !important;
         font-size: 12px;
       }
 
-      #dataTable thead th {
+      .table-wrapper table thead th {
         background-color: #f1f5f9;
         color: #2c3e50;
         padding: 8px 6px;
       }
 
-      #dataTable tbody td {
+      .table-wrapper table tbody td {
         padding: 6px;
       }
 
-      #dataTable tbody tr {
+      .table-wrapper table tbody tr {
         cursor: pointer;
       }
 
-      #dataTable tbody tr:hover {
+      .table-wrapper table tbody tr:hover {
         background-color: #f1f5f9;
       }
 
-      #dataTable tbody tr.selected {
+      .table-wrapper table tbody tr.selected {
         background-color: #dbeafe !important;
       }
 
@@ -352,32 +462,22 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
     <div id="divider"></div>
 
     <div id="table-container">
-      <h2>TITLE_PLACEHOLDER</h2>
-      <table id="dataTable" class="display">
-        <thead>
-          <tr>
-            <th>Color</th>
-            <th>#</th>
-          </tr>
-        </thead>
-        <tbody>
-        </tbody>
-      </table>
+      <div id="tabs"></div>
+      <div id="table-wrappers"></div>
     </div>
 
-    <script>
-      // CSV data and metadata from Raku
-      const csvContent = "CSV_CONTENT_PLACEHOLDER";
-      const latlonPairs = LATLON_PAIRS_PLACEHOLDER;
+    <!-- External data files -->
+    SCRIPT_TAGS_PLACEHOLDER
 
+    <script>
       // Load wkx and Buffer from the browserified bundle
       const wkx = require('wkx');
       const Buffer = require('buffer').Buffer;
 
-      // Parse CSV and build row data
-      let rowData = [];
-      let columns = [];
-      let geoColumns = [];
+      // Global datasets structure
+      // Each dataset will have: { name, rowData, columns, geoColumns, dataTable, colorOffset }
+      let allDatasets = {};
+      let activeDatasetName = null;
 
       // Unescape CSV-escaped JSON: replace literal \n with newlines and "" with "
       // This handles JSON that was escaped when exported from databases/tools
@@ -581,119 +681,130 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
         return detected;
       }
 
-      function parseCSVData() {
-        const parsed = Papa.parse(csvContent, {
-          header: true,
-          skipEmptyLines: true
-        });
+      function parseAllDatasets() {
+        const datasetNames = Object.keys(window.datasets);
+        console.log('Parsing', datasetNames.length, 'datasets:', datasetNames);
 
-        if (!parsed.data || parsed.data.length === 0) {
-          console.error('No CSV data parsed');
-          return;
-        }
+        let colorOffset = 0;
+        const colorsPerDataset = 12; // Each dataset gets 12 colors
 
-        // Get columns from the first row
-        columns = Object.keys(parsed.data[0]);
+        datasetNames.forEach(function(datasetName) {
+          const dataset = window.datasets[datasetName];
+          const csvContent = dataset.csvContent;
+          const latlonPairs = dataset.latlonPairs;
 
-        // Detect geo columns using wkx
-        geoColumns = detectGeoColumns(parsed.data, columns);
+          const parsed = Papa.parse(csvContent, {
+            header: true,
+            skipEmptyLines: true
+          });
 
-        // Build set of columns to exclude from key selector
-        const excludedCols = new Set(geoColumns);
-
-        // Also exclude lat/lon columns from latlonPairs
-        latlonPairs.forEach(function(pair) {
-          excludedCols.add(pair.lat);
-          excludedCols.add(pair.lon);
-        });
-
-        // Populate key selector with non-geo columns
-        const keySelector = document.getElementById('key-selector');
-        columns.forEach(function(col) {
-          if (!excludedCols.has(col)) {
-            const option = document.createElement('option');
-            option.value = col;
-            option.textContent = 'Key: ' + col;
-            keySelector.appendChild(option);
+          if (!parsed.data || parsed.data.length === 0) {
+            console.error('No CSV data parsed for', datasetName);
+            return;
           }
-        });
 
-        // Build rowData array
-        parsed.data.forEach(function(row, index) {
-          const rowObj = {
-            index: index,
-            features: [],
-            data: {}
+          // Get columns from the first row
+          const columns = Object.keys(parsed.data[0]);
+
+          // Detect geo columns using wkx
+          const geoColumns = detectGeoColumns(parsed.data, columns);
+
+          // Build rowData array
+          const rowData = [];
+          parsed.data.forEach(function(row, index) {
+            const rowObj = {
+              index: index,
+              datasetName: datasetName,
+              features: [],
+              data: {}
+            };
+
+            // Copy all column data
+            columns.forEach(function(col) {
+              rowObj.data[col] = row[col] || '';
+            });
+
+            // Extract geo features from designated columns using wkx
+            geoColumns.forEach(function(col) {
+              const val = row[col];
+              if (!val) return;
+
+              try {
+                const geojson = tryParseGeo(val);
+                if (!geojson) return;
+
+                // Handle different GeoJSON types
+                if (geojson.type === 'Feature') {
+                  rowObj.features.push(geojson);
+                } else if (geojson.type === 'FeatureCollection') {
+                  geojson.features.forEach(function(f) {
+                    rowObj.features.push(f);
+                  });
+                } else if (geojson.type && geojson.coordinates) {
+                  // Bare geometry - wrap in Feature
+                  rowObj.features.push({
+                    type: 'Feature',
+                    geometry: geojson,
+                    properties: {}
+                  });
+                }
+              } catch (e) {
+                console.warn('Failed to parse geo data in row ' + index + ', column ' + col + ':', e);
+              }
+            });
+
+            // Create Point features from lat/lon pairs
+            latlonPairs.forEach(function(pair) {
+              const latVal = row[pair.lat];
+              const lonVal = row[pair.lon];
+
+              if (latVal && lonVal) {
+                const lat = parseFloat(latVal);
+                const lon = parseFloat(lonVal);
+
+                if (!isNaN(lat) && !isNaN(lon)) {
+                  rowObj.features.push({
+                    type: 'Feature',
+                    geometry: {
+                      type: 'Point',
+                      coordinates: [lon, lat]
+                    },
+                    properties: {
+                      lat_col: pair.lat,
+                      lon_col: pair.lon
+                    }
+                  });
+                }
+              }
+            });
+
+            rowData.push(rowObj);
+          });
+
+          // Store dataset info
+          allDatasets[datasetName] = {
+            name: datasetName,
+            rowData: rowData,
+            columns: columns,
+            geoColumns: geoColumns,
+            latlonPairs: latlonPairs,
+            colorOffset: colorOffset,
+            dataTable: null
           };
 
-          // Copy all column data
-          columns.forEach(function(col) {
-            rowObj.data[col] = row[col] || '';
-          });
-
-          // Extract geo features from designated columns using wkx
-          geoColumns.forEach(function(col) {
-            const val = row[col];
-            if (!val) return;
-
-            try {
-              const geojson = tryParseGeo(val);
-              if (!geojson) return;
-
-              // Handle different GeoJSON types
-              if (geojson.type === 'Feature') {
-                rowObj.features.push(geojson);
-              } else if (geojson.type === 'FeatureCollection') {
-                geojson.features.forEach(function(f) {
-                  rowObj.features.push(f);
-                });
-              } else if (geojson.type && geojson.coordinates) {
-                // Bare geometry - wrap in Feature
-                rowObj.features.push({
-                  type: 'Feature',
-                  geometry: geojson,
-                  properties: {}
-                });
-              }
-            } catch (e) {
-              console.warn('Failed to parse geo data in row ' + index + ', column ' + col + ':', e);
-            }
-          });
-
-          // Create Point features from lat/lon pairs
-          latlonPairs.forEach(function(pair) {
-            const latVal = row[pair.lat];
-            const lonVal = row[pair.lon];
-
-            if (latVal && lonVal) {
-              const lat = parseFloat(latVal);
-              const lon = parseFloat(lonVal);
-
-              if (!isNaN(lat) && !isNaN(lon)) {
-                rowObj.features.push({
-                  type: 'Feature',
-                  geometry: {
-                    type: 'Point',
-                    coordinates: [lon, lat]
-                  },
-                  properties: {
-                    lat_col: pair.lat,
-                    lon_col: pair.lon
-                  }
-                });
-              }
-            }
-          });
-
-          rowData.push(rowObj);
+          colorOffset += colorsPerDataset;
         });
+
+        // Set first dataset as active
+        if (datasetNames.length > 0) {
+          activeDatasetName = datasetNames[0];
+        }
       }
 
       // Global state
       let map;
-      let allLayerGroups = {};
+      let allLayerGroups = {}; // Key format: "datasetName::rowIndex"
       let currentSelection = null;
-      let dataTable;
       let currentTileLayer;
       let currentPalette = 'muted';
       let currentKey = 'none';
@@ -770,7 +881,7 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
         }
       };
 
-      // Build key color map when key changes
+      // Build key color map when key changes (across all datasets)
       function buildKeyColorMap() {
         keyColorMap = {};
 
@@ -778,11 +889,13 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
           return;
         }
 
-        // Collect unique values in the key column
+        // Collect unique values in the key column across all datasets
         const uniqueValues = new Set();
-        rowData.forEach(function(row) {
-          const value = row.data[currentKey] || 'null';
-          uniqueValues.add(value);
+        Object.values(allDatasets).forEach(function(dataset) {
+          dataset.rowData.forEach(function(row) {
+            const value = row.data[currentKey] || 'null';
+            uniqueValues.add(value);
+          });
         });
 
         // Assign colors to each unique value
@@ -795,16 +908,19 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
         console.log('Built key color map for', currentKey, ':', keyColorMap);
       }
 
-      // Helper function to get color for a row index
-      function getColorForRow(rowIndex) {
+      // Helper function to get color for a row in a dataset
+      function getColorForRow(datasetName, rowIndex) {
         const palette = colorPalettes[currentPalette];
+        const dataset = allDatasets[datasetName];
+        if (!dataset) return palette[0];
 
         if (currentKey === 'none') {
-          // Original behavior: color by row index
-          return palette[rowIndex % palette.length];
+          // Use dataset color offset + row index
+          const colorIndex = (dataset.colorOffset + rowIndex) % palette.length;
+          return palette[colorIndex];
         } else {
           // Key behavior: color by key value
-          const row = rowData[rowIndex];
+          const row = dataset.rowData[rowIndex];
           const keyValue = row.data[currentKey] || 'null';
           return keyColorMap[keyValue] || palette[0];
         }
@@ -890,7 +1006,7 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
 
       // Initialize on page load
       document.addEventListener('DOMContentLoaded', function() {
-        parseCSVData();
+        parseAllDatasets();
         initializeMap();
         initializeTable();
         setupEventHandlers();
@@ -906,68 +1022,71 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
           attribution: tileProviders.osm.attribution
         }).addTo(map);
 
-        // Create layer groups for each row
-        rowData.forEach(function(row) {
-          const layerGroup = L.layerGroup();
+        // Create layer groups for each row in each dataset
+        Object.values(allDatasets).forEach(function(dataset) {
+          dataset.rowData.forEach(function(row) {
+            const layerGroup = L.layerGroup();
 
-          row.features.forEach(function(feature) {
-            const color = getColorForRow(row.index);
-            const geoLayer = L.geoJSON(feature, {
-              style: {
-                color: color,
-                fillColor: color,
-                fillOpacity: 0.3,
-                weight: 2
-              },
-              pointToLayer: function(feature, latlng) {
-                // Check if this is a Point geometry
-                if (feature.geometry && feature.geometry.type === 'Point') {
-                  // Create a custom colored icon for Point geometries
-                  const markerIcon = L.divIcon({
-                    className: 'custom-marker-icon',
-                    html: '<div style="background-color: ' + color + '; width: 20px; height: 20px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
-                    iconSize: [24, 24],
-                    iconAnchor: [12, 24],
-                    popupAnchor: [0, -24]
-                  });
-                  return L.marker(latlng, { icon: markerIcon });
-                } else {
-                  // Use circle markers for other point-like features
-                  return L.circleMarker(latlng, {
-                    radius: 8,
-                    fillColor: color,
-                    color: '#ffffff',
-                    weight: 2,
-                    opacity: 1,
-                    fillOpacity: 0.8
-                  });
+            row.features.forEach(function(feature) {
+              const color = getColorForRow(dataset.name, row.index);
+              const geoLayer = L.geoJSON(feature, {
+                style: {
+                  color: color,
+                  fillColor: color,
+                  fillOpacity: 0.3,
+                  weight: 2
+                },
+                pointToLayer: function(feature, latlng) {
+                  // Check if this is a Point geometry
+                  if (feature.geometry && feature.geometry.type === 'Point') {
+                    // Create a custom colored icon for Point geometries
+                    const markerIcon = L.divIcon({
+                      className: 'custom-marker-icon',
+                      html: '<div style="background-color: ' + color + '; width: 20px; height: 20px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
+                      iconSize: [24, 24],
+                      iconAnchor: [12, 24],
+                      popupAnchor: [0, -24]
+                    });
+                    return L.marker(latlng, { icon: markerIcon });
+                  } else {
+                    // Use circle markers for other point-like features
+                    return L.circleMarker(latlng, {
+                      radius: 8,
+                      fillColor: color,
+                      color: '#ffffff',
+                      weight: 2,
+                      opacity: 1,
+                      fillOpacity: 0.8
+                    });
+                  }
                 }
-              }
+              });
+
+              // Add popup with row data
+              const popupContent = buildPopupContent(dataset, row, feature);
+              geoLayer.bindPopup(popupContent);
+
+              // Add click handler to select and scroll to corresponding table row
+              geoLayer.on('click', function(e) {
+                selectRowFromMap(dataset.name, row.index);
+              });
+
+              layerGroup.addLayer(geoLayer);
             });
 
-            // Add popup with row data
-            const popupContent = buildPopupContent(row, feature);
-            geoLayer.bindPopup(popupContent);
-
-            // Add click handler to select and scroll to corresponding table row
-            geoLayer.on('click', function(e) {
-              selectRowFromMap(row.index);
-            });
-
-            layerGroup.addLayer(geoLayer);
+            const layerKey = dataset.name + '::' + row.index;
+            allLayerGroups[layerKey] = layerGroup;
+            layerGroup.addTo(map);
           });
-
-          allLayerGroups[row.index] = layerGroup;
-          layerGroup.addTo(map);
         });
 
         // Fit map to all features
         fitAllBounds();
       }
 
-      function buildPopupContent(row, feature) {
+      function buildPopupContent(dataset, row, feature) {
         let html = '<div style="font-size: 11px; max-width: 300px;">';
-        html += '<strong>Row ' + (row.index + 1) + '</strong><br><br>';
+        html += '<strong>' + dataset.name + ' - Row ' + (row.index + 1) + '</strong><br><br>';
 
         // Show first few key/value pairs from the row data
         let count = 0;
@@ -978,7 +1097,7 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
           if (count >= maxFields) break;
 
           // Skip geo columns
-          if (geoColumns.includes(key)) continue;
+          if (dataset.geoColumns.includes(key)) continue;
 
           let value = row.data[key] || '';
 
@@ -1020,106 +1139,201 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
         }
       }
 
-      // Table initialization
+      // Table initialization - creates tabs and tables for all datasets
       function initializeTable() {
-        // Build table header
-        const thead = document.querySelector('#dataTable thead tr');
-        columns.forEach(function(col) {
-          const th = document.createElement('th');
-          th.textContent = col;
-          thead.appendChild(th);
-        });
+        const tabsContainer = document.getElementById('tabs');
+        const wrappersContainer = document.getElementById('table-wrappers');
 
-        // Build table body
-        const tbody = document.querySelector('#dataTable tbody');
-        rowData.forEach(function(row) {
-          const tr = document.createElement('tr');
-          tr.dataset.rowIndex = row.index;
+        // Populate key selector with columns from all datasets
+        const allColumns = new Set();
+        const excludedCols = new Set();
 
-          // Color indicator cell
-          const colorTd = document.createElement('td');
-          const colorSpan = document.createElement('span');
-          colorSpan.className = 'color-indicator';
-          colorSpan.style.backgroundColor = getColorForRow(row.index);
-          colorTd.appendChild(colorSpan);
-          tr.appendChild(colorTd);
-
-          // Row number cell
-          const numTd = document.createElement('td');
-          numTd.textContent = row.index + 1;
-          tr.appendChild(numTd);
-
-          // Data cells
-          columns.forEach(function(col) {
-            const td = document.createElement('td');
-            const cellValue = row.data[col] || '';
-
-            // Check if this column contains geo data
-            if (geoColumns.includes(col) && cellValue) {
-              // Show summary instead of full geo data
-              const summary = summarizeGeoData(cellValue);
-              const summarySpan = document.createElement('span');
-              summarySpan.textContent = summary;
-              summarySpan.style.fontStyle = 'italic';
-              summarySpan.style.color = '#666';
-
-              // Add copy button
-              const copyBtn = document.createElement('button');
-              copyBtn.textContent = '📋';
-              copyBtn.style.marginLeft = '6px';
-              copyBtn.style.padding = '2px 6px';
-              copyBtn.style.fontSize = '11px';
-              copyBtn.style.border = '1px solid #ccc';
-              copyBtn.style.borderRadius = '3px';
-              copyBtn.style.background = '#f8f9fa';
-              copyBtn.style.cursor = 'pointer';
-              copyBtn.title = 'Copy as GeoJSON';
-              copyBtn.onclick = function(e) {
-                e.stopPropagation();
-                // Convert to GeoJSON before copying
-                const geojson = tryParseGeo(cellValue);
-                if (geojson) {
-                  copyToClipboard(JSON.stringify(geojson, null, 2));
-                } else {
-                  copyToClipboard(cellValue);
-                }
-                copyBtn.textContent = '✓';
-                setTimeout(function() {
-                  copyBtn.textContent = '📋';
-                }, 1000);
-              };
-
-              td.appendChild(summarySpan);
-              td.appendChild(copyBtn);
-            } else {
-              td.textContent = cellValue;
-            }
-
-            tr.appendChild(td);
+        Object.values(allDatasets).forEach(function(dataset) {
+          dataset.columns.forEach(function(col) {
+            allColumns.add(col);
           });
-
-          tbody.appendChild(tr);
+          dataset.geoColumns.forEach(function(col) {
+            excludedCols.add(col);
+          });
+          dataset.latlonPairs.forEach(function(pair) {
+            excludedCols.add(pair.lat);
+            excludedCols.add(pair.lon);
+          });
         });
 
-        // Initialize DataTable
-        dataTable = $('#dataTable').DataTable({
-          pageLength: 10,
-          searching: true,
-          ordering: true,
-          createdRow: function(row, data, dataIndex) {
-            // Preserve the data-row-index attribute
-            const originalIndex = rowData[dataIndex].index;
-            $(row).attr('data-row-index', originalIndex);
+        const keySelector = document.getElementById('key-selector');
+        Array.from(allColumns).sort().forEach(function(col) {
+          if (!excludedCols.has(col)) {
+            const option = document.createElement('option');
+            option.value = col;
+            option.textContent = 'Key: ' + col;
+            keySelector.appendChild(option);
           }
         });
+
+        // Create a tab and table for each dataset
+        Object.values(allDatasets).forEach(function(dataset, idx) {
+          // Create tab
+          const tab = document.createElement('div');
+          tab.className = 'tab';
+          if (idx === 0) tab.classList.add('active');
+          tab.textContent = dataset.name;
+          tab.dataset.datasetName = dataset.name;
+          tab.onclick = function() {
+            switchToDataset(dataset.name);
+          };
+          tabsContainer.appendChild(tab);
+
+          // Create table wrapper
+          const wrapper = document.createElement('div');
+          wrapper.className = 'table-wrapper';
+          if (idx === 0) wrapper.classList.add('active');
+          wrapper.id = 'wrapper-' + dataset.name;
+
+          // Create table
+          const table = document.createElement('table');
+          table.className = 'display';
+          table.id = 'dataTable-' + dataset.name;
+          table.style.width = '100%';
+
+          // Table header
+          const thead = document.createElement('thead');
+          const headerRow = document.createElement('tr');
+
+          // Color and # columns
+          const colorTh = document.createElement('th');
+          colorTh.textContent = 'Color';
+          headerRow.appendChild(colorTh);
+
+          const numTh = document.createElement('th');
+          numTh.textContent = '#';
+          headerRow.appendChild(numTh);
+
+          dataset.columns.forEach(function(col) {
+            const th = document.createElement('th');
+            th.textContent = col;
+            headerRow.appendChild(th);
+          });
+
+          thead.appendChild(headerRow);
+          table.appendChild(thead);
+
+          // Table body
+          const tbody = document.createElement('tbody');
+          dataset.rowData.forEach(function(row) {
+            const tr = document.createElement('tr');
+            tr.dataset.rowIndex = row.index;
+            tr.dataset.datasetName = dataset.name;
+
+            // Color indicator cell
+            const colorTd = document.createElement('td');
+            const colorSpan = document.createElement('span');
+            colorSpan.className = 'color-indicator';
+            colorSpan.style.backgroundColor = getColorForRow(dataset.name, row.index);
+            colorTd.appendChild(colorSpan);
+            tr.appendChild(colorTd);
+
+            // Row number cell
+            const numTd = document.createElement('td');
+            numTd.textContent = row.index + 1;
+            tr.appendChild(numTd);
+
+            // Data cells
+            dataset.columns.forEach(function(col) {
+              const td = document.createElement('td');
+              const cellValue = row.data[col] || '';
+
+              // Check if this column contains geo data
+              if (dataset.geoColumns.includes(col) && cellValue) {
+                // Show summary instead of full geo data
+                const summary = summarizeGeoData(cellValue);
+                const summarySpan = document.createElement('span');
+                summarySpan.textContent = summary;
+                summarySpan.style.fontStyle = 'italic';
+                summarySpan.style.color = '#666';
+
+                // Add copy button
+                const copyBtn = document.createElement('button');
+                copyBtn.textContent = '📋';
+                copyBtn.style.marginLeft = '6px';
+                copyBtn.style.padding = '2px 6px';
+                copyBtn.style.fontSize = '11px';
+                copyBtn.style.border = '1px solid #ccc';
+                copyBtn.style.borderRadius = '3px';
+                copyBtn.style.background = '#f8f9fa';
+                copyBtn.style.cursor = 'pointer';
+                copyBtn.title = 'Copy as GeoJSON';
+                copyBtn.onclick = function(e) {
+                  e.stopPropagation();
+                  const geojson = tryParseGeo(cellValue);
+                  if (geojson) {
+                    copyToClipboard(JSON.stringify(geojson, null, 2));
+                  } else {
+                    copyToClipboard(cellValue);
+                  }
+                  copyBtn.textContent = '✓';
+                  setTimeout(function() {
+                    copyBtn.textContent = '📋';
+                  }, 1000);
+                };
+
+                td.appendChild(summarySpan);
+                td.appendChild(copyBtn);
+              } else {
+                td.textContent = cellValue;
+              }
+
+              tr.appendChild(td);
+            });
+
+            tbody.appendChild(tr);
+          });
+
+          table.appendChild(tbody);
+          wrapper.appendChild(table);
+          wrappersContainer.appendChild(wrapper);
+
+          // Initialize DataTable
+          const dt = $('#dataTable-' + dataset.name).DataTable({
+            pageLength: 10,
+            searching: true,
+            ordering: true
+          });
+
+          dataset.dataTable = dt;
+        });
+      }
+
+      // Switch to a different dataset tab
+      function switchToDataset(datasetName) {
+        // Update active tab
+        document.querySelectorAll('.tab').forEach(function(tab) {
+          if (tab.dataset.datasetName === datasetName) {
+            tab.classList.add('active');
+          } else {
+            tab.classList.remove('active');
+          }
+        });
+
+        // Update active table wrapper
+        document.querySelectorAll('.table-wrapper').forEach(function(wrapper) {
+          if (wrapper.id === 'wrapper-' + datasetName) {
+            wrapper.classList.add('active');
+          } else {
+            wrapper.classList.remove('active');
+          }
+        });
+
+        activeDatasetName = datasetName;
       }
 
       // Event handlers
       function setupEventHandlers() {
-        // Row click handler
-        $('#dataTable tbody').on('click', 'tr', function() {
+        // Row click handler - delegated to handle all dataset tables
+        $(document).on('click', '.table-wrapper tbody tr', function() {
           const rowIndex = parseInt($(this).data('row-index'));
-          selectRow(rowIndex);
+          const datasetName = $(this).data('dataset-name');
+          selectRow(datasetName, rowIndex);
         });
 
         // Show all button
@@ -1255,18 +1469,22 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
         updateLegend();
 
         // Update all map features
-        Object.keys(allLayerGroups).forEach(function(rowIndex) {
-          const layerGroup = allLayerGroups[rowIndex];
-          const newColor = getColorForRow(parseInt(rowIndex));
+        Object.keys(allLayerGroups).forEach(function(layerKey) {
+          const [datasetName, rowIndex] = layerKey.split('::');
+          const layerGroup = allLayerGroups[layerKey];
+          const newColor = getColorForRow(datasetName, parseInt(rowIndex));
 
           updateLayerColors(layerGroup, newColor);
         });
 
-        // Update table color indicators
-        document.querySelectorAll('.color-indicator').forEach(function(indicator, index) {
-          if (index < rowData.length) {
-            indicator.style.backgroundColor = getColorForRow(rowData[index].index);
-          }
+        // Update table color indicators for all datasets
+        Object.values(allDatasets).forEach(function(dataset) {
+          const selector = '#dataTable-' + dataset.name + ' .color-indicator';
+          document.querySelectorAll(selector).forEach(function(indicator, index) {
+            if (index < dataset.rowData.length) {
+              indicator.style.backgroundColor = getColorForRow(dataset.name, dataset.rowData[index].index);
+            }
+          });
         });
       }
 
@@ -1282,18 +1500,22 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
         updateLegend();
 
         // Update all map features
-        Object.keys(allLayerGroups).forEach(function(rowIndex) {
-          const layerGroup = allLayerGroups[rowIndex];
-          const newColor = getColorForRow(parseInt(rowIndex));
+        Object.keys(allLayerGroups).forEach(function(layerKey) {
+          const [datasetName, rowIndex] = layerKey.split('::');
+          const layerGroup = allLayerGroups[layerKey];
+          const newColor = getColorForRow(datasetName, parseInt(rowIndex));
 
           updateLayerColors(layerGroup, newColor);
         });
 
-        // Update table color indicators
-        document.querySelectorAll('.color-indicator').forEach(function(indicator, index) {
-          if (index < rowData.length) {
-            indicator.style.backgroundColor = getColorForRow(rowData[index].index);
-          }
+        // Update table color indicators for all datasets
+        Object.values(allDatasets).forEach(function(dataset) {
+          const selector = '#dataTable-' + dataset.name + ' .color-indicator';
+          document.querySelectorAll(selector).forEach(function(indicator, index) {
+            if (index < dataset.rowData.length) {
+              indicator.style.backgroundColor = getColorForRow(dataset.name, dataset.rowData[index].index);
+            }
+          });
         });
       }
 
@@ -1342,10 +1564,13 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
         });
       }
 
-      function selectRow(rowIndex) {
+      function selectRow(datasetName, rowIndex) {
+        // Switch to the dataset's tab
+        switchToDataset(datasetName);
+
         // Update table selection
-        $('#dataTable tbody tr').removeClass('selected');
-        $('#dataTable tbody tr[data-row-index="' + rowIndex + '"]').addClass('selected');
+        $('.table-wrapper tbody tr').removeClass('selected');
+        $('.table-wrapper tbody tr[data-dataset-name="' + datasetName + '"][data-row-index="' + rowIndex + '"]').addClass('selected');
 
         // Hide all layers
         Object.values(allLayerGroups).forEach(function(lg) {
@@ -1353,7 +1578,8 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
         });
 
         // Show only selected row's layer
-        const selectedLayer = allLayerGroups[rowIndex];
+        const layerKey = datasetName + '::' + rowIndex;
+        const selectedLayer = allLayerGroups[layerKey];
         if (selectedLayer) {
           selectedLayer.addTo(map);
 
@@ -1377,23 +1603,29 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
           }
         }
 
-        currentSelection = rowIndex;
+        currentSelection = { datasetName: datasetName, rowIndex: rowIndex };
       }
 
-      function selectRowFromMap(rowIndex) {
-        $('#dataTable tbody tr').removeClass('selected');
+      function selectRowFromMap(datasetName, rowIndex) {
+        // Switch to the dataset's tab
+        switchToDataset(datasetName);
 
-        const dataRowIndex = rowData.findIndex(function(r) { return r.index === rowIndex; });
+        $('.table-wrapper tbody tr').removeClass('selected');
+
+        const dataset = allDatasets[datasetName];
+        if (!dataset) return;
+
+        const dataRowIndex = dataset.rowData.findIndex(function(r) { return r.index === rowIndex; });
         if (dataRowIndex < 0) return;
 
-        const dt = dataTable;
+        const dt = dataset.dataTable;
         const pageLength = dt.page.len();
         const pageNumber = Math.floor(dataRowIndex / pageLength);
 
         dt.page(pageNumber).draw('page');
 
         setTimeout(function() {
-          const $targetRow = $('#dataTable tbody tr[data-row-index="' + rowIndex + '"]');
+          const $targetRow = $('.table-wrapper tbody tr[data-dataset-name="' + datasetName + '"][data-row-index="' + rowIndex + '"]');
           if ($targetRow.length > 0) {
             $targetRow.addClass('selected');
             const rowElement = $targetRow[0];
@@ -1403,12 +1635,12 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
           }
         }, 200);
 
-        currentSelection = rowIndex;
+        currentSelection = { datasetName: datasetName, rowIndex: rowIndex };
       }
 
       function showAll() {
         // Clear table selection
-        $('#dataTable tbody tr').removeClass('selected');
+        $('.table-wrapper tbody tr').removeClass('selected');
 
         // Show all layers
         Object.values(allLayerGroups).forEach(function(lg) {
@@ -1427,8 +1659,7 @@ method build-html($title, $csv-content, $latlon-pairs-json) {
 
   # Replace placeholders with actual values
   $html = $html.subst('TITLE_PLACEHOLDER', $title, :g);
-  $html = $html.subst('CSV_CONTENT_PLACEHOLDER', $csv-escaped);
-  $html = $html.subst('LATLON_PAIRS_PLACEHOLDER', $latlon-pairs-json);
+  $html = $html.subst('SCRIPT_TAGS_PLACEHOLDER', $script-tags);
 
   return $html;
 }
