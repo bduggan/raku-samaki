@@ -313,6 +313,11 @@ Usage is described at the top. For help, type `sam -h`.
 
 Have fun!
 
+SEE ALSO
+========
+
+https://fosdem.org/2026/schedule/event/EXZ8EJ-keeping_spatial_scripting_sane
+
 BUGS
 ====
 

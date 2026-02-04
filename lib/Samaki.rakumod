@@ -699,6 +699,10 @@ Usage is described at the top.  For help, type `sam -h`.
 
 Have fun!
 
+=head1 SEE ALSO
+
+https://fosdem.org/2026/schedule/event/EXZ8EJ-keeping_spatial_scripting_sane
+
 =head1 BUGS
 
 The backronym is a bit forced.  Here's another one: Simple Arrangements of Modules with Any Kind of Items
