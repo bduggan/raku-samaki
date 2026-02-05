@@ -22,7 +22,7 @@ method set-events {
     with $cell.output-file -> $file {
       if $file.IO.e {
         btm.put: [ color('info') => "Opening output file ", color('link') => "[" ~ $file.IO.relative ~ "]" ];
-        $.plugouts.dispatch($file, pane => btm, data-dir => self.data-dir, name => $cell.name );
+        $.plugouts.dispatch($file, pane => btm, data-dir => self.data-dir, name => $cell.name, :$cell );
       } else {
         btm.put: [ color('error') => "Output file " ~ color('link') ~ "[" ~ $file.IO.relative ~ "]" ~ color('error') ~ " does not exist.  Run the cell first." ];
       }
@@ -161,6 +161,7 @@ method set-events {
 
         with %meta<path> -> $path {
            $.plugouts.dispatch($path, pane => btm, :$data-dir, :$name,
+           cell => self.current-page.get-cell($name),
            |%( %meta<plugout_name> ?? %( plugout_name => %meta<plugout_name>) !! %() )
          );
         } else {
@@ -203,6 +204,7 @@ method set-events {
            $path, pane => btm, data-dir => self.data-dir, name => $cell.name,
            cell-content => $cell.last-content,
            cell-conf => $cell.conf,
+           :$cell,
            |%( %meta<plugout_name> ?? %( plugout_name => %meta<plugout_name>) !! %() )
       }
       when 'view_row' {
