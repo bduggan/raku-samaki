@@ -151,7 +151,7 @@ spurt $csv-file, "point,name\n" ~
   '"{\"type\":\"Point\",\"coordinates\":[36.817223,-1.286389]}",Nairobi' ~ "\n";
 
 $plugout.execute(path => $csv-file, data-dir => $temp-dir, name => 'test');
-my $html-file = $temp-dir.child('test-csv-geo.html');
+my $html-file = $temp-dir.child('out/test-csv-geo.html');
 ok $html-file.e, 'HTML file created';
 
 my $html = slurp $html-file;
@@ -176,22 +176,23 @@ spurt $fishes-csv, $fishes-data;
 
 # Execute plugout
 $plugout.execute(path => $fishes-csv, data-dir => $fishes-dir, name => 'records');
-my $fishes-html-file = $fishes-dir.child('records-csv-geo.html');
+my $fishes-html-file = $fishes-dir.child('out/records-csv-geo.html');
+my $fishes-js-file = $fishes-dir.child('out/records-csv-geo-data.js');
 ok $fishes-html-file.e, 'HTML file created for cell-4 format';
 
 # Verify HTML has lat/lon pair metadata
-my $fishes-html = slurp $fishes-html-file;
-ok $fishes-html ~~ /'latlonPairs'/, 'HTML contains latlonPairs metadata';
-ok $fishes-html ~~ /'"lat"' \s* ':' \s* '"LAT"'/, 'HTML contains LAT column reference';
-ok $fishes-html ~~ /'"lon"' \s* ':' \s* '"LON"'/, 'HTML contains LON column reference';
+my $fishes-js = slurp $fishes-js-file;
+ok $fishes-js ~~ /'latlonPairs'/, 'HTML contains latlonPairs metadata';
+ok $fishes-js ~~ /'"lat"' \s* ':' \s* '"LAT"'/, 'HTML contains LAT column reference';
+ok $fishes-js ~~ /'"lon"' \s* ':' \s* '"LON"'/, 'HTML contains LON column reference';
 
 # Verify CSV content is embedded
-ok $fishes-html ~~ /'FISH_ID'/, 'HTML contains FISH_ID column';
-ok $fishes-html ~~ /'Nairobi'/, 'HTML contains Nairobi data';
-ok $fishes-html ~~ /'Mombasa'/, 'HTML contains Mombasa data';
+ok $fishes-js ~~ /'FISH_ID'/, 'HTML contains FISH_ID column';
+ok $fishes-js ~~ /'Nairobi'/, 'HTML contains Nairobi data';
+ok $fishes-js ~~ /'Mombasa'/, 'HTML contains Mombasa data';
 
 # Verify LOCATION column is present (will be detected as geo by JavaScript)
-ok $fishes-html ~~ /'LOCATION'/, 'HTML contains LOCATION column';
+ok $fishes-js ~~ /'LOCATION'/, 'HTML contains LOCATION column';
 
 # Test comprehensive CSV with multiple prefix variants in actual data
 my $variants-dir = $*TMPDIR.child('csvgeo-variants-' ~ $*PID);
@@ -207,16 +208,18 @@ CSV
 spurt $variants-csv, $variants-data;
 
 # Execute plugout
-$plugout.execute(path => $variants-csv, data-dir => $variants-dir, name => 'trips');
-my $variants-html = $variants-dir.child('trips-csv-geo.html');
+$plugout.execute(path => $variants-csv, data-dir => $variants-dir, name => 'variants');
+my $variants-html = $variants-dir.child('out/variants-csv-geo.html');
+my $variants-js = $variants-dir.child('out/variants-csv-geo-data.js');
 ok $variants-html.e, 'HTML file created for multi-prefix variants';
+ok $variants-js.e, 'JS data file created for multi-prefix variants';
 
 # Verify both pairs are detected
-my $variants-html-content = slurp $variants-html;
-ok $variants-html-content ~~ /'pickup_lat'/, 'HTML contains pickup_lat';
-ok $variants-html-content ~~ /'pickup_lng'/, 'HTML contains pickup_lng';
-ok $variants-html-content ~~ /'dropoff_lat'/, 'HTML contains dropoff_lat';
-ok $variants-html-content ~~ /'dropoff_lon'/, 'HTML contains dropoff_lon';
+my $variants-js-content = slurp $variants-js;
+ok $variants-js-content ~~ /'pickup_lat'/, 'js contains pickup_lat';
+ok $variants-js-content ~~ /'pickup_lng'/, 'js contains pickup_lng';
+ok $variants-js-content ~~ /'dropoff_lat'/, 'js contains dropoff_lat';
+ok $variants-js-content ~~ /'dropoff_lon'/, 'js contains dropoff_lon';
 
 # Test CSV with uppercase variants
 my $upper-variants-csv = $variants-dir.child('upper-variants.csv');
@@ -227,14 +230,16 @@ my $upper-variants-data = q:to/CSV/;
 CSV
 spurt $upper-variants-csv, $upper-variants-data;
 
-$plugout.execute(path => $upper-variants-csv, data-dir => $variants-dir, name => 'points');
-my $upper-html = $variants-dir.child('points-csv-geo.html');
+$plugout.execute(path => $upper-variants-csv, data-dir => $variants-dir, name => 'upper-variants');
+my $upper-html = $variants-dir.child('out/upper-variants-csv-geo.html');
+my $upper-js = $variants-dir.child('out/upper-variants-csv-geo-data.js');
 ok $upper-html.e, 'HTML file created for uppercase variants';
+ok $upper-js.e, 'JS data file created for uppercase variants';
 
-my $upper-html-content = slurp $upper-html;
-ok $upper-html-content ~~ /'FISH_A_LAT'/, 'HTML contains FISH_A_LAT';
-ok $upper-html-content ~~ /'FISH_A_LNG'/, 'HTML contains FISH_A_LNG';
-ok $upper-html-content ~~ /'FISH_B_LATITUDE'/, 'HTML contains FISH_B_LATITUDE';
-ok $upper-html-content ~~ /'FISH_B_LONGITUDE'/, 'HTML contains FISH_B_LONGITUDE';
+my $upper-js-content = slurp $upper-js;
+ok $upper-js-content ~~ /'FISH_A_LAT'/, 'JS contains FISH_A_LAT';
+ok $upper-js-content ~~ /'FISH_A_LNG'/, 'JS contains FISH_A_LNG';
+ok $upper-js-content ~~ /'FISH_B_LATITUDE'/, 'JS contains FISH_B_LATITUDE';
+ok $upper-js-content ~~ /'FISH_B_LONGITUDE'/, 'JS contains FISH_B_LONGITUDE';
 
 done-testing;
