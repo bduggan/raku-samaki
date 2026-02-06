@@ -195,11 +195,12 @@ method set-events {
       when 'do_output' {
         my $page = self.current-page;
         my $path = %meta<path> or die "missing path in output action";
+        my $cell = %meta<cell> // $page.current-cell;
         unless $page {
-           $.plugouts.dispatch($path, pane => btm, data-dir => self.data-dir, name => "new-{now.Int}");
-           return;
+          warning "dispatch with no current page, using temp dir and generic name";
+          $.plugouts.dispatch($path, pane => btm, data-dir => self.data-dir, name => "new-{now.Int}", :$cell);
+          return;
         }
-        my $cell = $page.current-cell // $page.cells[0];
         $.plugouts.dispatch:
            $path, pane => btm, data-dir => self.data-dir, name => $cell.name,
            cell-content => $cell.last-content,

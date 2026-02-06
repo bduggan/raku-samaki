@@ -26,7 +26,6 @@ method dispatch(
     if $path.Str ~~ /$regex/ {
       my $handler = %entry<handler>;
       @handlers.push: $handler;
-      
     }
   }
   unless @handlers {
@@ -44,7 +43,7 @@ method dispatch(
   $pane.clear if $handler.clear-before;
   $pane.put: "Matched plugout handler {$handler.name} for $path";
   for @handlers.skip {
-    $pane.put: [ color('button') => '[' ~ .name ~ ']' ], meta => %( action => 'do_output', plugout_name => .name, :$path );
+    $pane.put: [ color('button') => '[' ~ .name ~ ']' ], meta => %( action => 'do_output', plugout_name => .name, :$path, :$cell );
   }
   try {
    $handler.pane = $pane;
