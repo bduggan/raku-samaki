@@ -253,7 +253,7 @@ method build-html($title, @dataset-info) {
         display: flex;
         gap: 8px;
         align-items: center;
-        flex-wrap: wrap;
+        flex-wrap: nowrap;
       }
 
       #show-all-btn {
@@ -271,7 +271,7 @@ method build-html($title, @dataset-info) {
         background: #2563eb;
       }
 
-      #tile-selector, #palette-selector, #key-selector {
+      #tile-selector, #palette-selector, #key-selector, #marker-size-selector, #marker-color-selector {
         padding: 5px 8px;
         font-family: inherit;
         font-size: 12px;
@@ -281,7 +281,7 @@ method build-html($title, @dataset-info) {
         cursor: pointer;
       }
 
-      #tile-selector:hover, #palette-selector:hover, #key-selector:hover {
+      #tile-selector:hover, #palette-selector:hover, #key-selector:hover, #marker-size-selector:hover, #marker-color-selector:hover {
         border-color: #cbd5e1;
       }
 
@@ -654,6 +654,27 @@ method build-html($title, @dataset-info) {
         </select>
         <select id="key-selector">
           <option value="none" selected>Key: none</option>
+        </select>
+        <select id="marker-size-selector">
+          <option value="tiny-fixed">Size: Tiny</option>
+          <option value="small-fixed">Size: Small</option>
+          <option value="medium-fixed" selected>Size: Medium</option>
+          <option value="large-fixed">Size: Large</option>
+          <option value="tiny-zoom">Size: Tiny (scaled)</option>
+          <option value="small-zoom">Size: Small (scaled)</option>
+          <option value="medium-zoom">Size: Medium (scaled)</option>
+          <option value="large-zoom">Size: Large (scaled)</option>
+        </select>
+        <select id="marker-color-selector">
+          <option value="row" selected>Color: Row</option>
+          <option value="alternate">Color: Alternate</option>
+          <option value="red">Color: Red</option>
+          <option value="blue">Color: Blue</option>
+          <option value="green">Color: Green</option>
+          <option value="yellow">Color: Yellow</option>
+          <option value="orange">Color: Orange</option>
+          <option value="purple">Color: Purple</option>
+          <option value="black">Color: Black</option>
         </select>
       </div>
       <div id="legend-box"></div>
@@ -1072,6 +1093,9 @@ method build-html($title, @dataset-info) {
       let currentPalette = 'muted';
       let currentKey = 'none';
       let keyColorMap = {};
+      let currentMarkerSize = 'medium';
+      let markerScaleWithZoom = false;
+      let currentMarkerColor = 'row';
 
       // Color palettes
       const colorPalettes = {
@@ -1114,6 +1138,58 @@ method build-html($title, @dataset-info) {
         blackborders: { borderColor: '#000000', borderWidth: 2.5 },
         whiteborders: { borderColor: '#ffffff', borderWidth: 2.5 }
       };
+
+      // Marker size configurations
+      const markerSizes = {
+        tiny: { marker: 8, circle: 3, scaledRadius: 500, icon: [12, 12], anchor: [6, 12] },
+        small: { marker: 12, circle: 5, scaledRadius: 2000, icon: [16, 16], anchor: [8, 16] },
+        medium: { marker: 20, circle: 8, scaledRadius: 5000, icon: [24, 24], anchor: [12, 24] },
+        large: { marker: 28, circle: 12, scaledRadius: 10000, icon: [32, 32], anchor: [16, 32] }
+      };
+
+      // Marker color options
+      const markerColorOptions = {
+        red: '#ef4444',
+        blue: '#3b82f6',
+        green: '#10b981',
+        yellow: '#eab308',
+        orange: '#f97316',
+        purple: '#8b5cf6',
+        black: '#1f2937'
+      };
+
+      // Get current marker size config
+      function getMarkerSize() {
+        return markerSizes[currentMarkerSize] || markerSizes.medium;
+      }
+
+      // Get marker color based on settings
+      function getMarkerColor(datasetName, rowIndex) {
+        if (currentMarkerColor === 'row') {
+          // Use row-based color (original behavior)
+          return getColorForRow(datasetName, rowIndex);
+        } else if (currentMarkerColor === 'alternate') {
+          // Use the next color in the palette
+          const dataset = allDatasets[datasetName];
+          if (!dataset) return colorPalettes[currentPalette][0];
+          const palette = colorPalettes[currentPalette];
+          const baseColor = getColorForRow(datasetName, rowIndex);
+          const baseIndex = palette.indexOf(baseColor);
+          const alternateIndex = baseIndex >= 0 ? (baseIndex + 1) % palette.length : 1;
+          return palette[alternateIndex];
+        } else if (markerColorOptions[currentMarkerColor]) {
+          // Use fixed color
+          const color = markerColorOptions[currentMarkerColor];
+          if (rowIndex === 0) {
+            console.log('Using fixed marker color:', currentMarkerColor, '=', color);
+          }
+          return color;
+        } else {
+          // Fallback to row color
+          console.warn('Unknown marker color option:', currentMarkerColor, '- falling back to row color');
+          return getColorForRow(datasetName, rowIndex);
+        }
+      }
 
       // Tile provider configurations
       const tileProviders = {
@@ -1282,6 +1358,10 @@ method build-html($title, @dataset-info) {
       function initializeMap() {
         map = L.map('map');
 
+        // Create a custom pane for markers so they appear above other features
+        map.createPane('markerPane');
+        map.getPane('markerPane').style.zIndex = 650; // Higher than overlayPane (400)
+
         // Add default tile layer (OpenStreetMap)
         currentTileLayer = L.tileLayer(tileProviders.osm.url, {
           maxZoom: tileProviders.osm.maxZoom,
@@ -1295,36 +1375,67 @@ method build-html($title, @dataset-info) {
 
             row.features.forEach(function(feature) {
               const color = getColorForRow(dataset.name, row.index);
+              const markerColor = getMarkerColor(dataset.name, row.index);
+
               const geoLayer = L.geoJSON(feature, {
-                style: {
-                  color: color,
-                  fillColor: color,
-                  fillOpacity: 0.3,
-                  weight: 2
-                },
                 pointToLayer: function(feature, latlng) {
-                  // Check if this is a Point geometry
-                  if (feature.geometry && feature.geometry.type === 'Point') {
-                    // Create a custom colored icon for Point geometries
-                    const markerIcon = L.divIcon({
-                      className: 'custom-marker-icon',
-                      html: '<div style="background-color: ' + color + '; width: 20px; height: 20px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
-                      iconSize: [24, 24],
-                      iconAnchor: [12, 24],
-                      popupAnchor: [0, -24]
-                    });
-                    return L.marker(latlng, { icon: markerIcon });
-                  } else {
-                    // Use circle markers for other point-like features
-                    return L.circleMarker(latlng, {
-                      radius: 8,
-                      fillColor: color,
-                      color: '#ffffff',
+                  const size = getMarkerSize();
+                  // Recalculate color inside pointToLayer to ensure fresh value
+                  const actualMarkerColor = getMarkerColor(dataset.name, row.index);
+
+                  if (row.index === 0) {
+                    console.log('pointToLayer: dataset=', dataset.name, 'row=', row.index, 'color=', actualMarkerColor, 'scaled=', markerScaleWithZoom, 'size=', size);
+                  }
+
+                  // All markers are circles with black borders
+                  if (markerScaleWithZoom) {
+                    // Use L.circle which scales with zoom (radius in meters)
+                    const circle = L.circle(latlng, {
+                      radius: size.scaledRadius, // meters
+                      fillColor: actualMarkerColor,
+                      color: '#000000',
                       weight: 2,
                       opacity: 1,
-                      fillOpacity: 0.8
+                      fillOpacity: 0.9,
+                      pane: 'markerPane'
                     });
+                    if (row.index === 0) {
+                      console.log('Created L.circle with radius:', size.scaledRadius, 'meters, fillColor:', actualMarkerColor);
+                    }
+                    return circle;
+                  } else {
+                    // Use circleMarker for fixed size (radius in pixels)
+                    const circleMarker = L.circleMarker(latlng, {
+                      radius: size.circle,
+                      fillColor: actualMarkerColor,
+                      color: '#000000',
+                      weight: 2,
+                      opacity: 1,
+                      fillOpacity: 0.9,
+                      pane: 'markerPane'
+                    });
+                    if (row.index === 0) {
+                      console.log('Created L.circleMarker with radius:', size.circle, 'pixels, fillColor:', actualMarkerColor);
+                    }
+                    return circleMarker;
                   }
+                }
+              });
+
+              // Apply styling to non-point features only
+              geoLayer.eachLayer(function(layer) {
+                // Skip markers (they're already styled in pointToLayer)
+                if (layer instanceof L.CircleMarker || layer instanceof L.Circle) {
+                  return;
+                }
+                // Style polygons and lines
+                if (layer.setStyle) {
+                  layer.setStyle({
+                    color: color,
+                    fillColor: color,
+                    fillOpacity: 0.3,
+                    weight: 2
+                  });
                 }
               });
 
@@ -1829,6 +1940,21 @@ method build-html($title, @dataset-info) {
           switchKey(e.target.value);
         });
 
+        // Marker size selector (combined with scale)
+        document.getElementById('marker-size-selector').addEventListener('change', function(e) {
+          const parts = e.target.value.split('-');
+          const size = parts[0]; // tiny, small, medium, large
+          const scale = parts[1]; // fixed or zoom
+          console.log('Size selector changed to:', e.target.value, '-> size:', size, 'scale:', scale);
+          switchMarkerSize(size);
+          toggleMarkerScale(scale === 'zoom');
+        });
+
+        // Marker color selector
+        document.getElementById('marker-color-selector').addEventListener('change', function(e) {
+          switchMarkerColor(e.target.value);
+        });
+
         // Divider drag handler
         setupDividerDrag();
       }
@@ -1852,7 +1978,7 @@ method build-html($title, @dataset-info) {
         currentTileLayer.bringToBack();
       }
 
-      // Helper function to update layer colors
+      // Helper function to update layer colors (polygons, lines - NOT markers)
       function updateLayerColors(layerGroup, newColor) {
         const isBorderPalette = !!borderPalettes[currentPalette];
         const borderStyle = borderPalettes[currentPalette];
@@ -1861,23 +1987,18 @@ method build-html($title, @dataset-info) {
           // For geoJSON layers that contain multiple sub-layers, iterate through them
           if (layer.eachLayer) {
             layer.eachLayer(function(subLayer) {
-              // Check if sublayer is a marker
-              if (subLayer.setIcon && subLayer.options && subLayer.options.icon) {
-                const oldIcon = subLayer.options.icon;
-                if (oldIcon.options && oldIcon.options.className === 'custom-marker-icon') {
-                  const markerBorder = isBorderPalette ? borderStyle.borderColor : '#ffffff';
-                  const newIcon = L.divIcon({
-                    className: 'custom-marker-icon',
-                    html: '<div style="background-color: ' + newColor + '; width: 20px; height: 20px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid ' + markerBorder + '; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
-                    iconSize: [24, 24],
-                    iconAnchor: [12, 24],
-                    popupAnchor: [0, -24]
-                  });
-                  subLayer.setIcon(newIcon);
-                }
+              // Skip markers (circles and circleMarkers) - they use getMarkerColor()
+              if (subLayer instanceof L.CircleMarker || subLayer instanceof L.Circle) {
+                return; // Don't update marker colors when palette changes
               }
-              // Update sublayer style for circle markers, polygons, lines, etc.
-              else if (subLayer.setStyle) {
+
+              // Skip old divIcon markers (we don't use these anymore but keep for safety)
+              if (subLayer.setIcon && subLayer.options && subLayer.options.icon) {
+                return;
+              }
+
+              // Update sublayer style for polygons, lines, etc.
+              if (subLayer.setStyle) {
                 if (isBorderPalette) {
                   subLayer.setStyle({
                     color: borderStyle.borderColor,
@@ -1896,22 +2017,15 @@ method build-html($title, @dataset-info) {
               }
             });
           }
-          // Check if this layer itself is a direct marker (not wrapped in geoJSON)
-          else if (layer.setIcon && layer.options && layer.options.icon) {
-            const oldIcon = layer.options.icon;
-            if (oldIcon.options && oldIcon.options.className === 'custom-marker-icon') {
-              const markerBorder = isBorderPalette ? borderStyle.borderColor : '#ffffff';
-              const newIcon = L.divIcon({
-                className: 'custom-marker-icon',
-                html: '<div style="background-color: ' + newColor + '; width: 20px; height: 20px; border-radius: 50% 50% 50% 0; transform: rotate(-45deg); border: 2px solid ' + markerBorder + '; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
-                iconSize: [24, 24],
-                iconAnchor: [12, 24],
-                popupAnchor: [0, -24]
-              });
-              layer.setIcon(newIcon);
-            }
+          // Skip direct markers
+          else if (layer instanceof L.CircleMarker || layer instanceof L.Circle) {
+            return; // Don't update marker colors when palette changes
           }
-          // Update the layer's style for direct polygons, lines, etc. (not wrapped in geoJSON)
+          // Skip old divIcon markers
+          else if (layer.setIcon && layer.options && layer.options.icon) {
+            return;
+          }
+          // Update the layer's style for direct polygons, lines, etc.
           else if (layer.setStyle) {
             if (isBorderPalette) {
               layer.setStyle({
@@ -1959,6 +2073,141 @@ method build-html($title, @dataset-info) {
             }
           });
         });
+      }
+
+      function switchMarkerSize(sizeKey) {
+        if (!markerSizes[sizeKey]) return;
+
+        currentMarkerSize = sizeKey;
+
+        // Recreate all markers with new size
+        recreateAllMarkers();
+      }
+
+      function toggleMarkerScale(enabled) {
+        markerScaleWithZoom = enabled;
+
+        // Recreate all markers with new scaling behavior
+        recreateAllMarkers();
+      }
+
+      function switchMarkerColor(colorKey) {
+        console.log('Switching marker color to:', colorKey);
+        currentMarkerColor = colorKey;
+
+        // Recreate all markers with new color
+        recreateAllMarkers();
+      }
+
+      function recreateAllMarkers() {
+        // Store current map view
+        const center = map.getCenter();
+        const zoom = map.getZoom();
+
+        // Rebuild all layer groups
+        Object.values(allDatasets).forEach(function(dataset) {
+          dataset.rowData.forEach(function(row) {
+            const layerKey = dataset.name + '::' + row.index;
+            const oldLayerGroup = allLayerGroups[layerKey];
+            const wasOnMap = map.hasLayer(oldLayerGroup);
+
+            // Remove old layer group
+            if (wasOnMap) {
+              oldLayerGroup.remove();
+            }
+
+            // Create new layer group
+            const newLayerGroup = L.layerGroup();
+
+            row.features.forEach(function(feature) {
+              const color = getColorForRow(dataset.name, row.index);
+
+              const geoLayer = L.geoJSON(feature, {
+                pointToLayer: function(feature, latlng) {
+                  const size = getMarkerSize();
+                  // Recalculate color inside pointToLayer to ensure fresh value
+                  const actualMarkerColor = getMarkerColor(dataset.name, row.index);
+
+                  if (row.index === 0) {
+                    console.log('recreateAllMarkers pointToLayer: dataset=', dataset.name, 'row=', row.index, 'color=', actualMarkerColor, 'scaled=', markerScaleWithZoom, 'size=', size);
+                  }
+
+                  // All markers are circles with black borders
+                  if (markerScaleWithZoom) {
+                    // Use L.circle which scales with zoom (radius in meters)
+                    const circle = L.circle(latlng, {
+                      radius: size.scaledRadius,
+                      fillColor: actualMarkerColor,
+                      color: '#000000',
+                      weight: 2,
+                      opacity: 1,
+                      fillOpacity: 0.9,
+                      pane: 'markerPane'
+                    });
+                    if (row.index === 0) {
+                      console.log('Created L.circle with radius:', size.scaledRadius, 'meters, fillColor:', actualMarkerColor);
+                    }
+                    return circle;
+                  } else {
+                    // Use circleMarker for fixed size (radius in pixels)
+                    const circleMarker = L.circleMarker(latlng, {
+                      radius: size.circle,
+                      fillColor: actualMarkerColor,
+                      color: '#000000',
+                      weight: 2,
+                      opacity: 1,
+                      fillOpacity: 0.9,
+                      pane: 'markerPane'
+                    });
+                    if (row.index === 0) {
+                      console.log('Created L.circleMarker with radius:', size.circle, 'pixels, fillColor:', actualMarkerColor);
+                    }
+                    return circleMarker;
+                  }
+                }
+              });
+
+              // Apply styling to non-point features only
+              geoLayer.eachLayer(function(layer) {
+                // Skip markers (they're already styled in pointToLayer)
+                if (layer instanceof L.CircleMarker || layer instanceof L.Circle) {
+                  return;
+                }
+                // Style polygons and lines
+                if (layer.setStyle) {
+                  layer.setStyle({
+                    color: color,
+                    fillColor: color,
+                    fillOpacity: 0.3,
+                    weight: 2
+                  });
+                }
+              });
+
+              // Add popup with row data
+              const popupContent = buildPopupContent(dataset, row, feature);
+              geoLayer.bindPopup(popupContent);
+
+              // Add click handler to select and scroll to corresponding table row
+              geoLayer.on('click', function(e) {
+                selectRowFromMap(dataset.name, row.index);
+              });
+
+              newLayerGroup.addLayer(geoLayer);
+            });
+
+            // Replace old layer group
+            allLayerGroups[layerKey] = newLayerGroup;
+
+            // Add back to map if it was visible before
+            if (wasOnMap) {
+              newLayerGroup.addTo(map);
+            }
+          });
+        });
+
+        // Restore map view
+        map.setView(center, zoom);
       }
 
       function switchPalette(paletteKey) {
