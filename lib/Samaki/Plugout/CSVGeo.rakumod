@@ -236,6 +236,15 @@ method build-html($title, @dataset-info) {
         flex-shrink: 0;
       }
 
+      #map-container.fullscreen {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+        z-index: 9999;
+      }
+
       #map {
         height: 100%;
         width: 100%;
@@ -245,15 +254,17 @@ method build-html($title, @dataset-info) {
         position: absolute;
         top: 10px;
         left: 50px;
+        right: 60px;
         z-index: 1000;
-        background: white;
+        background: rgba(255, 255, 255, 0.6);
         padding: 8px 12px;
+        border: 2px solid rgba(255, 255, 255, 1);
         border-radius: 4px;
         box-shadow: 0 2px 4px rgba(0,0,0,0.2);
         display: flex;
         gap: 8px;
         align-items: center;
-        flex-wrap: nowrap;
+        flex-wrap: wrap;
       }
 
       #show-all-btn {
@@ -265,10 +276,37 @@ method build-html($title, @dataset-info) {
         border: none;
         border-radius: 3px;
         cursor: pointer;
+        white-space: nowrap;
       }
 
       #show-all-btn:hover {
         background: #2563eb;
+      }
+
+      #fullscreen-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 1000;
+        width: 32px;
+        height: 32px;
+        padding: 0;
+        font-size: 18px;
+        background: white;
+        color: #333;
+        border: 2px solid #e2e8f0;
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        line-height: 1;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+      }
+
+      #fullscreen-btn:hover {
+        background: #f8f9fa;
+        border-color: #cbd5e1;
       }
 
       #tile-selector, #palette-selector, #key-selector, #marker-size-selector, #marker-color-selector {
@@ -279,6 +317,8 @@ method build-html($title, @dataset-info) {
         border-radius: 3px;
         background: white;
         cursor: pointer;
+        max-width: 200px;
+        min-width: 0;
       }
 
       #tile-selector:hover, #palette-selector:hover, #key-selector:hover, #marker-size-selector:hover, #marker-color-selector:hover {
@@ -287,7 +327,7 @@ method build-html($title, @dataset-info) {
 
       #legend-box {
         position: absolute;
-        top: 10px;
+        top: 52px;
         right: 10px;
         z-index: 1000;
         background: rgba(255, 255, 255, 0.95);
@@ -633,6 +673,7 @@ method build-html($title, @dataset-info) {
   <body>
     <div id="map-container">
       <div id="map"></div>
+      <button id="fullscreen-btn" title="Fullscreen">⛶</button>
       <div id="controls">
         <button id="show-all-btn">Show All</button>
         <select id="tile-selector">
@@ -653,28 +694,28 @@ method build-html($title, @dataset-info) {
           <option value="whiteborders">White Borders</option>
         </select>
         <select id="key-selector">
-          <option value="none" selected>Key: none</option>
+          <option value="none" selected>Legend: none</option>
         </select>
         <select id="marker-size-selector">
-          <option value="tiny-fixed">Size: Tiny</option>
-          <option value="small-fixed">Size: Small</option>
-          <option value="medium-fixed" selected>Size: Medium</option>
-          <option value="large-fixed">Size: Large</option>
-          <option value="tiny-zoom">Size: Tiny (scaled)</option>
-          <option value="small-zoom">Size: Small (scaled)</option>
-          <option value="medium-zoom">Size: Medium (scaled)</option>
-          <option value="large-zoom">Size: Large (scaled)</option>
+          <option value="tiny-fixed">Tiny</option>
+          <option value="small-fixed">Small</option>
+          <option value="medium-fixed" selected>Medium</option>
+          <option value="large-fixed">Large</option>
+          <option value="tiny-zoom">Tiny (zoom)</option>
+          <option value="small-zoom">Small (zoom)</option>
+          <option value="medium-zoom">Medium (zoom)</option>
+          <option value="large-zoom">Large (zoom)</option>
         </select>
         <select id="marker-color-selector">
-          <option value="row" selected>Color: Row</option>
-          <option value="alternate">Color: Alternate</option>
-          <option value="red">Color: Red</option>
-          <option value="blue">Color: Blue</option>
-          <option value="green">Color: Green</option>
-          <option value="yellow">Color: Yellow</option>
-          <option value="orange">Color: Orange</option>
-          <option value="purple">Color: Purple</option>
-          <option value="black">Color: Black</option>
+          <option value="row" selected>By Row</option>
+          <option value="alternate">Alternate</option>
+          <option value="red">Red</option>
+          <option value="blue">Blue</option>
+          <option value="green">Green</option>
+          <option value="yellow">Yellow</option>
+          <option value="orange">Orange</option>
+          <option value="purple">Purple</option>
+          <option value="black">Black</option>
         </select>
       </div>
       <div id="legend-box"></div>
@@ -1925,6 +1966,11 @@ method build-html($title, @dataset-info) {
           showAll();
         });
 
+        // Fullscreen button
+        document.getElementById('fullscreen-btn').addEventListener('click', function() {
+          toggleFullscreen();
+        });
+
         // Tile provider selector
         document.getElementById('tile-selector').addEventListener('change', function(e) {
           switchTileProvider(e.target.value);
@@ -1958,6 +2004,44 @@ method build-html($title, @dataset-info) {
         // Divider drag handler
         setupDividerDrag();
       }
+
+      function toggleFullscreen() {
+        const mapContainer = document.getElementById('map-container');
+
+        if (!document.fullscreenElement) {
+          // Enter fullscreen
+          document.documentElement.requestFullscreen().then(function() {
+            mapContainer.classList.add('fullscreen');
+            // Invalidate map size to ensure proper rendering
+            setTimeout(function() {
+              map.invalidateSize();
+            }, 100);
+          }).catch(function(err) {
+            console.error('Error attempting to enable fullscreen:', err);
+          });
+        } else {
+          // Exit fullscreen
+          document.exitFullscreen().then(function() {
+            mapContainer.classList.remove('fullscreen');
+            // Invalidate map size to ensure proper rendering
+            setTimeout(function() {
+              map.invalidateSize();
+            }, 100);
+          });
+        }
+      }
+
+      // Listen for fullscreen changes (e.g., user pressing ESC)
+      document.addEventListener('fullscreenchange', function() {
+        const mapContainer = document.getElementById('map-container');
+        if (!document.fullscreenElement) {
+          // Exited fullscreen
+          mapContainer.classList.remove('fullscreen');
+          setTimeout(function() {
+            map.invalidateSize();
+          }, 100);
+        }
+      });
 
       function switchTileProvider(providerKey) {
         const provider = tileProviders[providerKey];
