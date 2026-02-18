@@ -439,6 +439,17 @@ method build-html($title, @dataset-info) {
         z-index: 1;
       }
 
+      .tab-checkbox {
+        margin-right: 6px;
+        cursor: pointer;
+        vertical-align: middle;
+      }
+
+      .tab-label {
+        cursor: pointer;
+        user-select: none;
+      }
+
       .table-wrapper {
         position: absolute;
         top: 0;
@@ -515,6 +526,12 @@ method build-html($title, @dataset-info) {
       .dataTables_wrapper .dataTables_paginate .paginate_button {
         font-size: 10px;
         padding: 2px 6px;
+      }
+
+      .dataTables_wrapper .dataTables_info {
+        text-align: center;
+        width: 100%;
+        margin: 8px 0;
       }
 
       .custom-marker-icon {
@@ -1595,11 +1612,29 @@ method build-html($title, @dataset-info) {
           const tab = document.createElement('div');
           tab.className = 'tab';
           if (idx === 0) tab.classList.add('active');
-          tab.textContent = dataset.name;
           tab.dataset.datasetName = dataset.name;
-          tab.onclick = function() {
+
+          // Add visibility checkbox
+          const checkbox = document.createElement('input');
+          checkbox.type = 'checkbox';
+          checkbox.className = 'tab-checkbox';
+          checkbox.checked = true;
+          checkbox.dataset.datasetName = dataset.name;
+          checkbox.onclick = function(e) {
+            e.stopPropagation();
+            toggleDatasetVisibility(dataset.name, this.checked);
+          };
+
+          // Add label with dataset name
+          const label = document.createElement('span');
+          label.className = 'tab-label';
+          label.textContent = dataset.name;
+          label.onclick = function() {
             switchToDataset(dataset.name);
           };
+
+          tab.appendChild(checkbox);
+          tab.appendChild(label);
           tabsContainer.appendChild(tab);
 
           // Create wrapper
@@ -1790,7 +1825,11 @@ method build-html($title, @dataset-info) {
             const dt = $('#dataTable-' + dataset.name).DataTable({
               pageLength: 10,
               searching: true,
-              ordering: true
+              ordering: true,
+              dom: 'lfitp', // length selector and filter at top, then info (centered), table, pagination
+              infoCallback: function(settings, start, end, max, total, pre) {
+                return 'Showing ' + start + ' to ' + end + ' of ' + total + ' entries (total: ' + max + ')';
+              }
             });
 
             dataset.dataTable = dt;
@@ -1950,6 +1989,20 @@ method build-html($title, @dataset-info) {
         });
 
         activeDatasetName = datasetName;
+      }
+
+      // Toggle visibility of all layers for a dataset
+      function toggleDatasetVisibility(datasetName, visible) {
+        Object.keys(allLayerGroups).forEach(function(layerKey) {
+          if (layerKey.startsWith(datasetName + '::')) {
+            const layerGroup = allLayerGroups[layerKey];
+            if (visible) {
+              layerGroup.addTo(map);
+            } else {
+              layerGroup.remove();
+            }
+          }
+        });
       }
 
       // Event handlers
