@@ -1,3 +1,9 @@
+0.0.30 2026-02-18
+  - csvgeo updates:
+    - full screen, marker colors, geojson support,
+    - multiple datasets, better handling of lat/lon
+  - plugout api: send cell object
+
 0.0.29 2026-02-04
   - docs updates
   - url plugin
