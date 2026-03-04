@@ -1261,7 +1261,7 @@ method build-html($title, @dataset-info) {
       let allLayerGroups = {}; // Key format: "datasetName::rowIndex"
       let currentSelection = null;
       let currentTileLayer;
-      let currentPalette = 'muted';
+      let currentPalette = localStorage.getItem('samaki-palette') || 'muted';
       let currentKey = 'none';
       let keyColorMap = {};
       let currentMarkerSize = 'medium';
@@ -1536,10 +1536,19 @@ method build-html($title, @dataset-info) {
 
         featureCyclers = {};
 
-        // Add default tile layer (OpenStreetMap)
-        currentTileLayer = L.tileLayer(tileProviders.osm.url, {
-          maxZoom: tileProviders.osm.maxZoom,
-          attribution: tileProviders.osm.attribution
+        // Restore tile and palette from localStorage (or use defaults)
+        const savedTile = localStorage.getItem('samaki-tile') || 'osm';
+        const savedPalette = localStorage.getItem('samaki-palette') || 'muted';
+        const tileSelector = document.getElementById('tile-selector');
+        const paletteSelector = document.getElementById('palette-selector');
+        if (tileSelector) tileSelector.value = savedTile;
+        if (paletteSelector) paletteSelector.value = savedPalette;
+
+        // Add initial tile layer
+        const initProvider = tileProviders[savedTile] || tileProviders.osm;
+        currentTileLayer = L.tileLayer(initProvider.url, {
+          maxZoom: initProvider.maxZoom,
+          attribution: initProvider.attribution
         }).addTo(map);
 
         // Create layer groups for each row in each dataset
@@ -2215,11 +2224,13 @@ method build-html($title, @dataset-info) {
 
         // Tile provider selector
         document.getElementById('tile-selector').addEventListener('change', function(e) {
+          localStorage.setItem('samaki-tile', e.target.value);
           switchTileProvider(e.target.value);
         });
 
         // Palette selector
         document.getElementById('palette-selector').addEventListener('change', function(e) {
+          localStorage.setItem('samaki-palette', e.target.value);
           switchPalette(e.target.value);
         });
 
