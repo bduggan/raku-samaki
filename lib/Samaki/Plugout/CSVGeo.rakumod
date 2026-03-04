@@ -218,38 +218,7 @@ method build-html($title, @dataset-info) {
 
     <!-- wkx for parsing WKT, WKB, EWKB, EWKT, and other geo formats -->
     <script src="https://cdn.jsdelivr.net/npm/wkx@0.5.0/dist/wkx.min.js"></script>
-
-    <!-- Inline Google Encoded Polyline decoder (polyline5 and polyline6) -->
-    <script>
-      window.polylineDecoder = {
-        decode: function(encoded, precision) {
-          var factor = Math.pow(10, precision || 5);
-          var len = encoded.length;
-          var index = 0;
-          var result = [];
-          var lat = 0;
-          var lng = 0;
-          while (index < len) {
-            var b, shift = 0, val = 0;
-            do {
-              b = encoded.charCodeAt(index++) - 63;
-              val |= (b & 0x1f) << shift;
-              shift += 5;
-            } while (b >= 0x20);
-            lat += ((val & 1) ? ~(val >> 1) : (val >> 1));
-            shift = 0; val = 0;
-            do {
-              b = encoded.charCodeAt(index++) - 63;
-              val |= (b & 0x1f) << shift;
-              shift += 5;
-            } while (b >= 0x20);
-            lng += ((val & 1) ? ~(val >> 1) : (val >> 1));
-            result.push([lng / factor, lat / factor]);
-          }
-          return result;
-        }
-      };
-    </script>
+    <script src="https://cdn.jsdelivr.net/npm/@googlemaps/polyline-codec@1.0.28/dist/index.umd.js"></script>
 
     <style>
       body {
@@ -885,6 +854,9 @@ method build-html($title, @dataset-info) {
       // so we trust the data and skip the strict heuristics.
       function tryParseAsPolyline(str, isPolylineColumn, debug) {
         if (!str) return null;
+        // Some CSV generators double-escape backslashes (\\  becomes \). Unescape before decoding.
+        var bs = String.fromCharCode(92);
+        str = str.replace(new RegExp(bs + bs + bs + bs, 'g'), bs);
 
         // Basic requirement: only ASCII chars 63–126
         if (!/^[?-~]+$/.test(str)) {
@@ -922,7 +894,8 @@ method build-html($title, @dataset-info) {
         // Try precision 5 (Google Maps standard), then precision 6 (Valhalla/OSRM).
         for (var precision of [5, 6]) {
           try {
-            var coords = window.polylineDecoder.decode(str, precision);
+            var raw = polyline.decode(str, precision);
+            var coords = raw.map(function(c) { return [c[1], c[0]]; });
             if (coords.length < 2) continue;
 
             // All decoded points must be within valid lat/lon range.
