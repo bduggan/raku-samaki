@@ -25,8 +25,6 @@ method setup(Samaki::Conf :$conf) {
 
 method use-stdin { True }
 
-method stream-stdout-to-pane { False }
-
 method build-command(Samaki::Cell :$cell) {
   my $db = $cell.get-conf('db');
   info "Executing psql cell";

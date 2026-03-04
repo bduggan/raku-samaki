@@ -21,7 +21,7 @@ method select-action { 'run' }
 method wrap { 'none' }
 
 #| Stream output as it is produced?
-method stream-output { True }
+has $.stream-output is rw = True;
 
 #| Clear the output pane before running?
 method clear-stream-before { True }

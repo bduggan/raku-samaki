@@ -17,15 +17,11 @@ method name { $name }
 
 method description { "Run $name in a separate process" }
 
-has Bool $.stream-output = True;
-
 method add-env { %() }
 
 method wrap { 'word' }
 
 method use-stdin { $use-stdin }
-
-method stream-stdout-to-pane { True }
 
 method build-command(Samaki::Cell :$cell) {
   die "missing cmd parameter" unless $cmd;
@@ -62,7 +58,7 @@ method do-react-loop($proc, :$cell, :$out, :$input, :$timeout) {
   react {
     whenever $proc.ready { info "proc is ready"; self.do-ready($_, $proc, $timeout); }
     whenever $proc.stdout.lines {
-      $.output-stream.send: $_ if self.stream-stdout-to-pane;
+      $.output-stream.send: $_ if $.stream-output;
       $out.put($_) if $out;
       sleep 0.01;
     }
@@ -94,7 +90,14 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
   my $input = $cell.get-content(:$mode, :$page);
   $.errors = Nil;
   self.clear-output;
-  $!stream-output = ($cell.get-conf('stream') andthen $_ eq 'none') ?? False !! True;
+  if $cell.get-conf('stream') {
+    $.stream-output = $cell.get-conf('stream') eq 'none' ?? False !! True;
+  } else {
+    my $default-stream-output = True;
+    $default-stream-output = False if $cell.ext eq 'csv';
+    $.stream-output = False;
+  }
+
   info "using " ~ (self.use-stdin ?? "stdin" !! "a temp file") ~ " for input";
   my @cmd = self.build-command(:$cell);
   info "executing process {@cmd.raku}";
@@ -110,7 +113,7 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
         return;
     }
     $out.close;
-    if self.output-ext eq 'csv' {
+    if $cell.ext eq 'csv' {
       self.set-output(self.output-duckie($cell.output-file));
     }
   } else {
