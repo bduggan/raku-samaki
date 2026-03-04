@@ -7,7 +7,7 @@ use Log::Async;
 unit class Samaki::Plugout::CSVGeo does Samaki::Plugout;
 
 has $.name = 'csv-geo';
-has $.description = 'View CSV data with GeoJSON columns or GeoJSON files on an interactive map';
+has $.description = 'View CSV data with GeoJSON/WKT/polyline columns or GeoJSON files on an interactive map';
 has $.clear-before = False;
 
 method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
@@ -218,6 +218,38 @@ method build-html($title, @dataset-info) {
 
     <!-- wkx for parsing WKT, WKB, EWKB, EWKT, and other geo formats -->
     <script src="https://cdn.jsdelivr.net/npm/wkx@0.5.0/dist/wkx.min.js"></script>
+
+    <!-- Inline Google Encoded Polyline decoder (polyline5 and polyline6) -->
+    <script>
+      window.polylineDecoder = {
+        decode: function(encoded, precision) {
+          var factor = Math.pow(10, precision || 5);
+          var len = encoded.length;
+          var index = 0;
+          var result = [];
+          var lat = 0;
+          var lng = 0;
+          while (index < len) {
+            var b, shift = 0, val = 0;
+            do {
+              b = encoded.charCodeAt(index++) - 63;
+              val |= (b & 0x1f) << shift;
+              shift += 5;
+            } while (b >= 0x20);
+            lat += ((val & 1) ? ~(val >> 1) : (val >> 1));
+            shift = 0; val = 0;
+            do {
+              b = encoded.charCodeAt(index++) - 63;
+              val |= (b & 0x1f) << shift;
+              shift += 5;
+            } while (b >= 0x20);
+            lng += ((val & 1) ? ~(val >> 1) : (val >> 1));
+            result.push([lng / factor, lat / factor]);
+          }
+          return result;
+        }
+      };
+    </script>
 
     <style>
       body {
@@ -848,11 +880,96 @@ method build-html($title, @dataset-info) {
         return null;
       }
 
+      // Try to decode a Google Encoded Polyline (precision 5 or 6).
+      // isPolylineColumn = true means the column name contains "polyline",
+      // so we trust the data and skip the strict heuristics.
+      function tryParseAsPolyline(str, isPolylineColumn, debug) {
+        if (!str) return null;
+
+        // Basic requirement: only ASCII chars 63–126
+        if (!/^[?-~]+$/.test(str)) {
+          if (debug) console.log('✗ Not polyline: chars outside 63-126 range');
+          return null;
+        }
+
+        if (!isPolylineColumn) {
+          // Strict heuristics to avoid false positives on random text / identifiers.
+
+          // Must be long enough to plausibly encode ≥2 real coordinate pairs.
+          if (str.length < 20) {
+            if (debug) console.log('✗ Not polyline: too short (' + str.length + ' < 20)');
+            return null;
+          }
+
+          // Must contain chars from the "exotic" set produced by real coordinate
+          // deltas: ? @ [ \ ] ^ { | } ~  (codes 63-64, 91-94, 123-126).
+          // Underscores and backticks are excluded because they're common in
+          // identifiers and contribute nothing to confidence.
+          if (!/[?@\[\\\]^{|}~]/.test(str)) {
+            if (debug) console.log('✗ Not polyline: no polyline-characteristic chars');
+            return null;
+          }
+
+          // Must have sufficient character diversity (encoded paths visit many
+          // different delta magnitudes; plain identifiers are repetitive).
+          var distinctChars = new Set(str.split('')).size;
+          if (distinctChars < 10) {
+            if (debug) console.log('✗ Not polyline: insufficient char diversity (' + distinctChars + ' distinct)');
+            return null;
+          }
+        }
+
+        // Try precision 5 (Google Maps standard), then precision 6 (Valhalla/OSRM).
+        for (var precision of [5, 6]) {
+          try {
+            var coords = window.polylineDecoder.decode(str, precision);
+            if (coords.length < 2) continue;
+
+            // All decoded points must be within valid lat/lon range.
+            var valid = coords.every(function(c) {
+              return c[1] >= -90 && c[1] <= 90 && c[0] >= -180 && c[0] <= 180;
+            });
+            if (!valid) {
+              if (debug) console.log('✗ polyline' + precision + ': coords out of range');
+              continue;
+            }
+
+            var lats = coords.map(function(c) { return c[1]; });
+            var lngs = coords.map(function(c) { return c[0]; });
+            var minLat = Math.min.apply(null, lats), maxLat = Math.max.apply(null, lats);
+            var minLng = Math.min.apply(null, lngs), maxLng = Math.max.apply(null, lngs);
+            var span = (maxLat - minLat) + (maxLng - minLng);
+
+            if (!isPolylineColumn && span < 0.001) {
+              // Decoded to near-zero near-origin coordinates — almost certainly a
+              // false positive from a short identifier.
+              if (debug) console.log('✗ polyline' + precision + ': bbox span too small (' + span.toFixed(6) + ')');
+              continue;
+            }
+
+            console.log('✓ polyline' + precision + ' decoded: ' + coords.length + ' pts, bbox=[' +
+              minLng.toFixed(4) + ',' + minLat.toFixed(4) + ' → ' +
+              maxLng.toFixed(4) + ',' + maxLat.toFixed(4) + ']' +
+              (isPolylineColumn ? ' (column name match)' : ''));
+            return {
+              type: 'Feature',
+              geometry: { type: 'LineString', coordinates: coords },
+              properties: { polylinePrecision: precision }
+            };
+          } catch (e) {
+            if (debug) console.log('✗ polyline' + precision + ' decode failed:', e.message);
+          }
+        }
+        return null;
+      }
+
       // Try to parse a value as geo data using wkx
-      function tryParseGeo(value, debug) {
+      // opts.isPolylineColumn: true if the column name contains "polyline"
+      function tryParseGeo(value, debug, opts) {
         if (!value || typeof value !== 'string') return null;
         const trimmed = value.trim();
         if (!trimmed) return null;
+        const isPolylineColumn = opts && opts.isPolylineColumn;
 
         // First, try to parse as regular JSON (most common case)
         let result = tryParseAsGeoJSON(trimmed, debug);
@@ -881,6 +998,13 @@ method build-html($title, @dataset-info) {
           } catch (e) {
             if (debug) console.log('✗', parser.name, 'failed:', e.message);
           }
+        }
+
+        // Try encoded polyline (polyline5 / polyline6)
+        result = tryParseAsPolyline(trimmed, isPolylineColumn, debug);
+        if (result) {
+          if (debug) console.log('✓ Parsed as encoded polyline');
+          return result;
         }
 
         // If all parsing attempts failed, check if the value might be CSV-escaped JSON
@@ -926,7 +1050,9 @@ method build-html($title, @dataset-info) {
         console.log('Checking', columnNames.length, 'columns across', sampleSize, 'sample rows');
 
         for (const col of columnNames) {
+          const isPolylineColumn = /polyline/i.test(col);
           let foundGeo = false;
+
           for (let i = 0; i < sampleSize; i++) {
             const val = rows[i][col];
             if (!val) continue;
@@ -934,11 +1060,11 @@ method build-html($title, @dataset-info) {
             // Enable debug for first value in each column
             const debug = i === 0;
             if (debug) {
-              console.log('\n--- Column:', col, '---');
+              console.log('\n--- Column:', col, (isPolylineColumn ? '(polyline column)' : ''), '---');
               console.log('Sample length:', val.length);
             }
 
-            const parsed = tryParseGeo(val, debug);
+            const parsed = tryParseGeo(val, debug, { isPolylineColumn });
             if (parsed) {
               detected.push(col);
               foundGeo = true;
@@ -948,9 +1074,15 @@ method build-html($title, @dataset-info) {
           }
 
           if (!foundGeo) {
-            const firstVal = rows[0][col];
-            if (firstVal && firstVal.length > 50) {
-              console.log('✗ Column "' + col + '" not detected (sample: ' + firstVal.substring(0, 50) + '...)');
+            if (isPolylineColumn) {
+              // Column name says polyline — include it even if sample values didn't parse.
+              console.log('✓ Column "' + col + '" included as polyline column (name match, values may be empty in sample)');
+              detected.push(col);
+            } else {
+              const firstVal = rows[0] && rows[0][col];
+              if (firstVal && firstVal.length > 50) {
+                console.log('✗ Column "' + col + '" not detected (sample: ' + firstVal.substring(0, 50) + '...)');
+              }
             }
           }
         }
@@ -1078,23 +1210,31 @@ method build-html($title, @dataset-info) {
               const val = row[col];
               if (!val) return;
 
+              const isPolylineColumn = /polyline/i.test(col);
               try {
-                const geojson = tryParseGeo(val);
+                const geojson = tryParseGeo(val, false, { isPolylineColumn });
                 if (!geojson) return;
+
+                // Tag a feature with _sourceCol so the table can link back to it
+                function tagCol(f) {
+                  return Object.assign({}, f, {
+                    properties: Object.assign({}, f.properties || {}, { _sourceCol: col })
+                  });
+                }
 
                 // Handle different GeoJSON types
                 if (geojson.type === 'Feature') {
-                  rowObj.features.push(geojson);
+                  rowObj.features.push(tagCol(geojson));
                 } else if (geojson.type === 'FeatureCollection') {
                   geojson.features.forEach(function(f) {
-                    rowObj.features.push(f);
+                    rowObj.features.push(tagCol(f));
                   });
                 } else if (geojson.type && geojson.coordinates) {
                   // Bare geometry - wrap in Feature
                   rowObj.features.push({
                     type: 'Feature',
                     geometry: geojson,
-                    properties: {}
+                    properties: { _sourceCol: col }
                   });
                 }
               } catch (e) {
@@ -1154,6 +1294,7 @@ method build-html($title, @dataset-info) {
       let currentMarkerSize = 'medium';
       let markerScaleWithZoom = false;
       let currentMarkerColor = 'row';
+      let featureCyclers = {}; // Key: "datasetName::rowIndex::colName" → [cycleFn, ...]
 
       // Color palettes
       const colorPalettes = {
@@ -1420,6 +1561,8 @@ method build-html($title, @dataset-info) {
         map.createPane('markerPane');
         map.getPane('markerPane').style.zIndex = 650; // Higher than overlayPane (400)
 
+        featureCyclers = {};
+
         // Add default tile layer (OpenStreetMap)
         currentTileLayer = L.tileLayer(tileProviders.osm.url, {
           maxZoom: tileProviders.osm.maxZoom,
@@ -1480,29 +1623,51 @@ method build-html($title, @dataset-info) {
                 }
               });
 
-              // Apply styling to non-point features only
-              geoLayer.eachLayer(function(layer) {
-                // Skip markers (they're already styled in pointToLayer)
-                if (layer instanceof L.CircleMarker || layer instanceof L.Circle) {
-                  return;
-                }
-                // Style polygons and lines
-                if (layer.setStyle) {
-                  layer.setStyle({
-                    color: color,
-                    fillColor: color,
-                    fillOpacity: 0.3,
-                    weight: 2
-                  });
-                }
-              });
+              // Per-feature click state: 0=default, 1=highlighted (orange), 2=invisible
+              let featureState = 0;
+              const _sourceCol = feature.properties && feature.properties._sourceCol;
+
+              function applyNonPointStyle(state) {
+                geoLayer.eachLayer(function(layer) {
+                  if (layer instanceof L.CircleMarker || layer instanceof L.Circle) return;
+                  if (!layer.setStyle) return;
+                  if (state === 0) {
+                    layer.setStyle({ color: color, fillColor: color, fillOpacity: 0.25, weight: 4, opacity: 0.75 });
+                  } else if (state === 1) {
+                    layer.setStyle({ color: '#ff6600', fillColor: '#ff6600', fillOpacity: 0.5, weight: 8, opacity: 0.9 });
+                    layer.bringToFront();
+                  } else {
+                    layer.setStyle({ opacity: 0, fillOpacity: 0 });
+                  }
+                });
+              }
+
+              applyNonPointStyle(0);
+
+              // Register cycler so the table cell can trigger this feature's state change
+              if (_sourceCol) {
+                const _cycleKey = dataset.name + '::' + row.index + '::' + _sourceCol;
+                if (!featureCyclers[_cycleKey]) featureCyclers[_cycleKey] = [];
+                featureCyclers[_cycleKey].push(function() {
+                  featureState = (featureState + 1) % 3;
+                  applyNonPointStyle(featureState);
+                  return featureState;
+                });
+              }
 
               // Add popup with row data
               const popupContent = buildPopupContent(dataset, row, feature);
               geoLayer.bindPopup(popupContent);
 
-              // Add click handler to select and scroll to corresponding table row
+              // Click: cycle state, sync table cell, select table row
               geoLayer.on('click', function(e) {
+                featureState = (featureState + 1) % 3;
+                applyNonPointStyle(featureState);
+                if (_sourceCol) {
+                  const _cycleKey = dataset.name + '::' + row.index + '::' + _sourceCol;
+                  const td = document.querySelector('[data-cycle-key="' + _cycleKey + '"]');
+                  if (td) updateTableCellCycleVisual(td, featureState);
+                }
                 selectRowFromMap(dataset.name, row.index);
               });
 
@@ -1517,6 +1682,29 @@ method build-html($title, @dataset-info) {
 
         // Fit map to all features
         fitAllBounds();
+      }
+
+      // Update the visual appearance of a geo table cell based on cycle state.
+      // state 0=default, 1=highlighted (orange), 2=invisible (faded/strikethrough)
+      function updateTableCellCycleVisual(td, state) {
+        const span = td.querySelector('.geo-summary');
+        if (!span) return;
+        if (state === 0) {
+          span.style.color = '#666';
+          span.style.fontWeight = '';
+          span.style.textDecoration = '';
+          span.title = 'Click to highlight on map';
+        } else if (state === 1) {
+          span.style.color = '#ff6600';
+          span.style.fontWeight = 'bold';
+          span.style.textDecoration = '';
+          span.title = 'Click to hide';
+        } else {
+          span.style.color = '#ccc';
+          span.style.fontWeight = '';
+          span.style.textDecoration = 'line-through';
+          span.title = 'Click to restore';
+        }
       }
 
       function buildPopupContent(dataset, row, feature) {
@@ -1554,20 +1742,32 @@ method build-html($title, @dataset-info) {
 
         Object.values(allLayerGroups).forEach(function(layerGroup) {
           layerGroup.eachLayer(function(layer) {
-            if (layer.getBounds) {
-              allBounds.push(layer.getBounds());
-            } else if (layer.getLatLng) {
-              const latlng = layer.getLatLng();
-              allBounds.push(L.latLngBounds([latlng, latlng]));
+            try {
+              if (layer.getBounds) {
+                const b = layer.getBounds();
+                if (b && b.isValid()) {
+                  console.log('fitAllBounds: layer bounds', b.toBBoxString());
+                  allBounds.push(b);
+                } else {
+                  console.log('fitAllBounds: skipping invalid bounds from', layer);
+                }
+              } else if (layer.getLatLng) {
+                const latlng = layer.getLatLng();
+                allBounds.push(L.latLngBounds([latlng, latlng]));
+              }
+            } catch (e) {
+              console.warn('fitAllBounds: error getting bounds:', e);
             }
           });
         });
 
+        console.log('fitAllBounds: collected', allBounds.length, 'valid bounds');
         if (allBounds.length > 0) {
           const bounds = allBounds[0];
           allBounds.slice(1).forEach(function(b) {
             bounds.extend(b);
           });
+          console.log('fitAllBounds: final bbox', bounds.toBBoxString());
           map.fitBounds(bounds, { padding: [20, 20] });
         } else {
           map.setView([0, 0], 2);
@@ -1776,9 +1976,25 @@ method build-html($title, @dataset-info) {
                 // Show summary instead of full geo data
                 const summary = summarizeGeoData(cellValue);
                 const summarySpan = document.createElement('span');
+                summarySpan.className = 'geo-summary';
                 summarySpan.textContent = summary;
                 summarySpan.style.fontStyle = 'italic';
                 summarySpan.style.color = '#666';
+                summarySpan.style.cursor = 'pointer';
+                summarySpan.title = 'Click to highlight on map';
+
+                // Mark the td with a key so the map click handler can find it
+                const _cycleKey = dataset.name + '::' + row.index + '::' + col;
+                td.setAttribute('data-cycle-key', _cycleKey);
+
+                // Clicking the summary cycles this column's features on the map
+                summarySpan.onclick = function(e) {
+                  e.stopPropagation();
+                  const fns = featureCyclers[_cycleKey] || [];
+                  let newState = 0;
+                  fns.forEach(function(fn) { newState = fn(); });
+                  updateTableCellCycleVisual(td, newState);
+                };
 
                 // Add copy button
                 const copyBtn = document.createElement('button');
@@ -2237,6 +2453,8 @@ method build-html($title, @dataset-info) {
       }
 
       function recreateAllMarkers() {
+        featureCyclers = {};
+
         // Store current map view
         const center = map.getCenter();
         const zoom = map.getZoom();
@@ -2304,29 +2522,52 @@ method build-html($title, @dataset-info) {
                 }
               });
 
-              // Apply styling to non-point features only
-              geoLayer.eachLayer(function(layer) {
-                // Skip markers (they're already styled in pointToLayer)
-                if (layer instanceof L.CircleMarker || layer instanceof L.Circle) {
-                  return;
-                }
-                // Style polygons and lines
-                if (layer.setStyle) {
-                  layer.setStyle({
-                    color: color,
-                    fillColor: color,
-                    fillOpacity: 0.3,
-                    weight: 2
-                  });
-                }
-              });
+              // Per-feature click state: 0=default, 1=highlighted (orange), 2=invisible
+              // (states reset when markers are recreated via palette/size changes)
+              let featureState = 0;
+              const _sourceCol = feature.properties && feature.properties._sourceCol;
+
+              function applyNonPointStyle(state) {
+                geoLayer.eachLayer(function(layer) {
+                  if (layer instanceof L.CircleMarker || layer instanceof L.Circle) return;
+                  if (!layer.setStyle) return;
+                  if (state === 0) {
+                    layer.setStyle({ color: color, fillColor: color, fillOpacity: 0.25, weight: 4, opacity: 0.75 });
+                  } else if (state === 1) {
+                    layer.setStyle({ color: '#ff6600', fillColor: '#ff6600', fillOpacity: 0.5, weight: 8, opacity: 0.9 });
+                    layer.bringToFront();
+                  } else {
+                    layer.setStyle({ opacity: 0, fillOpacity: 0 });
+                  }
+                });
+              }
+
+              applyNonPointStyle(0);
+
+              // Register cycler so the table cell can trigger this feature's state change
+              if (_sourceCol) {
+                const _cycleKey = dataset.name + '::' + row.index + '::' + _sourceCol;
+                if (!featureCyclers[_cycleKey]) featureCyclers[_cycleKey] = [];
+                featureCyclers[_cycleKey].push(function() {
+                  featureState = (featureState + 1) % 3;
+                  applyNonPointStyle(featureState);
+                  return featureState;
+                });
+              }
 
               // Add popup with row data
               const popupContent = buildPopupContent(dataset, row, feature);
               geoLayer.bindPopup(popupContent);
 
-              // Add click handler to select and scroll to corresponding table row
+              // Click: cycle state, sync table cell, select table row
               geoLayer.on('click', function(e) {
+                featureState = (featureState + 1) % 3;
+                applyNonPointStyle(featureState);
+                if (_sourceCol) {
+                  const _cycleKey = dataset.name + '::' + row.index + '::' + _sourceCol;
+                  const td = document.querySelector('[data-cycle-key="' + _cycleKey + '"]');
+                  if (td) updateTableCellCycleVisual(td, featureState);
+                }
                 selectRowFromMap(dataset.name, row.index);
               });
 
@@ -2483,12 +2724,15 @@ method build-html($title, @dataset-info) {
           // Fit bounds to selected features
           const bounds = [];
           selectedLayer.eachLayer(function(layer) {
-            if (layer.getBounds) {
-              bounds.push(layer.getBounds());
-            } else if (layer.getLatLng) {
-              const latlng = layer.getLatLng();
-              bounds.push(L.latLngBounds([latlng, latlng]));
-            }
+            try {
+              if (layer.getBounds) {
+                const b = layer.getBounds();
+                if (b && b.isValid()) bounds.push(b);
+              } else if (layer.getLatLng) {
+                const latlng = layer.getLatLng();
+                bounds.push(L.latLngBounds([latlng, latlng]));
+              }
+            } catch (e) {}
           });
 
           if (bounds.length > 0) {
@@ -2573,12 +2817,15 @@ method build-html($title, @dataset-info) {
 
           if (layerGroup) {
             layerGroup.eachLayer(function(layer) {
-              if (layer.getBounds) {
-                datasetBounds.push(layer.getBounds());
-              } else if (layer.getLatLng) {
-                const latlng = layer.getLatLng();
-                datasetBounds.push(L.latLngBounds([latlng, latlng]));
-              }
+              try {
+                if (layer.getBounds) {
+                  const b = layer.getBounds();
+                  if (b && b.isValid()) datasetBounds.push(b);
+                } else if (layer.getLatLng) {
+                  const latlng = layer.getLatLng();
+                  datasetBounds.push(L.latLngBounds([latlng, latlng]));
+                }
+              } catch (e) {}
             });
           }
         });
@@ -2635,7 +2882,7 @@ Samaki::Plugout::CSVGeo -- Display CSV data or GeoJSON files on an interactive m
 
 Visualize CSV data containing geographic columns or GeoJSON files on an interactive map.
 
-For CSV files: displays with a synchronized data table. Auto-detects lat/lon pairs, GeoJSON, WKT, and WKB formats in columns.
+For CSV files: displays with a synchronized data table. Auto-detects lat/lon pairs, GeoJSON, WKT, WKB, and encoded polyline (polyline5/polyline6) formats in columns.
 
 For GeoJSON files: displays with a collapsible JSON tree viewer for exploring the structure.
 
