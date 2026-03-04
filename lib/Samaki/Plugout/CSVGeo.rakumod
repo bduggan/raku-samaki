@@ -218,7 +218,7 @@ method build-html($title, @dataset-info) {
 
     <!-- wkx for parsing WKT, WKB, EWKB, EWKT, and other geo formats -->
     <script src="https://cdn.jsdelivr.net/npm/wkx@0.5.0/dist/wkx.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@googlemaps/polyline-codec@1.0.28/dist/index.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mapbox/polyline@1.2.1/src/polyline.js"></script>
 
     <style>
       body {
@@ -849,6 +849,34 @@ method build-html($title, @dataset-info) {
         return null;
       }
 
+      // Validate that all coordinates in a GeoJSON object are within valid
+      // lat/lon ranges.  Rejects garbage produced by WKB parsers mis-decoding
+      // non-WKB data (e.g. polyline strings decoded via base64).
+      function hasValidCoords(geojson) {
+        function checkCoord(c) {
+          // c is [lng, lat] in GeoJSON
+          return Array.isArray(c) && c.length >= 2 &&
+                 isFinite(c[0]) && c[0] >= -180 && c[0] <= 180 &&
+                 isFinite(c[1]) && c[1] >= -90  && c[1] <= 90;
+        }
+        function checkCoords(coords) {
+          if (!Array.isArray(coords) || coords.length === 0) return false;
+          if (Array.isArray(coords[0])) {
+            return coords.every(checkCoords);  // nested (rings, multi-geometries)
+          }
+          return checkCoord(coords);  // leaf [lng, lat]
+        }
+        function checkGeom(g) {
+          if (!g) return false;
+          if (g.type === 'GeometryCollection') return (g.geometries || []).every(checkGeom);
+          return checkCoords(g.coordinates || []);
+        }
+        if (!geojson) return false;
+        if (geojson.type === 'Feature') return checkGeom(geojson.geometry);
+        if (geojson.type === 'FeatureCollection') return (geojson.features || []).every(hasValidCoords);
+        return checkGeom(geojson);  // bare geometry
+      }
+
       // Try to decode a Google Encoded Polyline (precision 5 or 6).
       // isPolylineColumn = true means the column name contains "polyline",
       // so we trust the data and skip the strict heuristics.
@@ -944,11 +972,27 @@ method build-html($title, @dataset-info) {
         if (!trimmed) return null;
         const isPolylineColumn = opts && opts.isPolylineColumn;
 
-        // First, try to parse as regular JSON (most common case)
-        let result = tryParseAsGeoJSON(trimmed, debug);
+        // For polyline columns, try the polyline decoder first so that
+        // WKB base64 can't accidentally parse the encoded string as a Point.
+        let result;
+        if (isPolylineColumn) {
+          result = tryParseAsPolyline(trimmed, true, debug);
+          if (result) {
+            if (debug) console.log('✓ Parsed as encoded polyline');
+            return result;
+          }
+        }
+
+        // Try to parse as regular JSON (most common case)
+        result = tryParseAsGeoJSON(trimmed, debug);
         if (result) {
-          if (debug) console.log('✓ Parsed as regular JSON');
-          return result;
+          if (!hasValidCoords(result)) {
+            if (debug) console.log('✗ GeoJSON had out-of-range coordinates');
+            result = null;
+          } else {
+            if (debug) console.log('✓ Parsed as regular JSON');
+            return result;
+          }
         }
 
         // Try WKT/WKB formats
@@ -965,6 +1009,10 @@ method build-html($title, @dataset-info) {
           try {
             const result = parser.fn();
             if (result) {
+              if (!hasValidCoords(result)) {
+                if (debug) console.log('✗', parser.name, 'produced out-of-range coordinates (likely mis-decoded binary)');
+                continue;
+              }
               if (debug) console.log('✓ Parsed as', parser.name);
               return result;
             }
@@ -972,14 +1020,6 @@ method build-html($title, @dataset-info) {
             if (debug) console.log('✗', parser.name, 'failed:', e.message);
           }
         }
-
-        // Try encoded polyline (polyline5 / polyline6)
-        result = tryParseAsPolyline(trimmed, isPolylineColumn, debug);
-        if (result) {
-          if (debug) console.log('✓ Parsed as encoded polyline');
-          return result;
-        }
-
         // If all parsing attempts failed, check if the value might be CSV-escaped JSON
         if (needsUnescaping(trimmed)) {
           if (debug) console.log('Detected CSV escaping, trying to unescape...');
