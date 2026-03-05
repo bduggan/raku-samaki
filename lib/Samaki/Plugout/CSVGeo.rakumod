@@ -2043,8 +2043,29 @@ method build-html($title, @dataset-info) {
                   }, 1000);
                 };
 
+                // Add copy raw button
+                const copyRawBtn = document.createElement('button');
+                copyRawBtn.textContent = '⬆';
+                copyRawBtn.style.marginLeft = '4px';
+                copyRawBtn.style.padding = '2px 6px';
+                copyRawBtn.style.fontSize = '11px';
+                copyRawBtn.style.border = '1px solid #ccc';
+                copyRawBtn.style.borderRadius = '3px';
+                copyRawBtn.style.background = '#f8f9fa';
+                copyRawBtn.style.cursor = 'pointer';
+                copyRawBtn.title = 'Copy raw value';
+                copyRawBtn.onclick = function(e) {
+                  e.stopPropagation();
+                  copyToClipboard(cellValue);
+                  copyRawBtn.textContent = '✓';
+                  setTimeout(function() {
+                    copyRawBtn.textContent = '⬆';
+                  }, 1000);
+                };
+
                 td.appendChild(summarySpan);
                 td.appendChild(copyBtn);
+                td.appendChild(copyRawBtn);
               } else {
                 td.textContent = cellValue;
               }
