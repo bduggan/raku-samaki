@@ -234,6 +234,12 @@ method set-events {
           }
         }
       }
+      when 'chdir' {
+        self.show-dir(%meta<dir>, pane => btm, header => False);
+      }
+      default {
+        warning "Unknown action $_";
+      }
     }
   }
 
