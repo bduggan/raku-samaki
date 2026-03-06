@@ -2031,12 +2031,8 @@ method build-html($title, @dataset-info) {
                 copyBtn.title = 'Copy as GeoJSON';
                 copyBtn.onclick = function(e) {
                   e.stopPropagation();
-                  const geojson = tryParseGeo(cellValue);
-                  if (geojson) {
-                    copyToClipboard(JSON.stringify(geojson, null, 2));
-                  } else {
-                    copyToClipboard(cellValue);
-                  }
+                  const geojson = tryParseGeo(cellValue, false, { isPolylineColumn: /polyline/i.test(col) });
+                  copyToClipboard(geojson ? JSON.stringify(geojson, null, 2) : cellValue);
                   copyBtn.textContent = '✓';
                   setTimeout(function() {
                     copyBtn.textContent = '📋';
