@@ -7,13 +7,9 @@ unit class Samaki::Plugin::URL does Samaki::Plugin;
 
 has $.name = 'url';
 has $.description = 'Fetch a URL';
-has $version-info;
 
 method setup(Samaki::Conf :$conf) {
   info "Setting up URL plugin";
-  $!version-info = qqx[curl --version 2>/dev/null].trim.split("\n").[0];
-  die "could not find curl in path" unless $!version-info;
-  info "version $!version-info";
 }
 
 method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane, Str :$action) {
@@ -21,35 +17,26 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
   self.stream: [color('info') => "fetching url $url"];
   my $output-file = $cell.output-file;
   $out.close;
-  my $proc = Proc::Async.new: 'curl', $url, '-o', $output-file, '--fail';
-  my $exit-status;
-  $pane.stream: $proc.stderr(:bin);
-  react {
-    whenever $proc.stdout {
-      $pane.put: "$_";
-    }
-    whenever $proc.ready {
-      info "started curl for $url, pid $_";
-    }
-    whenever $proc.start(cwd => $cell.data-dir) {
-      info "curl exited for $url";
-      $exit-status = .exitcode;
-      $pane.put: "done";
-    }
+  my $http = HTTP::Tiny.new;
+  my $response = quietly { $http.get($url) };
+  unless $response<success> {
+    $pane.put: "failed: $response<status> $response<reason>";
+    return;
   }
-  return unless $exit-status == 0;
-  self.stream: [color('info') => "wrote to file: " ~ $output-file.relative ];
+  $output-file.spurt($response<content>);
+  $pane.put: "done";
+  self.stream: [color('info') => "wrote to file: " ~ $output-file.relative];
 }
 
 =begin pod
 
 =head1 NAME
 
-Samaki::Plugin::URL -- Fetch a URL using curl
+Samaki::Plugin::URL -- Fetch a URL using HTTP::Tiny
 
 =head1 DESCRIPTION
 
-Use curl to fetch a url and write it into the output file.
+Use HTTP::Tiny to fetch a url and write it into the output file.
 
 =head1 CONFIGURATION
 
