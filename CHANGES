@@ -1,3 +1,10 @@
+0.0.31 2026-03-10
+  - change url plugin to use HTTP::Tiny
+  - fix chdir in bottom pane
+  - improve csvgeo: copy raw, fix geosjon, validate coords,
+  - fix poyllines
+  - do not stream output for csvs by default: use duckie to render
+
 0.0.30 2026-02-18
   - csvgeo updates:
     - full screen, marker colors, geojson support,
