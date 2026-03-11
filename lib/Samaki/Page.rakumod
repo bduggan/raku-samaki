@@ -105,7 +105,7 @@ class Samaki::Page {
   }
 
   method show-cell-conf(:$cell!, :$pane!, :$leadchar!, :%meta!, :$color = 'cell-type') {
-    my $width = $cell.conf.map: { .key.chars }.max // 10;
+    my Int $width = 10 max $cell.conf.map( { .key.chars }).max;
     for $cell.conf.list {
       next if .key.starts-with('_');
       $pane.put([
