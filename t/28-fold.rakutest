@@ -1,0 +1,119 @@
+#!raku
+
+use Test;
+use lib 't';
+use helpers;
+
+%*ENV<SAMAKI_CONF>:delete;
+
+use Samaki::Page;
+use Samaki::Conf;
+use Samaki::Plugins;
+
+my $file = $*CWD.child('resources').child('samaki-conf-default.raku');
+my $conf = Samaki::Conf.new: :$file;
+my $plugins = Samaki::Plugins.new;
+$plugins.configure($conf);
+
+my $content = q:to/SAMAKI/;
+-- text
+line one
+line two
+line three
+line four
+line five
+
+-- duck
+select 1;
+select 2;
+select 3;
+SAMAKI
+
+my $page = Samaki::Page.new(name => 'fold-test', wkdir => $*CWD);
+ok $page.load($content, :$plugins), 'loaded page';
+is $page.cells.elems, 2, 'has two cells';
+
+# default state
+nok $page.folded, 'page is not folded by default';
+
+# toggle fold on
+$page.folded = True;
+ok $page.folded, 'page can be folded';
+
+# toggle fold off
+$page.folded = False;
+nok $page.folded, 'page can be unfolded';
+
+# Test that folding reduces lines rendered per cell.
+# show-cell-body has no type constraint on $pane so MockPane works fine.
+my $cell = $page.cells[0];
+my $leadchar = '│';
+my %meta;
+
+my $pane-unfolded = MockPane.new;
+$page.folded = False;
+$page.show-cell-body(:$cell, pane => $pane-unfolded, mode => 'raw', :$leadchar, :%meta, folded => False);
+my $unfolded-count = $pane-unfolded.output.elems;
+ok $unfolded-count > 1, "unfolded cell renders multiple lines ($unfolded-count)";
+
+my $pane-folded = MockPane.new;
+$page.show-cell-body(:$cell, pane => $pane-folded, mode => 'raw', :$leadchar, :%meta, folded => True);
+my $folded-count = $pane-folded.output.elems;
+# folded = ellipsis line + last body line = 2
+is $folded-count, 2, "folded cell renders ellipsis + last line (2 lines)";
+
+ok $folded-count < $unfolded-count, "folded renders fewer lines than unfolded";
+
+# First folded line is the ellipsis, second is the closing line
+ok $pane-folded.output[0].contains('⋮'), 'first folded line contains vertical ellipsis';
+ok $pane-folded.output[0].contains('lines'), 'ellipsis line shows hidden line count (plural)';
+ok $pane-folded.output[1].contains('└'), 'last folded line contains closing character';
+
+# Test singular "line" when exactly 1 line is hidden
+my $two-line-content = q:to/SAMAKI/;
+-- text
+only one hidden
+visible last
+SAMAKI
+
+my $two-page = Samaki::Page.new(name => 'fold-singular-test', wkdir => $*CWD);
+ok $two-page.load($two-line-content, :$plugins), 'loaded two-line page';
+my $two-cell = $two-page.cells[0];
+
+my $pane-singular = MockPane.new;
+$two-page.show-cell-body(:cell($two-cell), pane => $pane-singular, mode => 'raw',
+                          :$leadchar, :%meta, folded => True);
+ok $pane-singular.output[0].contains('1 line'), 'singular: ellipsis says "1 line"';
+ok !$pane-singular.output[0].contains('1 lines'), 'singular: does not say "1 lines"';
+
+# Test show-valid-cell: folded skips conf lines
+# Add a conf key to cell to verify it's hidden when folded
+my $conf-content = q:to/SAMAKI/;
+-- text
+| color: blue
+hello
+world
+SAMAKI
+
+my $conf-page = Samaki::Page.new(name => 'fold-conf-test', wkdir => $*CWD);
+ok $conf-page.load($conf-content, :$plugins), 'loaded conf page';
+my $conf-cell = $conf-page.cells[0];
+ok $conf-cell.conf.elems > 0, 'cell has conf entries';
+
+my $pane-full = MockPane.new;
+$conf-page.folded = False;
+$conf-page.show-valid-cell(:cell($conf-cell), pane => $pane-full, mode => 'raw',
+                            actions => [], :$leadchar, :%meta);
+my $full-lines = $pane-full.output.elems;
+
+my $pane-folded2 = MockPane.new;
+$conf-page.folded = True;
+$conf-page.show-valid-cell(:cell($conf-cell), pane => $pane-folded2, mode => 'raw',
+                            actions => [], :$leadchar, :%meta);
+my $folded-lines = $pane-folded2.output.elems;
+
+ok $full-lines > $folded-lines, "folded valid cell renders fewer lines ($folded-lines) than unfolded ($full-lines)";
+# folded = header line + ellipsis line + last body line = 3
+is $folded-lines, 3, 'folded valid cell renders header + ellipsis + last body line';
+
+done-testing;

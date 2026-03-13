@@ -282,6 +282,17 @@ method set-events {
   top.on: list-dir => -> :%meta (:$dir, *%) { self.show-dir($dir || self.wkdir, :highlight-samaki) };
   btm.on: list-dir => -> :%meta (:$dir, *%) { self.show-dir($dir || self.data-dir, pane => btm, header => False) };
 
+  $.ui.bind: 'pane', 'f' => 'toggle-fold';
+  top.on: toggle-fold => -> :%meta {
+    my $line = top.current-line-index;
+    my $page = %meta<page> // self.current-page;
+    with $page {
+      .folded = !.folded;
+      self.show-page($_);
+      top.select: $line;
+    }
+  };
+
 }
 
 

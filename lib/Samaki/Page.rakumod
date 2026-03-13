@@ -21,6 +21,7 @@ class Samaki::Page {
   has $.suffix = 'samaki';
   has @.cells;
   has $.mode is rw = 'eval'; # or 'raw'
+  has $.folded is rw = False;
   has $.current-cell is rw;
   has Str $.errors;
   has $.cu;
@@ -88,6 +89,7 @@ class Samaki::Page {
     my $lead = "┌── ".indent(4);
     my $error-msg = $cell.cell-type ?? " [invalid: no plugin found]" !! " [invalid]";
     $pane.put: [ color('error') => $lead ~ ($cell.cell-type ~ $error-msg).fmt('%-20s') ], :%meta;
+    return if $!folded;
     with $cell.errors {
       $pane.put([ color('cell-type') => "$leadchar ".indent(4), color('error') => $_ ], :%meta)
             for .lines;
@@ -100,8 +102,10 @@ class Samaki::Page {
 
   method show-auto-cell(:$cell!, :$pane!, :$mode!, :$leadchar = '║', :%meta!) {
     $pane.put: [ color('interp') => '╔═'.indent(4) ], :%meta;
-    self.show-cell-conf(:$cell, :$pane, :$leadchar, :%meta, color => 'interp');
-    self.show-cell-body(:$cell, :$pane, :$mode, :$leadchar, :%meta, color => 'interp', lastchar => '╚');
+    unless $!folded {
+      self.show-cell-conf(:$cell, :$pane, :$leadchar, :%meta, color => 'interp');
+    }
+    self.show-cell-body(:$cell, :$pane, :$mode, :$leadchar, :%meta, color => 'interp', lastchar => '╚', folded => $!folded);
   }
 
   method show-cell-conf(:$cell!, :$pane!, :$leadchar!, :%meta!, :$color = 'cell-type') {
@@ -115,7 +119,7 @@ class Samaki::Page {
     }
   }
 
-  method show-cell-body(:$cell!, :$pane!, :$mode!, :$leadchar!, :%meta!, :$color = 'cell-type', :$lastchar = '└') {
+  method show-cell-body(:$cell!, :$pane!, :$mode!, :$leadchar!, :%meta!, :$color = 'cell-type', :$lastchar = '└', :$folded = False) {
     my @body-lines;
     try {
        CATCH {
@@ -126,17 +130,35 @@ class Samaki::Page {
        }
        my $*page = self;
        my $out = $cell.get-content(:$mode, page => self);
-       if $cell.errors {
-         $pane.put([ color($color) => "$leadchar ".indent(4), color('error') => "▶ $_" ], :%meta)
-               for $cell.errors.lines;
+       unless $folded {
+         if $cell.errors {
+           $pane.put([ color($color) => "$leadchar ".indent(4), color('error') => "▶ $_" ], :%meta)
+                 for $cell.errors.lines;
+         }
        }
        @body-lines := $cell.formatted-content-lines;
     }
-    for @body-lines.kv -> $n, $line {
-      $pane.put: [
-        color('line') => $n.fmt('%3d '),
-        color($color) => ($n == @body-lines - 1 ?? "$lastchar " !! "$leadchar "), |$line
-      ], :%meta;
+    if $folded {
+      if @body-lines {
+        my $last = @body-lines.elems - 1;
+        if $last > 0 {
+          $pane.put: [
+            color('line') => '    ',
+            color($color) => '⋮  ', color('inactive') => "... $last { $last == 1 ?? 'line' !! 'lines' } ...".indent(4)
+          ], :%meta;
+        }
+        $pane.put: [
+          color('line') => $last.fmt('%3d '),
+          color($color) => "$lastchar ", |@body-lines.tail
+        ], :%meta;
+      }
+    } else {
+      for @body-lines.kv -> $n, $line {
+        $pane.put: [
+          color('line') => $n.fmt('%3d '),
+          color($color) => ($n == @body-lines - 1 ?? "$lastchar " !! "$leadchar "), |$line
+        ], :%meta;
+      }
     }
   }
 
@@ -144,8 +166,10 @@ class Samaki::Page {
     my $lead = "┌── ".indent(4);
     my $post = $cell.write-output ?? (' (' ~ $cell.ext ~ ')') !! "";
     $pane.put: [ color('cell-type') => $lead ~ ($cell.cell-type ~ $post).fmt('%-20s'), |@actions ], :%meta;
-    self.show-cell-conf(:$cell, :$pane, :$leadchar, :%meta);
-    self.show-cell-body(:$cell, :$pane, :$mode, :$leadchar, :%meta);
+    unless $!folded {
+      self.show-cell-conf(:$cell, :$pane, :$leadchar, :%meta);
+    }
+    self.show-cell-body(:$cell, :$pane, :$mode, :$leadchar, :%meta, folded => $!folded);
   }
 
   method maybe-load(:$plugins!) {
