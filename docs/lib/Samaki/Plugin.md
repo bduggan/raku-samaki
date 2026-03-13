@@ -14,11 +14,7 @@ method wrap() returns Mu
 
 Wrap words?
 
-### method stream-output
-
-```raku
-method stream-output() returns Mu
-```
+### has Mu $.stream-output
 
 Stream output as it is produced?
 

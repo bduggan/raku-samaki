@@ -86,7 +86,13 @@ method do-react-loop($proc, :$cell, :$out, :$input, :$timeout) {
 }
 
 method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane, Str :$action) {
+  # confs
   my $timeout = $cell.get-conf('timeout') // $cell.timeout;
+  with $cell.get-conf('scroll') -> $s {
+    .auto-scroll = so ($s && $s ne <no off none>.any) with $pane;
+  } else {
+    .auto-scroll = True with $pane;
+  }
   my $input = $cell.get-content(:$mode, :$page);
   $.errors = Nil;
   self.clear-output;
@@ -126,4 +132,26 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
 method tmpfile {
   $*TMPDIR.child("/samaki-tmp-script")
 }
+
+=begin pod
+
+=head1 NAME
+
+Samaki::Plugin::Process -- Base role for process-based plugins
+
+=head1 DESCRIPTION
+
+This is a base role for plugins that execute code in a separate process. It provides common functionality for running external commands, handling input and output, and managing the process lifecycle. Specific language plugins (like Samaki::Plugin::Raku) can consume this role and provide language-specific details.
+
+=head1 OPTIONS
+
+=head2 timeout
+
+Number of seconds to wait before killing the process. Default is 60 seconds.
+
+=head2 scroll
+
+Whether to auto-scroll the output pane. Default is True.  Set to "no", "off", or "none" to disable.
+
+=end pod
 

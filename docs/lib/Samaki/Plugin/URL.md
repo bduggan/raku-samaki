@@ -1,12 +1,12 @@
 NAME
 ====
 
-Samaki::Plugin::URL -- Fetch a URL using curl
+Samaki::Plugin::URL -- Fetch a URL using HTTP::Tiny
 
 DESCRIPTION
 ===========
 
-Use curl to fetch a url and write it into the output file.
+Use HTTP::Tiny to fetch a url and write it into the output file.
 
 CONFIGURATION
 =============

@@ -22,7 +22,7 @@ Execute Raku code in a separate process. Unlike the Code plugin which runs in th
 
 =head1 OPTIONS
 
-No specific options.
+This plugin inherits all options from L<Samaki::Plugin::Process>.
 
 =head1 EXAMPLE
 
