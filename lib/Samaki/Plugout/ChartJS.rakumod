@@ -56,6 +56,8 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
     <script src="https://cdn.jsdelivr.net/npm/moment@2.29.4/moment.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/moment-timezone@0.5.43/builds/moment-timezone-with-data.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-moment@1.0.1/dist/chartjs-adapter-moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hammerjs@2.0.8/hammer.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom@2.0.1/dist/chartjs-plugin-zoom.min.js"></script>
     <style>
       body {
         font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
@@ -176,6 +178,34 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
       .value-add:hover {
         background: #f0fdf4;
         border-color: #86efac;
+      }
+      .reset-zoom-btn {
+        margin-left: auto;
+        padding: 4px 8px;
+        background: white;
+        border: 1px solid #cbd5e1;
+        border-radius: 3px;
+        font-size: 11px;
+        font-family: ui-monospace, monospace;
+        color: #94a3b8;
+        cursor: pointer;
+        height: 28px;
+        display: flex;
+        align-items: center;
+      }
+      .reset-zoom-btn:hover {
+        border-color: #94a3b8;
+        color: #64748b;
+      }
+      .reset-zoom-btn.active {
+        background: #dbeafe;
+        border-color: #3b82f6;
+        color: #1d4ed8;
+        font-weight: 600;
+        opacity: 1;
+      }
+      .reset-zoom-btn.active:hover {
+        background: #bfdbfe;
       }
       .value-selector-popup {
         position: absolute;
@@ -359,6 +389,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
             <option value="year">Year</option>
           </select>
         </div>
+        <button class="reset-zoom-btn" id="reset-zoom-btn" title="Reset zoom/pan (scroll to zoom, drag to pan)">⊙ Reset</button>
       </div>
       <div class="chart-container">
         <canvas id="myChart"></canvas>
@@ -1573,6 +1604,26 @@ $timezone-detection-js
                     return context[0].label;
                   }
                 }
+              },
+              zoom: isRadial ? {} : {
+                zoom: {
+                  wheel: { enabled: true, speed: 0.05 },
+                  pinch: { enabled: true },
+                  mode: 'x',
+                  onZoomComplete: function() {
+                    document.getElementById('reset-zoom-btn').classList.add('active');
+                  }
+                },
+                pan: {
+                  enabled: true,
+                  mode: 'x',
+                  onPanComplete: function() {
+                    document.getElementById('reset-zoom-btn').classList.add('active');
+                  }
+                },
+                limits: {
+                  x: { min: 'original', max: 'original' }
+                }
               }
             }
           }
@@ -1618,6 +1669,11 @@ $timezone-detection-js
       timeUnitSelect.addEventListener('change', function() {
         createChart(currentChartType, currentIndexAxis);
       });
+
+      document.getElementById('reset-zoom-btn').addEventListener('click', function() {
+        if (myChart) myChart.resetZoom();
+        this.classList.remove('active');
+      });
     </script>
   </body>
   </html>
@@ -1635,6 +1691,6 @@ Samaki::Plugout::ChartJS -- Interactive charts using Chart.js
 
 =head1 DESCRIPTION
 
-Visualize CSV data as interactive charts in the browser. Supports bar, line, scatter, pie, and polar area charts with controls for switching chart types, selecting columns, and adjusting orientation. Datetime columns support timezone conversion and format options.
+Visualize CSV data as interactive charts in the browser. Supports bar, line, scatter, pie, and polar area charts with controls for switching chart types, selecting columns, and adjusting orientation. Datetime columns support timezone conversion and format options. Scroll to zoom, drag to pan, and use the Reset button to return to the original view (zoom/pan not available on pie/polar charts).
 
 =end pod
