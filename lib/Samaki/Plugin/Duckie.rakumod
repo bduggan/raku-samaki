@@ -8,11 +8,18 @@ has $.name = 'duckie';
 has $.description = 'Use in-line duckdb driver for queries';
 has $.output-ext = 'csv';
 
+has @.udfs;
+
 method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle :$out, :$pane, Str :$action) {
  my $db = $cell.get-conf('db');
  self.info: "Executing duckie cell with db { $db // '<memory>' }";
  my $content = $cell.get-content(:$mode, :$page);
  my $duck = $db ?? Duckie.new(file => $db) !! Duckie.new;
+
+ for @.udfs -> $udf {
+   $duck.register-raku-sub($udf);
+ }
+
  $!res = $duck.query($content);
  unless $!res {
    $!errors = $!res.Str;
