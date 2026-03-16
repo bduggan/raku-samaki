@@ -10,6 +10,20 @@ Execute SQL queries using the inline [Duckie](Duckie) driver, which provides Rak
 
 For a process-based alternative, see [Samaki::Plugin::Duck](Samaki::Plugin::Duck).
 
+Duckie supports user defined functions in raku via the udf's attribute. To use this, add a derived class in your config file. For example, this adds `parse_poly` as a UDF that converts a polyline string to GeoJSON:
+
+    use Samaki::Plugin::Duckie;
+    use Geo::Polyline;
+    use JSON::Fast;
+
+    ...
+    / duckie / => class Samaki::Plugin::MyDuckie is Samaki::Plugin::Duckie {
+                    has @.udfs = sub parse_poly (Str $poly --> Str ) {
+                      to-json polyline-to-geojson( $poly, :unescape )<geometry>, :!pretty;
+                    };
+                  }
+    ...
+
 OPTIONS
 =======
 
