@@ -695,11 +695,11 @@ method build-html($title, @dataset-info) {
       <div id="controls">
         <button id="show-all-btn">Show All</button>
         <select id="tile-selector">
-          <option value="osm" selected>OpenStreetMap</option>
-          <option value="light">Light (Positron)</option>
+          <option value="light" selected>Light (Positron)</option>
           <option value="dark">Dark (Dark Matter)</option>
           <option value="satellite">Satellite</option>
           <option value="topo">Topographic</option>
+          <option value="osm">OpenStreetMap</option>
         </select>
         <select id="palette-selector">
           <option value="muted" selected>Muted</option>
@@ -1577,7 +1577,7 @@ method build-html($title, @dataset-info) {
         featureCyclers = {};
 
         // Restore tile and palette from localStorage (or use defaults)
-        const savedTile = localStorage.getItem('samaki-tile') || 'osm';
+        const savedTile = localStorage.getItem('samaki-tile') || 'light';
         const savedPalette = localStorage.getItem('samaki-palette') || 'muted';
         const tileSelector = document.getElementById('tile-selector');
         const paletteSelector = document.getElementById('palette-selector');
