@@ -12,6 +12,7 @@ method command { $cmd }
 
 has Str $.tmux-pane-id is rw;
 has Str $.tmux-window-id is rw;
+has %!named-sessions;  # name => { pane-id => ..., window-id => ... }
 has Proc::Async $!control-proc;
 has Promise $!control-promise;
 has $!line-delay-seconds = 0.1;
@@ -143,38 +144,15 @@ method process-control-output {
   }
 }
 
-method find-window-by-name(Str $name --> List) {
-  # Check if a window with this name already exists
-  # Returns (pane_id, window_id) if found, empty list if not
-  my $proc = run 'tmux', 'list-windows', '-a', '-F', '#{window_name} #{pane_id} #{window_id}', :out;
-  for $proc.out.slurp(:close).lines -> $line {
-    my @parts = $line.split(' ');
-    if @parts[0] eq $name {
-      return (@parts[1], @parts[2]);
-    }
-  }
-  return ();
-}
-
 method create-tmux-window($samaki-pane, :$cell --> Str) {
-  # Window name: use 'window' config if set, otherwise cell name, otherwise plugin name
-  my $window-name = $cell.?get-conf('window') // $cell.?name // self.name;
-  info "looking for tmux window '$window-name' for {self.name}";
-
-  # Check if window already exists (for reuse)
-  my @existing = self.find-window-by-name($window-name);
-  if @existing {
-    my ($pane-id, $window-id) = @existing;
-    info "reusing existing tmux window: $window-id with pane: $pane-id";
-    $!tmux-window-id = $window-id;
-    return $pane-id;
-  }
+  my $shared-name = $cell.?get-conf('name');
+  my $window-name = $shared-name // $cell.name;
 
   # Create new window
   # -d: don't switch to the new window
   # -P: print info after creating
   # -F: format string for output (pane_id and window_id)
-  # -n: window name (use cell name or configured window name)
+  # -n: window name
   my $proc = run 'tmux', 'new-window', '-d', '-P', '-F', '#{pane_id} #{window_id}',
                  '-n', $window-name, self.command, :out;
   my $output = $proc.out.slurp(:close).trim;
@@ -182,6 +160,11 @@ method create-tmux-window($samaki-pane, :$cell --> Str) {
   info "created tmux window '$window-name': $window-id with pane: $pane-id";
 
   $!tmux-window-id = $window-id;
+
+  if $shared-name {
+    %!named-sessions{$shared-name} = { pane-id => $pane-id, window-id => $window-id };
+  }
+
   return $pane-id;
 }
 
@@ -214,8 +197,17 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
 
   info "launching {self.name} tmux session";
 
-  # Create the tmux window if we don't have one
-  unless $!tmux-pane-id && self.window-exists {
+  # Reuse the existing window only when a shared name is configured and that
+  # named session is recorded in the hash and its window still exists.
+  # Otherwise always create a fresh window for this cell.
+  my $shared-name = $cell.?get-conf('name');
+  my $reuse = False;
+  if $shared-name && %!named-sessions{$shared-name} {
+    $!tmux-pane-id   = %!named-sessions{$shared-name}<pane-id>;
+    $!tmux-window-id = %!named-sessions{$shared-name}<window-id>;
+    $reuse = self.window-exists;
+  }
+  unless $reuse {
     $pane.clear;
     $!tmux-pane-id = self.create-tmux-window($pane, :$cell);
     self.stream: [color('info') => "started tmux window {$!tmux-window-id} (pane {$!tmux-pane-id}) for {self.name}"];
@@ -269,6 +261,7 @@ method shutdown {
 
   $!tmux-pane-id = Nil;
   $!tmux-window-id = Nil;
+  %!named-sessions = ();
   $!control-proc = Nil;
   $!output-supplier = Nil;
   $.initial-output-captured = False;
@@ -322,9 +315,9 @@ error if the TMUX environment variable is not set.
 
 =item C<delay> -- Seconds to wait between sending lines (default: 0.1)
 
-=item C<window> -- Name of the tmux window to use. If not specified, uses the
-cell name. Multiple cells can share the same tmux window by specifying the
-same window name.
+=item C<name> -- Name of the tmux window to use. By default each cell creates
+a new tmux window. When C<name> is set, all cells with the same name share a
+single tmux window (creating it on first use).
 
 =head1 SEE ALSO
 

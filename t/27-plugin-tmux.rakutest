@@ -18,7 +18,7 @@ unless $tmux-available {
 
 my $in-tmux = %*ENV<TMUX>:exists && %*ENV<TMUX>.chars > 0;
 
-plan $in-tmux ?? 10 !! 8;
+plan $in-tmux ?? 12 !! 8;
 
 my $p = Samaki::Plugin::Tmux::Bash.new;
 
@@ -68,6 +68,44 @@ if $in-tmux {
   }
   diag "pane output: " ~ $pane.output.raku unless $found;
   ok $found, 'output captured';
+
+  # Test: cells without 'name' conf each get a new tmux window
+  my $window-first = $p.tmux-window-id;
+
+  my $pane2 = MockPane.new;
+  my $cell2 = Samaki::Cell.new:
+    page-name => 'test', cell-type => 'tmux-bash', name => 'test-2',
+    data-dir => $*TMPDIR, wkdir => $*TMPDIR,
+    content => 'echo hello-2',
+    plugin => $p;
+  $p.execute(:cell($cell2), :mode<raw>, :pane($pane2));
+  my $window-second = $p.tmux-window-id;
+  run 'tmux', 'kill-window', '-t', $window-first;  # clean up orphaned window
+
+  isnt $window-first, $window-second, 'cells without name conf get distinct windows';
+
+  # Test: cells with the same 'name' conf share a window
+  my $pane3 = MockPane.new;
+  my $cell3 = Samaki::Cell.new:
+    page-name => 'test', cell-type => 'tmux-bash', name => 'named-a',
+    data-dir => $*TMPDIR, wkdir => $*TMPDIR,
+    content => 'echo shared-1',
+    conf => [name => 'shared-session'],
+    plugin => $p;
+  $p.execute(:cell($cell3), :mode<raw>, :pane($pane3));
+  my $window-named = $p.tmux-window-id;
+  run 'tmux', 'kill-window', '-t', $window-second;  # clean up orphaned window
+
+  my $pane4 = MockPane.new;
+  my $cell4 = Samaki::Cell.new:
+    page-name => 'test', cell-type => 'tmux-bash', name => 'named-b',
+    data-dir => $*TMPDIR, wkdir => $*TMPDIR,
+    content => 'echo shared-2',
+    conf => [name => 'shared-session'],
+    plugin => $p;
+  $p.execute(:cell($cell4), :mode<raw>, :pane($pane4));
+
+  is $p.tmux-window-id, $window-named, 'cells with same name conf share a window';
 
   $p.shutdown;
 }
