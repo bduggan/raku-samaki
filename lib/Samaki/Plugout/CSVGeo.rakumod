@@ -821,8 +821,8 @@ method build-html($title, @dataset-info) {
               return json;
             }
 
-            // If it has geometry type and coordinates, wrap it as a Feature
-            if (json.type && json.coordinates) {
+            // If it has geometry type and coordinates (or geometries for GeometryCollection), wrap it as a Feature
+            if (json.type && (json.coordinates || json.geometries)) {
               return {
                 type: 'Feature',
                 geometry: json,
@@ -1150,8 +1150,8 @@ method build-html($title, @dataset-info) {
           features = geojson.features || [];
         } else if (geojson.type === 'Feature') {
           features = [geojson];
-        } else if (geojson.type && geojson.coordinates) {
-          // Bare geometry - wrap in Feature
+        } else if (geojson.type && (geojson.coordinates || geojson.geometries)) {
+          // Bare geometry (including GeometryCollection) - wrap in Feature
           features = [{
             type: 'Feature',
             geometry: geojson,
@@ -1242,8 +1242,8 @@ method build-html($title, @dataset-info) {
                   geojson.features.forEach(function(f) {
                     rowObj.features.push(tagCol(f));
                   });
-                } else if (geojson.type && geojson.coordinates) {
-                  // Bare geometry - wrap in Feature
+                } else if (geojson.type && (geojson.coordinates || geojson.geometries)) {
+                  // Bare geometry (including GeometryCollection) - wrap in Feature
                   rowObj.features.push({
                     type: 'Feature',
                     geometry: geojson,
@@ -1522,8 +1522,8 @@ method build-html($title, @dataset-info) {
           } else if (geojson.type === 'FeatureCollection') {
             const featureCount = geojson.features ? geojson.features.length : 0;
             summary = `FeatureCollection: ${featureCount} feature${featureCount !== 1 ? 's' : ''}`;
-          } else if (geojson.type && geojson.coordinates) {
-            // Bare geometry
+          } else if (geojson.type && (geojson.coordinates || geojson.geometries)) {
+            // Bare geometry (including GeometryCollection)
             const coordCount = countCoordinates(geojson);
             summary = `${geojson.type}: ${coordCount} coord${coordCount !== 1 ? 's' : ''}`;
           } else {
@@ -1538,7 +1538,11 @@ method build-html($title, @dataset-info) {
 
       // Count coordinates in a geometry
       function countCoordinates(geometry) {
-        if (!geometry || !geometry.coordinates) return 0;
+        if (!geometry) return 0;
+        if (geometry.type === 'GeometryCollection') {
+          return (geometry.geometries || []).reduce((sum, g) => sum + countCoordinates(g), 0);
+        }
+        if (!geometry.coordinates) return 0;
 
         function countArray(arr) {
           if (typeof arr[0] === 'number') return 1;
