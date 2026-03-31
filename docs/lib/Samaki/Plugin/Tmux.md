@@ -47,7 +47,7 @@ OPTIONS
 
   * `delay` -- Seconds to wait between sending lines (default: 0.1)
 
-  * `window` -- Name of the tmux window to use. If not specified, uses the cell name. Multiple cells can share the same tmux window by specifying the same window name.
+  * `name` -- Name of the tmux window to use. By default each cell creates a new tmux window. When `name` is set, all cells with the same name share a single tmux window (creating it on first use).
 
 SEE ALSO
 ========

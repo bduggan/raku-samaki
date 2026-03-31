@@ -604,23 +604,26 @@ URL                     |          | Fetch a URL using curl
 
 Plugin documentation:
 
-* L<Bash|docs/lib/Samaki/Plugin/Bash.md>
-* L<Code|docs/lib/Samaki/Plugin/Code.md>
-* L<Duck|docs/lib/Samaki/Plugin/Duck.md>
-* L<Duckie|docs/lib/Samaki/Plugin/Duckie.md>
-* L<File|docs/lib/Samaki/Plugin/File.md>
-* L<HTML|docs/lib/Samaki/Plugin/HTML.md>
-* L<LLM|docs/lib/Samaki/Plugin/LLM.md>
-* L<Markdown|docs/lib/Samaki/Plugin/Markdown.md>
-* L<Postgres|docs/lib/Samaki/Plugin/Postgres.md>
-* L<Raku|docs/lib/Samaki/Plugin/Raku.md>
-* L<Repl::Raku|docs/lib/Samaki/Plugin/Repl/Raku.md>
-* L<Repl::Python|docs/lib/Samaki/Plugin/Repl/Python.md>
-* L<Repl::R|docs/lib/Samaki/Plugin/Repl/R.md>
-* L<Text|docs/lib/Samaki/Plugin/Text.md>
-* L<Text|docs/lib/Samaki/Plugin/URL.md>
-* <Tmux::Bash|docs/lib/Samaki/Plugin/Tmux/Bash.md>
-* <Tmux::Python|docs/lib/Samaki/Plugin/Tmux/Python.md>
+* L<Bash|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugin/Bash.md>
+* L<Code|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugin/Code.md>
+* L<Duck|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugin/Duck.md>
+* L<Duckie|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugin/Duckie.md>
+* L<File|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugin/File.md>
+* L<HTML|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugin/HTML.md>
+* L<LLM|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugin/LLM.md>
+* L<Markdown|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugin/Markdown.md>
+* L<Postgres|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugin/Postgres.md>
+* L<Process|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugin/Process.md>
+* L<Raku|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugin/Raku.md>
+* L<Repl|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugin/Repl.md>
+* L<Repl::Python|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugin/Repl/Python.md>
+* L<Repl::R|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugin/Repl/R.md>
+* L<Repl::Raku|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugin/Repl/Raku.md>
+* L<Text|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugin/Text.md>
+* L<Tmux|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugin/Tmux.md>
+* L<Tmux::Bash|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugin/Tmux/Bash.md>
+* L<Tmux::Python|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugin/Tmux/Python.md>
+* L<URL|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugin/URL.md>
 
 
 =head1 PLUGIN OPTIONS
@@ -671,18 +674,18 @@ TJLess                  | View JSON in new tmux window (requires jless)
 
 Plugout documentation:
 
-* L<ChartJS|docs/lib/Samaki/Plugout/ChartJS.md>
-* L<CSVGeo|docs/lib/Samaki/Plugout/CSVGeo.md>
-* L<D3|docs/lib/Samaki/Plugout/D3.md>
-* L<DataTable|docs/lib/Samaki/Plugout/DataTable.md>
-* L<DeckGLBin|docs/lib/Samaki/Plugout/DeckGLBin.md>
-* L<Duckview|docs/lib/Samaki/Plugout/Duckview.md>
-* L<Geojson|docs/lib/Samaki/Plugout/Geojson.md>
-* L<HTML|docs/lib/Samaki/Plugout/HTML.md>
-* L<JSON|docs/lib/Samaki/Plugout/JSON.md>
-* L<Plain|docs/lib/Samaki/Plugout/Plain.md>
-* L<Raw|docs/lib/Samaki/Plugout/Raw.md>
-* L<TJLess|docs/lib/Samaki/Plugout/TJLess.md>
+* L<ChartJS|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugout/ChartJS.md>
+* L<CSVGeo|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugout/CSVGeo.md>
+* L<D3|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugout/D3.md>
+* L<DataTable|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugout/DataTable.md>
+* L<DeckGLBin|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugout/DeckGLBin.md>
+* L<Duckview|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugout/Duckview.md>
+* L<Geojson|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugout/Geojson.md>
+* L<HTML|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugout/HTML.md>
+* L<JSON|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugout/JSON.md>
+* L<Plain|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugout/Plain.md>
+* L<Raw|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugout/Raw.md>
+* L<TJLess|https://github.com/bduggan/raku-samaki/blob/main/docs/lib/Samaki/Plugout/TJLess.md>
 
 =head1 IMPORTS/EXPORTS
 
