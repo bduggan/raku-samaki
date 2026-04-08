@@ -59,7 +59,7 @@
   "depends" : [
     "LLM::DWIM", "Log::Async", "Terminal::UI:ver<0.1.13>", "Color", "Duckie:ver<0.0.12>", "Prettier::Table",
     "Time::Duration", "Terminal::ANSI", "Duck::CSV", "Color", "CodeUnit",
-    "Markdown::Grammar", "Terminal::WCWidth", "HTTP::Tiny"
+    "Markdown::Grammar", "Terminal::WCWidth", "HTTP::Tiny", "Timezone::Simple"
   ],
   "tags" : [
     "data"

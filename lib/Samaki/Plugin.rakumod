@@ -8,6 +8,7 @@ use Samaki::Conf;
 use Log::Async;
 use Samaki::Cell;
 use Samaki::Page;
+use Timezone::Simple;
 
 method name { ... }
 method description { ... }
@@ -76,13 +77,15 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
   ... 
 }
 
+my $tz = tz-local;
+
 sub format-cell($cell) {
   given $cell.^name {
     when 'Str' { $cell.fmt('%-15s ') }
     when 'Int' { $cell.fmt('%-15d ') }
     when 'Num' { $cell.fmt('%-15.4f ') }
-    when 'Date' { $cell.yyyy-mm-dd }
-    when 'DateTime' { $cell.truncated-to('second').Str }
+    when 'Date' { tz-fmt($tz, $cell) }
+    when 'DateTime' { tz-fmt($tz, $cell) }
     when 'Bool' { $cell ?? 'true'.fmt('%-15s ') !! 'false'.fmt('%-15s ') }
     when 'Nil' { 'NULL' }
     when 'Any' { 'NULL' }
