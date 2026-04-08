@@ -1614,6 +1614,20 @@ method build-html($title, @dataset-info) {
                     console.log('pointToLayer: dataset=', dataset.name, 'row=', row.index, 'color=', actualMarkerColor, 'scaled=', markerScaleWithZoom, 'size=', size);
                   }
 
+                  // If the row has an 'icon' column, use it as a divIcon marker
+                  const iconValue = row.data && row.data['icon'];
+                  if (iconValue) {
+                    const iconSize = size.icon || [24, 24];
+                    const icon = L.divIcon({
+                      className: 'custom-marker-icon',
+                      html: '<span style="font-size:' + Math.round(iconSize[0] * 0.6) + 'px;line-height:1">' + iconValue + '</span>',
+                      iconSize: iconSize,
+                      iconAnchor: [iconSize[0]/2, iconSize[1]/2],
+                      pane: 'markerPane'
+                    });
+                    return L.marker(latlng, { icon: icon, pane: 'markerPane' });
+                  }
+
                   // All markers are circles with black borders
                   if (markerScaleWithZoom) {
                     // Use L.circle which scales with zoom (radius in meters)
@@ -1655,7 +1669,7 @@ method build-html($title, @dataset-info) {
 
               function applyNonPointStyle(state) {
                 geoLayer.eachLayer(function(layer) {
-                  if (layer instanceof L.CircleMarker || layer instanceof L.Circle) return;
+                  if (layer instanceof L.CircleMarker || layer instanceof L.Circle || layer instanceof L.Marker) return;
                   if (!layer.setStyle) return;
                   if (state === 0) {
                     layer.setStyle({ color: color, fillColor: color, fillOpacity: 0.25, weight: 4, opacity: 0.75 });
@@ -2523,6 +2537,20 @@ method build-html($title, @dataset-info) {
                     console.log('recreateAllMarkers pointToLayer: dataset=', dataset.name, 'row=', row.index, 'color=', actualMarkerColor, 'scaled=', markerScaleWithZoom, 'size=', size);
                   }
 
+                  // If the row has an 'icon' column, use it as a divIcon marker
+                  const iconValue = row.data && row.data['icon'];
+                  if (iconValue) {
+                    const iconSize = size.icon || [24, 24];
+                    const icon = L.divIcon({
+                      className: 'custom-marker-icon',
+                      html: '<span style="font-size:' + Math.round(iconSize[0] * 0.6) + 'px;line-height:1">' + iconValue + '</span>',
+                      iconSize: iconSize,
+                      iconAnchor: [iconSize[0]/2, iconSize[1]/2],
+                      pane: 'markerPane'
+                    });
+                    return L.marker(latlng, { icon: icon, pane: 'markerPane' });
+                  }
+
                   // All markers are circles with black borders
                   if (markerScaleWithZoom) {
                     // Use L.circle which scales with zoom (radius in meters)
@@ -2565,7 +2593,7 @@ method build-html($title, @dataset-info) {
 
               function applyNonPointStyle(state) {
                 geoLayer.eachLayer(function(layer) {
-                  if (layer instanceof L.CircleMarker || layer instanceof L.Circle) return;
+                  if (layer instanceof L.CircleMarker || layer instanceof L.Circle || layer instanceof L.Marker) return;
                   if (!layer.setStyle) return;
                   if (state === 0) {
                     layer.setStyle({ color: color, fillColor: color, fillOpacity: 0.25, weight: 4, opacity: 0.75 });
