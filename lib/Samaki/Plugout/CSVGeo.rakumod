@@ -1734,32 +1734,23 @@ method build-html($title, @dataset-info) {
       }
 
       function buildPopupContent(dataset, row, feature) {
-        let html = '<div style="font-size: 11px; max-width: 300px;">';
+        let html = '<div style="font-size: 11px; max-width: 400px; max-height: 300px; overflow: auto;">';
         html += '<strong>' + dataset.name + ' - Row ' + (row.index + 1) + '</strong><br><br>';
-
-        // Show first few key/value pairs from the row data
-        let count = 0;
-        const maxFields = 5;
-        const maxValueLength = 50;
+        html += '<table style="border-collapse: collapse; width: 100%; font-size: 11px;">';
 
         for (let key in row.data) {
-          if (count >= maxFields) break;
-
           // Skip geo columns
           if (dataset.geoColumns.includes(key)) continue;
 
           let value = row.data[key] || '';
 
-          // Truncate long values
-          if (value.length > maxValueLength) {
-            value = value.substring(0, maxValueLength) + '...';
-          }
-
-          html += '<strong>' + key + ':</strong> ' + value + '<br>';
-          count++;
+          html += '<tr>';
+          html += '<td style="padding: 2px 6px 2px 0; font-weight: bold; white-space: nowrap; vertical-align: top; border-bottom: 1px solid #eee;">' + key + '</td>';
+          html += '<td style="padding: 2px 0; word-break: break-word; border-bottom: 1px solid #eee;">' + value + '</td>';
+          html += '</tr>';
         }
 
-        html += '</div>';
+        html += '</table></div>';
         return html;
       }
 
