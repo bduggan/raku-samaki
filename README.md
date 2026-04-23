@@ -195,9 +195,9 @@ The two dashes without a type indicate that this code should immediately be eval
 PLUGINS
 =======
 
-Plugin classes should do the `Samaki::Plugin` role, and at a minimum should implement the `execute` method and have `name` and `description` attributes. The usual `RAKULIB` directories are searched for plugins, so adding local plugins is a matter of adding a new calss and placing it into this search path.
+Plugin classes should do the `Samaki::Plugin` role, and at a minimum should implement the `execute` method and have `name` and `description` attributes. The usual `RAKULIB` directories are searched for plugins, so adding local plugins is a matter of adding a new class and placing it into this search path.
 
-When interacting with external programs, there are three (and probably more) distinct ways to do this. There is some redundancy in the plugins because we offer more than one way to interact with external programs. The three ways that are currently abstracted across plugins are are
+When interacting with external programs, there are three (and probably more) distinct ways to do this. There is some redundancy in the plugins because we offer more than one way to interact with external programs. The three ways that are currently abstracted across plugins are
 
 - using a native driver. For instance, `Duckie` offers bindings to the C API for duckdb.
 
