@@ -837,7 +837,7 @@ method build-html($title, @dataset-info) {
 
         console.log('Parsing', datasetNames.length, 'datasets:', datasetNames);
 
-        const allFeatures = [];
+        let allFeatures = [];
         let allColumns = [];
         let firstType = null;
         let firstBinCol = null;
@@ -869,9 +869,10 @@ method build-html($title, @dataset-info) {
               visible: true,
               latlonStyle: 'column',
               columnRadius: 100,
-              colorScheme: 'viridis'
+              colorScheme: 'viridis',
+              opacity: 0.8
             };
-            allFeatures.push(...result.features);
+            allFeatures = allFeatures.concat(result.features);
             console.log('Dataset "' + name + '":', result.features.length, 'features of type', result.detectedType);
           } else {
             console.warn('Dataset "' + name + '": no spatial data detected');
@@ -998,10 +999,10 @@ method build-html($title, @dataset-info) {
       }
 
       function rebuildParsedData() {
-        const allFeatures = [];
+        let allFeatures = [];
         for (const name of Object.keys(datasetLayers)) {
           if (datasetLayers[name].visible) {
-            allFeatures.push(...datasetLayers[name].features);
+            allFeatures = allFeatures.concat(datasetLayers[name].features);
           }
         }
         parsedData = allFeatures;
@@ -1053,8 +1054,20 @@ method build-html($title, @dataset-info) {
           }
         }
 
-        // Select first numeric column if available
-        if (numericColumns.length > 0) {
+        // Select first meaningful numeric column (skip lat/lon/id columns)
+        function isGoodValueCol(col) {
+          const lower = col.toLowerCase();
+          if (lower === 'lat' || lower === 'latitude' || lower === 'lon' || lower === 'lng' || lower === 'longitude') return false;
+          if (lower.endsWith('_lat') || lower.endsWith('_latitude') || lower.endsWith('_lon') || lower.endsWith('_lng') || lower.endsWith('_longitude')) return false;
+          if (lower === 'id' || lower.endsWith('_id') || lower.startsWith('id_')) return false;
+          return true;
+        }
+
+        const bestCol = numericColumns.find(isGoodValueCol);
+        if (bestCol) {
+          select.value = bestCol;
+          valueColumn = bestCol;
+        } else if (numericColumns.length > 0) {
           select.value = numericColumns[0];
           valueColumn = numericColumns[0];
         } else {
@@ -1068,20 +1081,23 @@ method build-html($title, @dataset-info) {
       function updateValueRange() {
         if (parsedData.length === 0) return;
 
-        let values = [];
-        for (const f of parsedData) {
+        let min = Infinity, max = -Infinity;
+        for (let i = 0; i < parsedData.length; i++) {
           let val;
           if (valueColumn === '_count') {
             val = 1;
           } else {
-            val = parseFloat(f.properties[valueColumn]);
+            val = parseFloat(parsedData[i].properties[valueColumn]);
           }
-          if (!isNaN(val)) values.push(val);
+          if (!isNaN(val)) {
+            if (val < min) min = val;
+            if (val > max) max = val;
+          }
         }
 
-        if (values.length > 0) {
-          minValue = Math.min(...values);
-          maxValue = Math.max(...values);
+        if (min !== Infinity) {
+          minValue = min;
+          maxValue = max;
         } else {
           minValue = 0;
           maxValue = 1;
@@ -1147,16 +1163,23 @@ method build-html($title, @dataset-info) {
         };
 
         if (parsedData.length > 0) {
-          const centers = parsedData.filter(f => f.center).map(f => f.center);
-          if (centers.length > 0) {
-            const avgLng = centers.reduce((s, c) => s + c[0], 0) / centers.length;
-            const avgLat = centers.reduce((s, c) => s + c[1], 0) / centers.length;
+          let sumLng = 0, sumLat = 0, count = 0;
+          let minLng = 180, maxLng = -180, minLat = 90, maxLat = -90;
+          for (let i = 0; i < parsedData.length; i++) {
+            const c = parsedData[i].center;
+            if (!c) continue;
+            sumLng += c[0]; sumLat += c[1]; count++;
+            if (c[0] < minLng) minLng = c[0];
+            if (c[0] > maxLng) maxLng = c[0];
+            if (c[1] < minLat) minLat = c[1];
+            if (c[1] > maxLat) maxLat = c[1];
+          }
+          if (count > 0) {
+            const avgLng = sumLng / count;
+            const avgLat = sumLat / count;
 
-            // Calculate bounds for zoom
-            const lngs = centers.map(c => c[0]);
-            const lats = centers.map(c => c[1]);
-            const lngRange = Math.max(...lngs) - Math.min(...lngs);
-            const latRange = Math.max(...lats) - Math.min(...lats);
+            const lngRange = maxLng - minLng;
+            const latRange = maxLat - minLat;
             const range = Math.max(lngRange, latRange);
 
             let zoom = 12;
@@ -1195,7 +1218,6 @@ method build-html($title, @dataset-info) {
       // Build deck.gl layers — one per visible dataset, in layerOrder
       function buildLayers() {
         const elevationScale = parseFloat(document.getElementById('elevation-scale').value);
-        const opacity = parseFloat(document.getElementById('opacity').value);
         const layers = [];
 
         const names = layerOrder.length > 0 ? layerOrder : Object.keys(datasetLayers);
@@ -1208,63 +1230,52 @@ method build-html($title, @dataset-info) {
           const features = ds.features;
           const idSuffix = '-' + i;
           const scheme = ds.colorScheme || 'viridis';
+          const opacity = ds.opacity !== undefined ? ds.opacity : 0.8;
 
           if (dsType === 'h3') {
-            const h3Data = features.filter(f => f.h3Index).map(f => ({
-              hex: f.h3Index,
-              value: getValue(f),
-              properties: f.properties
-            }));
-
             layers.push(new deck.H3HexagonLayer({
               id: 'h3-layer' + idSuffix,
-              data: h3Data,
+              data: features,
               pickable: true,
               wireframe: true,
               filled: true,
               extruded: true,
               opacity: opacity,
-              getHexagon: d => d.hex,
-              getElevation: d => d.value * elevationScale,
-              getFillColor: d => getColor(d.value, scheme),
+              getHexagon: d => d.h3Index,
+              getElevation: d => getValue(d) * elevationScale,
+              getFillColor: d => getColor(getValue(d), scheme),
               getLineColor: [255, 255, 255, 80],
               lineWidthMinPixels: 1
             }));
 
           } else if (dsType === 'latlon') {
-            const pointData = features.filter(f => f.center).map(f => ({
-              position: f.center,
-              value: getValue(f),
-              properties: f.properties
-            }));
-
             if (ds.latlonStyle === 'scatter') {
               layers.push(new deck.ScatterplotLayer({
                 id: 'scatterplot-layer' + idSuffix,
-                data: pointData,
+                data: features,
                 pickable: true,
                 opacity: opacity,
                 filled: true,
                 radiusMinPixels: 2,
                 radiusMaxPixels: 100,
-                getPosition: d => d.position,
-                getRadius: d => Math.max(1, d.value * elevationScale),
-                getFillColor: d => getColor(d.value, scheme),
+                getPosition: d => d.center,
+                getRadius: d => Math.max(1, getValue(d) * elevationScale),
+                getFillColor: d => getColor(getValue(d), scheme),
                 getLineColor: [255, 255, 255, 80],
                 lineWidthMinPixels: 1
               }));
             } else {
               layers.push(new deck.ColumnLayer({
                 id: 'column-layer' + idSuffix,
-                data: pointData,
+                data: features,
                 pickable: true,
                 opacity: opacity,
                 extruded: true,
                 diskResolution: 12,
                 radius: ds.columnRadius || 100,
-                getPosition: d => d.position,
-                getElevation: d => d.value * elevationScale,
-                getFillColor: d => getColor(d.value, scheme),
+                getPosition: d => d.center,
+                getElevation: d => getValue(d) * elevationScale,
+                getFillColor: d => getColor(getValue(d), scheme),
                 getLineColor: [255, 255, 255, 80],
                 lineWidthMinPixels: 1
               }));
@@ -1316,10 +1327,11 @@ method build-html($title, @dataset-info) {
 
         let html = '<div style="background: rgba(30,30,50,0.95); padding: 8px 12px; border-radius: 4px; font-size: 12px; color: #f8f8f2;">';
 
-        if (object.hex) {
+        if (object.h3Index) {
           // H3 feature
-          html += `<div style="font-weight: 600; color: #8be9fd; margin-bottom: 4px;">H3: ${object.hex}</div>`;
-          html += `<div>Value: <span style="color: #50fa7b;">${object.value.toFixed(2)}</span></div>`;
+          const val = getValue(object);
+          html += `<div style="font-weight: 600; color: #8be9fd; margin-bottom: 4px;">H3: ${object.h3Index}</div>`;
+          html += `<div>Value: <span style="color: #50fa7b;">${val.toFixed(2)}</span></div>`;
 
           let count = 0;
           for (const key in object.properties) {
@@ -1328,9 +1340,10 @@ method build-html($title, @dataset-info) {
             html += `<div>${key}: <span style="color: #50fa7b;">${object.properties[key]}</span></div>`;
             count++;
           }
-        } else if (object.position) {
-          // Lat/lon scatterplot feature
-          html += `<div style="font-weight: 600; color: #8be9fd; margin-bottom: 4px;">Value: ${object.value.toFixed(2)}</div>`;
+        } else if (object.center) {
+          // Lat/lon feature
+          const val = getValue(object);
+          html += `<div style="font-weight: 600; color: #8be9fd; margin-bottom: 4px;">Value: ${val.toFixed(2)}</div>`;
 
           let count = 0;
           for (const key in object.properties) {
@@ -1370,7 +1383,11 @@ method build-html($title, @dataset-info) {
         });
 
         document.getElementById('opacity').addEventListener('input', (e) => {
-          document.getElementById('opacity-value').textContent = parseFloat(e.target.value).toFixed(2);
+          const val = parseFloat(e.target.value);
+          document.getElementById('opacity-value').textContent = val.toFixed(2);
+          if (activeLayerName && datasetLayers[activeLayerName]) {
+            datasetLayers[activeLayerName].opacity = val;
+          }
           updateLayers();
         });
 
@@ -1431,9 +1448,12 @@ method build-html($title, @dataset-info) {
           document.getElementById('elevation-scale-label').textContent = 'Elevation Scale';
         }
 
-        // Update color scheme selector to active layer's scheme
+        // Update color scheme and opacity to active layer's values
         if (ds) {
           document.getElementById('color-scheme').value = ds.colorScheme || 'viridis';
+          const opVal = ds.opacity !== undefined ? ds.opacity : 0.8;
+          document.getElementById('opacity').value = opVal;
+          document.getElementById('opacity-value').textContent = opVal.toFixed(2);
           updateLegendGradient();
         }
 
