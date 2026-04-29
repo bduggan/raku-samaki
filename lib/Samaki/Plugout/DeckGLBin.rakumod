@@ -232,8 +232,16 @@ method build-html($title, $csv-content, $numeric-cols-json) {
           <select id="value-column"></select>
         </div>
 
+        <div class="control-group" id="latlon-style-group" style="display:none">
+          <label>Point Style</label>
+          <select id="latlon-style">
+            <option value="column">Column (3D)</option>
+            <option value="scatter">Scatter</option>
+          </select>
+        </div>
+
         <div class="control-group">
-          <label>Elevation Scale</label>
+          <label id="elevation-scale-label">Elevation Scale</label>
           <input type="range" id="elevation-scale" min="1" max="500" step="1" value="10">
           <div class="range-value" id="elevation-scale-value">10</div>
         </div>
@@ -313,6 +321,7 @@ method build-html($title, $csv-content, $numeric-cols-json) {
       let parsedData = [];
       let binType = 'unknown';
       let binColumn = null;
+      let latlonStyle = 'column'; // 'column' or 'scatter'
       let valueColumn = null;
       let minValue = 0;
       let maxValue = 1;
@@ -840,27 +849,43 @@ method build-html($title, $csv-content, $numeric-cols-json) {
           }));
 
         } else if (binType === 'latlon') {
-          // Use ScatterplotLayer for lat/lon points
           const pointData = parsedData.filter(f => f.center).map(f => ({
             position: f.center,
             value: getValue(f),
             properties: f.properties
           }));
 
-          layers.push(new deck.ScatterplotLayer({
-            id: 'scatterplot-layer',
-            data: pointData,
-            pickable: true,
-            opacity: opacity,
-            filled: true,
-            radiusMinPixels: 4,
-            radiusMaxPixels: 20,
-            getPosition: d => d.position,
-            getRadius: d => Math.max(1, d.value * elevationScale),
-            getFillColor: d => getColor(d.value),
-            getLineColor: [255, 255, 255, 80],
-            lineWidthMinPixels: 1
-          }));
+          if (latlonStyle === 'scatter') {
+            layers.push(new deck.ScatterplotLayer({
+              id: 'scatterplot-layer',
+              data: pointData,
+              pickable: true,
+              opacity: opacity,
+              filled: true,
+              radiusMinPixels: 2,
+              radiusMaxPixels: 100,
+              getPosition: d => d.position,
+              getRadius: d => Math.max(1, d.value * elevationScale),
+              getFillColor: d => getColor(d.value),
+              getLineColor: [255, 255, 255, 80],
+              lineWidthMinPixels: 1
+            }));
+          } else {
+            layers.push(new deck.ColumnLayer({
+              id: 'column-layer',
+              data: pointData,
+              pickable: true,
+              opacity: opacity,
+              extruded: true,
+              diskResolution: 12,
+              radius: 100,
+              getPosition: d => d.position,
+              getElevation: d => d.value * elevationScale,
+              getFillColor: d => getColor(d.value),
+              getLineColor: [255, 255, 255, 80],
+              lineWidthMinPixels: 1
+            }));
+          }
 
         } else {
           // Use GeoJsonLayer for geojson/geohash polygons
@@ -975,11 +1000,24 @@ method build-html($title, $csv-content, $numeric-cols-json) {
             deckgl.setProps({ mapStyle: basemapStyles[e.target.value] });
           }
         });
+
+        document.getElementById('latlon-style').addEventListener('change', (e) => {
+          latlonStyle = e.target.value;
+          const label = document.getElementById('elevation-scale-label');
+          label.textContent = latlonStyle === 'scatter' ? 'Radius' : 'Elevation Scale';
+          updateLayers();
+        });
       }
 
       // Initialize
       document.addEventListener('DOMContentLoaded', () => {
         parseData();
+
+        // Show latlon style toggle if applicable
+        if (binType === 'latlon') {
+          document.getElementById('latlon-style-group').style.display = '';
+        }
+
         initDeck();
         setupControls();
         updateLegendGradient();
