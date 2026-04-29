@@ -2278,9 +2278,15 @@ method build-html($title, @dataset-info) {
           selectRow(datasetName, rowIndex);
         });
 
-        // Show all button
+        // Show all / show selected toggle button
         document.getElementById('show-all-btn').addEventListener('click', function() {
-          showAll();
+          if (showingSelected) {
+            showAll();
+          } else if (currentSelection) {
+            showSelected();
+          } else {
+            showAll();
+          }
         });
 
         // Fullscreen button
@@ -2766,6 +2772,8 @@ method build-html($title, @dataset-info) {
         });
       }
 
+      let showingSelected = false; // toggle state for the show-all/show-selected button
+
       function selectRow(datasetName, rowIndex) {
         // Switch to the dataset's tab
         switchToDataset(datasetName);
@@ -2774,18 +2782,15 @@ method build-html($title, @dataset-info) {
         $('.table-wrapper tbody tr').removeClass('selected');
         $('.table-wrapper tbody tr[data-dataset-name="' + datasetName + '"][data-row-index="' + rowIndex + '"]').addClass('selected');
 
-        // Hide all layers
+        // Keep all layers visible
         Object.values(allLayerGroups).forEach(function(lg) {
-          lg.remove();
+          lg.addTo(map);
         });
 
-        // Show only selected row's layer
+        // Pan/zoom to selected row's layer
         const layerKey = datasetName + '::' + rowIndex;
         const selectedLayer = allLayerGroups[layerKey];
         if (selectedLayer) {
-          selectedLayer.addTo(map);
-
-          // Fit bounds to selected features
           const bounds = [];
           selectedLayer.eachLayer(function(layer) {
             try {
@@ -2809,6 +2814,8 @@ method build-html($title, @dataset-info) {
         }
 
         currentSelection = { datasetName: datasetName, rowIndex: rowIndex };
+        showingSelected = false;
+        document.getElementById('show-all-btn').textContent = 'Show Selected';
       }
 
       function selectRowFromMap(datasetName, rowIndex) {
@@ -2844,9 +2851,6 @@ method build-html($title, @dataset-info) {
       }
 
       function showAll() {
-        // Clear table selection
-        $('.table-wrapper tbody tr').removeClass('selected');
-
         // Show all layers
         Object.values(allLayerGroups).forEach(function(lg) {
           lg.addTo(map);
@@ -2855,7 +2859,48 @@ method build-html($title, @dataset-info) {
         // Fit to all bounds
         fitAllBounds();
 
-        currentSelection = null;
+        showingSelected = false;
+        document.getElementById('show-all-btn').textContent = currentSelection ? 'Show Selected' : 'Show All';
+      }
+
+      function showSelected() {
+        if (!currentSelection) return;
+
+        // Hide all layers
+        Object.values(allLayerGroups).forEach(function(lg) {
+          lg.remove();
+        });
+
+        // Show only selected row's layer
+        const layerKey = currentSelection.datasetName + '::' + currentSelection.rowIndex;
+        const selectedLayer = allLayerGroups[layerKey];
+        if (selectedLayer) {
+          selectedLayer.addTo(map);
+
+          const bounds = [];
+          selectedLayer.eachLayer(function(layer) {
+            try {
+              if (layer.getBounds) {
+                const b = layer.getBounds();
+                if (b && b.isValid()) bounds.push(b);
+              } else if (layer.getLatLng) {
+                const latlng = layer.getLatLng();
+                bounds.push(L.latLngBounds([latlng, latlng]));
+              }
+            } catch (e) {}
+          });
+
+          if (bounds.length > 0) {
+            const combinedBounds = bounds[0];
+            bounds.slice(1).forEach(function(b) {
+              combinedBounds.extend(b);
+            });
+            map.fitBounds(combinedBounds, { padding: [50, 50] });
+          }
+        }
+
+        showingSelected = true;
+        document.getElementById('show-all-btn').textContent = 'Show All';
       }
 
       function fitToDataset(datasetName) {

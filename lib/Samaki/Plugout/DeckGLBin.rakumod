@@ -455,6 +455,40 @@ method build-html($title, $csv-content, $numeric-cols-json) {
         };
       }
 
+      // Detect lat/lon column pairs
+      function detectLatLonColumns(columns) {
+        const used = {};
+        for (const col of columns) {
+          if (used[col]) continue;
+          const colLower = col.toLowerCase();
+          const isLat = colLower === 'lat' || colLower === 'latitude' ||
+                        colLower.endsWith('_lat') || colLower.endsWith('_latitude');
+          if (!isLat) continue;
+
+          // Extract base prefix
+          let base = col.replace(/_?lat(itude)?$/i, '');
+
+          // Build longitude candidates
+          const candidates = [];
+          if (base) {
+            candidates.push(base + '_lon', base + '_lng', base + '_longitude');
+          }
+          candidates.push('lon', 'lng', 'longitude');
+
+          // Find matching column (case-insensitive)
+          let lonCol = null;
+          for (const candidate of candidates) {
+            const matched = columns.find(c => !used[c] && c.toLowerCase() === candidate.toLowerCase());
+            if (matched) { lonCol = matched; break; }
+          }
+
+          if (lonCol) {
+            return { lat: col, lon: lonCol };
+          }
+        }
+        return null;
+      }
+
       // Parse CSV and detect bin types
       function parseData() {
         const parsed = Papa.parse(csvContent, {
@@ -484,7 +518,7 @@ method build-html($title, $csv-content, $numeric-cols-json) {
             break;
           }
 
-          if (isGeohash(val)) {
+          if (/geohash/i.test(col) && isGeohash(val)) {
             binColumn = col;
             detectedType = 'geohash';
             console.log('Detected geohash column:', col);
@@ -497,6 +531,16 @@ method build-html($title, $csv-content, $numeric-cols-json) {
             detectedType = 'geojson';
             console.log('Detected GeoJSON/WKT column:', col);
             break;
+          }
+        }
+
+        // Try lat/lon column detection if no spatial column found
+        if (!detectedType) {
+          const latLonPair = detectLatLonColumns(columns);
+          if (latLonPair) {
+            detectedType = 'latlon';
+            binColumn = latLonPair.lat + '/' + latLonPair.lon;
+            console.log('Detected lat/lon columns:', latLonPair.lat, latLonPair.lon);
           }
         }
 
@@ -554,6 +598,16 @@ method build-html($title, $csv-content, $numeric-cols-json) {
               feature = {
                 geometry: geometry,
                 center: center,
+                properties: { ...row }
+              };
+            }
+          } else if (detectedType === 'latlon') {
+            const parts = binColumn.split('/');
+            const lat = parseFloat(row[parts[0]]);
+            const lon = parseFloat(row[parts[1]]);
+            if (!isNaN(lat) && !isNaN(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
+              feature = {
+                center: [lon, lat],
                 properties: { ...row }
               };
             }
@@ -785,6 +839,29 @@ method build-html($title, $csv-content, $numeric-cols-json) {
             lineWidthMinPixels: 1
           }));
 
+        } else if (binType === 'latlon') {
+          // Use ScatterplotLayer for lat/lon points
+          const pointData = parsedData.filter(f => f.center).map(f => ({
+            position: f.center,
+            value: getValue(f),
+            properties: f.properties
+          }));
+
+          layers.push(new deck.ScatterplotLayer({
+            id: 'scatterplot-layer',
+            data: pointData,
+            pickable: true,
+            opacity: opacity,
+            filled: true,
+            radiusMinPixels: 4,
+            radiusMaxPixels: 20,
+            getPosition: d => d.position,
+            getRadius: d => Math.max(1, d.value * elevationScale),
+            getFillColor: d => getColor(d.value),
+            getLineColor: [255, 255, 255, 80],
+            lineWidthMinPixels: 1
+          }));
+
         } else {
           // Use GeoJsonLayer for geojson/geohash polygons
           const geojsonData = {
@@ -839,6 +916,16 @@ method build-html($title, $csv-content, $numeric-cols-json) {
           for (const key in object.properties) {
             if (count >= 3) break;
             if (key === binColumn) continue;
+            html += `<div>${key}: <span style="color: #50fa7b;">${object.properties[key]}</span></div>`;
+            count++;
+          }
+        } else if (object.position) {
+          // Lat/lon scatterplot feature
+          html += `<div style="font-weight: 600; color: #8be9fd; margin-bottom: 4px;">Value: ${object.value.toFixed(2)}</div>`;
+
+          let count = 0;
+          for (const key in object.properties) {
+            if (count >= 4) break;
             html += `<div>${key}: <span style="color: #50fa7b;">${object.properties[key]}</span></div>`;
             count++;
           }
