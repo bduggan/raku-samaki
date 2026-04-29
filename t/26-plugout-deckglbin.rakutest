@@ -27,8 +27,9 @@ my $csv-file = $temp-dir.child('test.csv');
 spurt $csv-file, "h3,value\n8928308280fffff,100\n";
 
 $plugout.execute(path => $csv-file, data-dir => $temp-dir, name => 'test');
-my $html-file = $temp-dir.child('test-deckgl-bin.html');
+my $html-file = $temp-dir.child('out/test-deckgl-bin.html');
 ok $html-file.e, 'HTML file created';
+ok $temp-dir.child('out/test-deckgl-data.js').e, 'JS data file created';
 
 my $html = slurp $html-file;
 ok $html ~~ /'deck.gl'/, 'HTML contains deck.gl';
@@ -44,7 +45,7 @@ my $csv-decimal = $temp-dir.child('decimal-h3.csv');
 spurt $csv-decimal, "cell,count\n617549798007111679,19\n617549797987450879,10\n";
 
 $plugout.execute(path => $csv-decimal, data-dir => $temp-dir, name => 'decimal');
-my $html-decimal = $temp-dir.child('decimal-deckgl-bin.html');
+my $html-decimal = $temp-dir.child('out/decimal-h3-deckgl-bin.html');
 ok $html-decimal.e, 'HTML file created for decimal H3';
 
 done-testing;

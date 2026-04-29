@@ -13,31 +13,82 @@ has $.clear-before = False;
 method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   info "executing DeckGLBin with $path";
 
-  # Read CSV
-  my @rows = read-csv("$path");
-  return unless @rows;
+  my $file-basename = $path.basename.subst(/\. <[a..z A..Z]>+ $/, '');
 
-  # Get column names
-  my @columns = @rows[0].keys.sort;
+  # Determine file type
+  my $is-geojson = $path ~~ /\. [geojson|json] $/;
+  my $file-type = $is-geojson ?? 'geojson' !! 'csv';
 
-  # Detect numeric columns (potential value columns for height)
-  my @numeric-cols = self.detect-numeric-columns(@rows, @columns);
-  info "Detected numeric columns: {@numeric-cols.join(', ')}" if @numeric-cols;
+  my ($content, $numeric-cols-json);
 
-  # Read the raw CSV content
-  my $csv-content = slurp $path;
+  if $is-geojson {
+    $content = slurp $path;
+    $numeric-cols-json = to-json([]);
+    info "Processing GeoJSON file";
+  } else {
+    # Read CSV
+    my @rows = read-csv("$path");
+    return unless @rows;
 
-  # Prepare metadata for JavaScript
-  my $numeric-cols-json = to-json(@numeric-cols);
+    # Get column names
+    my @columns = @rows[0].keys.sort;
 
-  # Generate HTML file
-  my $html-file = $data-dir.child("{$name}-deckgl-bin.html");
-  my $title = html-escape($data-dir.basename ~ " : " ~ $name);
+    # Detect numeric columns (potential value columns for height)
+    my @numeric-cols = self.detect-numeric-columns(@rows, @columns);
+    info "Detected numeric columns: {@numeric-cols.join(', ')}" if @numeric-cols;
 
-  # Build HTML content
-  my $html = self.build-html($title, $csv-content, $numeric-cols-json);
+    $content = slurp $path;
+    $numeric-cols-json = to-json(@numeric-cols);
+  }
 
-  # Write and open
+  # Create out/ subdirectory
+  my $out-dir = $data-dir.child('out');
+  $out-dir.mkdir unless $out-dir.e;
+
+  # Generate file paths
+  my $js-file = $out-dir.child("{$file-basename}-deckgl-data.js");
+  my $html-file = $out-dir.child("{$file-basename}-deckgl-bin.html");
+  my $title = html-escape($data-dir.basename ~ " : " ~ $file-basename);
+
+  # Find all existing deckgl-data.js files in the out directory
+  my @all-data-files;
+  my @dataset-info;
+
+  for $out-dir.dir.sort -> $file {
+    next unless $file ~~ /'-deckgl-data.js'$/;
+    my $basename = $file.basename;
+    my $dataset-name = $basename.subst('-deckgl-data.js', '');
+    @all-data-files.push($basename);
+    @dataset-info.push(%(
+      filename => $basename,
+      name => $dataset-name,
+      is-current => ($basename eq "{$file-basename}-deckgl-data.js")
+    ));
+  }
+
+  # Add current file if it's not in the list yet
+  unless @all-data-files.grep("{$file-basename}-deckgl-data.js") {
+    @all-data-files.push("{$file-basename}-deckgl-data.js");
+    @dataset-info.push(%(
+      filename => "{$file-basename}-deckgl-data.js",
+      name => $file-basename,
+      is-current => True
+    ));
+  }
+
+  # Move current dataset to the front
+  @dataset-info = @dataset-info.sort: { -$_<is-current> };
+
+  info "Found {@all-data-files.elems} data file(s): {@all-data-files.join(', ')}";
+
+  # Build JavaScript data file
+  my $js-content = self.build-js-data($file-basename, $content, $numeric-cols-json, $file-type);
+
+  # Build HTML content with all data files
+  my $html = self.build-html($title, @dataset-info);
+
+  # Write both files
+  spurt $js-file, $js-content;
   spurt $html-file, $html;
   info "opening $html-file";
   shell-open $html-file;
@@ -64,8 +115,34 @@ method detect-numeric-columns(@rows, @columns) {
   return @numeric;
 }
 
-method build-html($title, $csv-content, $numeric-cols-json) {
-  my $csv-escaped = $csv-content.trans(['\\', '"', "\n", "\r"] => ['\\\\', '\\"', '\\n', '']);
+method build-js-data($dataset-name, $content, $numeric-cols-json, $file-type) {
+  my $escaped = $content.trans(['\\', '"', "\n", "\r"] => ['\\\\', '\\"', '\\n', '']);
+
+  my $data-field;
+  if $file-type eq 'geojson' {
+    $data-field = qq[geojsonContent: "$escaped"];
+  } else {
+    $data-field = qq[csvContent: "$escaped"];
+  }
+
+  return qq:to/JS/;
+  // Data and metadata for dataset: $dataset-name (type: $file-type)
+  if (typeof window.datasets === 'undefined') \{
+    window.datasets = \{\};
+  \}
+  window.datasets['$dataset-name'] = \{
+    type: '$file-type',
+    $data-field,
+    numericColumns: $numeric-cols-json
+  \};
+  JS
+}
+
+method build-html($title, @dataset-info) {
+  # Build script tags for all datasets
+  my $script-tags = @dataset-info.map(-> $ds {
+    qq[    <script src="{$ds<filename>}"></script>]
+  }).join("\n");
 
   my $html = q:to/HTML/;
   <!DOCTYPE html>
@@ -187,6 +264,58 @@ method build-html($title, $csv-content, $numeric-cols-json) {
         color: #50fa7b;
       }
 
+      #layers-list {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+
+      .layer-item {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 6px;
+        border-radius: 3px;
+        cursor: pointer;
+        user-select: none;
+        background: rgba(255, 255, 255, 0.05);
+        border: 1px solid transparent;
+      }
+
+      .layer-item:hover {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .layer-item.dragging {
+        opacity: 0.5;
+        border: 1px dashed #8be9fd;
+      }
+
+      .layer-item.drag-over {
+        border-top: 2px solid #8be9fd;
+      }
+
+      .layer-drag-handle {
+        color: #64748b;
+        font-size: 10px;
+        cursor: grab;
+        flex-shrink: 0;
+      }
+
+      .layer-item input[type="checkbox"] {
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+
+      .layer-item label {
+        cursor: pointer;
+        color: #f8f8f2;
+        font-size: 11px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
       #legend {
         position: absolute;
         bottom: 10px;
@@ -227,6 +356,11 @@ method build-html($title, $csv-content, $numeric-cols-json) {
       <div id="controls">
         <h3>TITLE_PLACEHOLDER</h3>
 
+        <div class="control-group" id="layers-group" style="display:none">
+          <label>Layers</label>
+          <div id="layers-list"></div>
+        </div>
+
         <div class="control-group">
           <label>Value Column (Height)</label>
           <select id="value-column"></select>
@@ -238,6 +372,12 @@ method build-html($title, $csv-content, $numeric-cols-json) {
             <option value="column">Column (3D)</option>
             <option value="scatter">Scatter</option>
           </select>
+        </div>
+
+        <div class="control-group" id="column-radius-group" style="display:none">
+          <label>Column Radius</label>
+          <input type="range" id="column-radius" min="10" max="2000" step="10" value="100">
+          <div class="range-value" id="column-radius-value">100</div>
         </div>
 
         <div class="control-group">
@@ -259,9 +399,17 @@ method build-html($title, $csv-content, $numeric-cols-json) {
             <option value="plasma">Plasma</option>
             <option value="inferno">Inferno</option>
             <option value="magma">Magma</option>
+            <option value="turbo">Turbo</option>
+            <option value="cividis">Cividis</option>
             <option value="warm">Warm</option>
             <option value="cool">Cool</option>
             <option value="spectral">Spectral</option>
+            <option value="blues">Blues</option>
+            <option value="reds">Reds</option>
+            <option value="greens">Greens</option>
+            <option value="oranges">Oranges</option>
+            <option value="greyscale">Greyscale</option>
+            <option value="bw">Black & White</option>
           </select>
         </div>
 
@@ -290,11 +438,10 @@ method build-html($title, $csv-content, $numeric-cols-json) {
       </div>
     </div>
 
-    <script>
-      // Data from Raku
-      const csvContent = "CSV_CONTENT_PLACEHOLDER";
-      const numericColumns = NUMERIC_COLS_PLACEHOLDER;
+    <!-- External data files -->
+    SCRIPT_TAGS_PLACEHOLDER
 
+    <script>
       // Load wkx
       const wkx = require('wkx');
       const Buffer = require('buffer').Buffer;
@@ -307,7 +454,15 @@ method build-html($title, $csv-content, $numeric-cols-json) {
         magma: [[0, 0, 4], [28, 16, 68], [79, 18, 123], [129, 37, 129], [181, 54, 122], [229, 80, 100], [251, 135, 97], [254, 194, 135], [252, 253, 191]],
         warm: [[110, 64, 170], [175, 57, 152], [221, 68, 119], [245, 102, 80], [244, 152, 48], [219, 206, 69], [175, 240, 91]],
         cool: [[110, 64, 170], [67, 97, 198], [45, 144, 206], [55, 186, 182], [94, 217, 141], [160, 234, 100]],
-        spectral: [[158, 1, 66], [213, 62, 79], [244, 109, 67], [253, 174, 97], [254, 224, 139], [255, 255, 191], [230, 245, 152], [171, 221, 164], [102, 194, 165], [50, 136, 189], [94, 79, 162]]
+        spectral: [[158, 1, 66], [213, 62, 79], [244, 109, 67], [253, 174, 97], [254, 224, 139], [255, 255, 191], [230, 245, 152], [171, 221, 164], [102, 194, 165], [50, 136, 189], [94, 79, 162]],
+        greyscale: [[0, 0, 0], [32, 32, 32], [64, 64, 64], [96, 96, 96], [128, 128, 128], [160, 160, 160], [192, 192, 192], [224, 224, 224], [255, 255, 255]],
+        bw: [[0, 0, 0], [255, 255, 255]],
+        blues: [[8, 29, 88], [37, 52, 148], [34, 94, 168], [29, 145, 192], [65, 182, 196], [127, 205, 187], [199, 233, 180], [237, 248, 177]],
+        reds: [[103, 0, 13], [165, 15, 21], [203, 24, 29], [239, 59, 44], [251, 106, 74], [252, 146, 114], [252, 187, 161], [254, 224, 210]],
+        greens: [[0, 68, 27], [0, 109, 44], [35, 139, 69], [65, 171, 93], [116, 196, 118], [161, 217, 155], [199, 233, 192], [229, 245, 224]],
+        oranges: [[127, 39, 4], [166, 54, 3], [217, 72, 1], [241, 105, 19], [253, 141, 60], [253, 174, 107], [253, 208, 162], [254, 230, 206]],
+        turbo: [[48, 18, 59], [86, 36, 163], [54, 92, 228], [14, 155, 215], [20, 205, 145], [110, 237, 56], [208, 238, 17], [254, 195, 21], [252, 128, 8], [221, 55, 4], [122, 4, 3]],
+        cividis: [[0, 32, 77], [0, 58, 102], [46, 83, 112], [87, 107, 115], [122, 131, 116], [157, 156, 109], [194, 182, 92], [233, 210, 68], [253, 241, 42]]
       };
 
       // Base map styles
@@ -318,10 +473,11 @@ method build-html($title, $csv-content, $numeric-cols-json) {
       };
 
       // State
-      let parsedData = [];
+      let parsedData = []; // merged features for value calculations
+      let datasetLayers = {}; // { name: { features, type, binCol, visible, latlonStyle } }
+      let activeLayerName = null;
       let binType = 'unknown';
       let binColumn = null;
-      let latlonStyle = 'column'; // 'column' or 'scatter'
       let valueColumn = null;
       let minValue = 0;
       let maxValue = 1;
@@ -498,8 +654,11 @@ method build-html($title, $csv-content, $numeric-cols-json) {
         return null;
       }
 
-      // Parse CSV and detect bin types
-      function parseData() {
+      // Collect numeric columns from all datasets
+      let numericColumns = [];
+
+      // Parse a single CSV dataset and return its features
+      function parseOneDataset(csvContent, datasetNumericCols) {
         const parsed = Papa.parse(csvContent, {
           header: true,
           skipEmptyLines: true,
@@ -507,8 +666,7 @@ method build-html($title, $csv-content, $numeric-cols-json) {
         });
 
         if (!parsed.data || parsed.data.length === 0) {
-          console.error('No data parsed');
-          return;
+          return { features: [], columns: [], detectedType: null };
         }
 
         const columns = Object.keys(parsed.data[0]);
@@ -516,19 +674,20 @@ method build-html($title, $csv-content, $numeric-cols-json) {
 
         // Detect bin column type
         let detectedType = null;
+        let detectedBinColumn = null;
 
         for (const col of columns) {
           const val = String(sampleRow[col] || '');
 
           if (isH3Index(val)) {
-            binColumn = col;
+            detectedBinColumn = col;
             detectedType = 'h3';
             console.log('Detected H3 column:', col);
             break;
           }
 
           if (/geohash/i.test(col) && isGeohash(val)) {
-            binColumn = col;
+            detectedBinColumn = col;
             detectedType = 'geohash';
             console.log('Detected geohash column:', col);
             break;
@@ -536,7 +695,7 @@ method build-html($title, $csv-content, $numeric-cols-json) {
 
           const geo = tryParseGeo(val);
           if (geo) {
-            binColumn = col;
+            detectedBinColumn = col;
             detectedType = 'geojson';
             console.log('Detected GeoJSON/WKT column:', col);
             break;
@@ -548,19 +707,14 @@ method build-html($title, $csv-content, $numeric-cols-json) {
           const latLonPair = detectLatLonColumns(columns);
           if (latLonPair) {
             detectedType = 'latlon';
-            binColumn = latLonPair.lat + '/' + latLonPair.lon;
+            detectedBinColumn = latLonPair.lat + '/' + latLonPair.lon;
             console.log('Detected lat/lon columns:', latLonPair.lat, latLonPair.lon);
           }
         }
 
         if (!detectedType) {
-          console.error('No spatial data detected');
-          document.getElementById('bin-type').textContent = 'None found';
-          return;
+          return { features: [], columns: columns, detectedType: null };
         }
-
-        binType = detectedType;
-        document.getElementById('bin-type').textContent = detectedType;
 
         // Convert data to features
         const features = [];
@@ -569,7 +723,7 @@ method build-html($title, $csv-content, $numeric-cols-json) {
           let feature = null;
 
           if (detectedType === 'h3') {
-            const rawH3 = row[binColumn];
+            const rawH3 = row[detectedBinColumn];
             const h3Index = normalizeH3Index(rawH3);
             if (h3Index && h3.h3IsValid(h3Index)) {
               const [lat, lng] = h3.h3ToGeo(h3Index);
@@ -580,7 +734,7 @@ method build-html($title, $csv-content, $numeric-cols-json) {
               };
             }
           } else if (detectedType === 'geohash') {
-            const hash = String(row[binColumn] || '').trim();
+            const hash = String(row[detectedBinColumn] || '').trim();
             if (isGeohash(hash)) {
               const geometry = geohashToPolygon(hash);
               const decoded = decodeGeohash(hash);
@@ -591,7 +745,7 @@ method build-html($title, $csv-content, $numeric-cols-json) {
               };
             }
           } else if (detectedType === 'geojson') {
-            const val = String(row[binColumn] || '');
+            const val = String(row[detectedBinColumn] || '');
             const geo = tryParseGeo(val);
             if (geo) {
               let geometry;
@@ -611,7 +765,7 @@ method build-html($title, $csv-content, $numeric-cols-json) {
               };
             }
           } else if (detectedType === 'latlon') {
-            const parts = binColumn.split('/');
+            const parts = detectedBinColumn.split('/');
             const lat = parseFloat(row[parts[0]]);
             const lon = parseFloat(row[parts[1]]);
             if (!isNaN(lat) && !isNaN(lon) && lat >= -90 && lat <= 90 && lon >= -180 && lon <= 180) {
@@ -627,12 +781,232 @@ method build-html($title, $csv-content, $numeric-cols-json) {
           }
         }
 
-        parsedData = features;
-        document.getElementById('feature-count').textContent = features.length;
-        console.log('Parsed', features.length, 'features of type', detectedType);
+        return { features, columns, detectedType, binCol: detectedBinColumn };
+      }
+
+      // Parse a GeoJSON dataset and return features
+      function parseGeoJSONDataset(geojsonContent) {
+        let geojson;
+        try {
+          geojson = JSON.parse(geojsonContent);
+        } catch (e) {
+          console.error('Failed to parse GeoJSON:', e);
+          return { features: [], columns: [], detectedType: null };
+        }
+
+        let features = [];
+        let rawFeatures = [];
+
+        if (geojson.type === 'FeatureCollection') {
+          rawFeatures = geojson.features || [];
+        } else if (geojson.type === 'Feature') {
+          rawFeatures = [geojson];
+        } else if (geojson.type && geojson.coordinates) {
+          rawFeatures = [{ type: 'Feature', geometry: geojson, properties: {} }];
+        }
+
+        for (const f of rawFeatures) {
+          const geometry = f.geometry;
+          if (!geometry) continue;
+          const center = getCentroid(geometry);
+          features.push({
+            geometry: geometry,
+            center: center,
+            properties: f.properties || {}
+          });
+        }
+
+        // Collect property keys as columns
+        const columns = [];
+        if (features.length > 0) {
+          for (const key of Object.keys(features[0].properties)) {
+            if (!columns.includes(key)) columns.push(key);
+          }
+        }
+
+        return { features, columns, detectedType: 'geojson', binCol: null };
+      }
+
+      // Parse all datasets from window.datasets
+      function parseData() {
+        const datasetNames = Object.keys(window.datasets || {});
+        if (datasetNames.length === 0) {
+          console.error('No datasets found');
+          return;
+        }
+
+        console.log('Parsing', datasetNames.length, 'datasets:', datasetNames);
+
+        const allFeatures = [];
+        let allColumns = [];
+        let firstType = null;
+        let firstBinCol = null;
+
+        for (const name of datasetNames) {
+          const ds = window.datasets[name];
+          let result;
+
+          if (ds.type === 'geojson') {
+            result = parseGeoJSONDataset(ds.geojsonContent);
+          } else {
+            result = parseOneDataset(ds.csvContent, ds.numericColumns || []);
+          }
+
+          // Merge numeric columns
+          for (const col of (ds.numericColumns || [])) {
+            if (!numericColumns.includes(col)) numericColumns.push(col);
+          }
+
+          if (result.detectedType) {
+            if (!firstType) {
+              firstType = result.detectedType;
+              firstBinCol = result.binCol;
+            }
+            datasetLayers[name] = {
+              features: result.features,
+              type: result.detectedType,
+              binCol: result.binCol,
+              visible: true,
+              latlonStyle: 'column',
+              columnRadius: 100,
+              colorScheme: 'viridis'
+            };
+            allFeatures.push(...result.features);
+            console.log('Dataset "' + name + '":', result.features.length, 'features of type', result.detectedType);
+          } else {
+            console.warn('Dataset "' + name + '": no spatial data detected');
+          }
+
+          // Merge columns
+          for (const col of result.columns) {
+            if (!allColumns.includes(col)) allColumns.push(col);
+          }
+        }
+
+        if (!firstType) {
+          console.error('No spatial data detected in any dataset');
+          document.getElementById('bin-type').textContent = 'None found';
+          return;
+        }
+
+        binType = firstType;
+        binColumn = firstBinCol;
+        document.getElementById('bin-type').textContent = firstType + ' (' + datasetNames.length + ' layer' + (datasetNames.length > 1 ? 's' : '') + ')';
+
+        parsedData = allFeatures;
+        document.getElementById('feature-count').textContent = allFeatures.length;
+        console.log('Total:', allFeatures.length, 'features');
 
         // Populate value column selector
-        populateValueColumns(columns);
+        populateValueColumns(allColumns);
+
+        // Build layers panel if multiple datasets
+        buildLayersPanel();
+      }
+
+      // Layer ordering — controls render order (last = on top for hover)
+      let layerOrder = [];
+
+      function buildLayersPanel() {
+        const names = Object.keys(datasetLayers);
+        if (names.length < 2) {
+          document.getElementById('layers-group').style.display = 'none';
+          return;
+        }
+
+        document.getElementById('layers-group').style.display = '';
+        layerOrder = names.slice(); // initial order
+        renderLayersList();
+      }
+
+      function renderLayersList() {
+        const list = document.getElementById('layers-list');
+        list.innerHTML = '';
+
+        for (let i = 0; i < layerOrder.length; i++) {
+          const name = layerOrder[i];
+          const item = document.createElement('div');
+          item.className = 'layer-item';
+          item.dataset.layerName = name;
+          if (name === activeLayerName) {
+            item.style.borderColor = '#8be9fd';
+          }
+
+          // Click anywhere on the item (except checkbox) selects the layer
+          item.addEventListener('click', (e) => {
+            if (e.target.type === 'checkbox') return;
+            selectActiveLayer(name);
+          });
+
+          const handle = document.createElement('span');
+          handle.className = 'layer-drag-handle';
+          handle.draggable = true;
+          handle.textContent = '⠿';
+
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.checked = datasetLayers[name].visible;
+          cb.id = 'layer-cb-' + name;
+          cb.addEventListener('change', (e) => {
+            e.stopPropagation();
+            datasetLayers[name].visible = cb.checked;
+            rebuildParsedData();
+            updateLayers();
+          });
+
+          const lbl = document.createElement('label');
+          lbl.textContent = name;
+
+          item.appendChild(handle);
+          item.appendChild(cb);
+          item.appendChild(lbl);
+
+          // Drag events on the handle only
+          handle.addEventListener('dragstart', (e) => {
+            e.dataTransfer.setData('text/plain', name);
+            item.classList.add('dragging');
+          });
+          handle.addEventListener('dragend', () => {
+            item.classList.remove('dragging');
+            list.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+          });
+          item.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            item.classList.add('drag-over');
+          });
+          item.addEventListener('dragleave', () => {
+            item.classList.remove('drag-over');
+          });
+          item.addEventListener('drop', (e) => {
+            e.preventDefault();
+            item.classList.remove('drag-over');
+            const draggedName = e.dataTransfer.getData('text/plain');
+            if (draggedName === name) return;
+
+            // Reorder
+            const fromIdx = layerOrder.indexOf(draggedName);
+            const toIdx = layerOrder.indexOf(name);
+            layerOrder.splice(fromIdx, 1);
+            layerOrder.splice(toIdx, 0, draggedName);
+
+            renderLayersList();
+            updateLayers();
+          });
+
+          list.appendChild(item);
+        }
+      }
+
+      function rebuildParsedData() {
+        const allFeatures = [];
+        for (const name of Object.keys(datasetLayers)) {
+          if (datasetLayers[name].visible) {
+            allFeatures.push(...datasetLayers[name].features);
+          }
+        }
+        parsedData = allFeatures;
+        document.getElementById('feature-count').textContent = allFeatures.length;
+        updateValueRange();
       }
 
       // Get rough centroid of a geometry
@@ -732,9 +1106,8 @@ method build-html($title, $csv-content, $numeric-cols-json) {
       }
 
       // Get color for value (returns [R, G, B, A])
-      function getColor(value) {
-        const scheme = document.getElementById('color-scheme').value;
-        const colors = colorSchemes[scheme];
+      function getColor(value, scheme) {
+        const colors = colorSchemes[scheme || 'viridis'];
 
         const range = maxValue - minValue || 1;
         const normalized = (value - minValue) / range;
@@ -819,101 +1192,112 @@ method build-html($title, $csv-content, $numeric-cols-json) {
         });
       }
 
-      // Build deck.gl layers based on bin type
+      // Build deck.gl layers — one per visible dataset, in layerOrder
       function buildLayers() {
         const elevationScale = parseFloat(document.getElementById('elevation-scale').value);
         const opacity = parseFloat(document.getElementById('opacity').value);
         const layers = [];
 
-        if (binType === 'h3') {
-          // Use H3HexagonLayer for H3 indices (deck.gl's native H3 support)
-          const h3Data = parsedData.filter(f => f.h3Index).map(f => ({
-            hex: f.h3Index,
-            value: getValue(f),
-            properties: f.properties
-          }));
+        const names = layerOrder.length > 0 ? layerOrder : Object.keys(datasetLayers);
+        for (let i = 0; i < names.length; i++) {
+          const name = names[i];
+          const ds = datasetLayers[name];
+          if (!ds.visible) continue;
 
-          layers.push(new deck.H3HexagonLayer({
-            id: 'h3-layer',
-            data: h3Data,
-            pickable: true,
-            wireframe: true,
-            filled: true,
-            extruded: true,
-            opacity: opacity,
-            getHexagon: d => d.hex,
-            getElevation: d => d.value * elevationScale,
-            getFillColor: d => getColor(d.value),
-            getLineColor: [255, 255, 255, 80],
-            lineWidthMinPixels: 1
-          }));
+          const dsType = ds.type;
+          const features = ds.features;
+          const idSuffix = '-' + i;
+          const scheme = ds.colorScheme || 'viridis';
 
-        } else if (binType === 'latlon') {
-          const pointData = parsedData.filter(f => f.center).map(f => ({
-            position: f.center,
-            value: getValue(f),
-            properties: f.properties
-          }));
+          if (dsType === 'h3') {
+            const h3Data = features.filter(f => f.h3Index).map(f => ({
+              hex: f.h3Index,
+              value: getValue(f),
+              properties: f.properties
+            }));
 
-          if (latlonStyle === 'scatter') {
-            layers.push(new deck.ScatterplotLayer({
-              id: 'scatterplot-layer',
-              data: pointData,
+            layers.push(new deck.H3HexagonLayer({
+              id: 'h3-layer' + idSuffix,
+              data: h3Data,
               pickable: true,
-              opacity: opacity,
+              wireframe: true,
               filled: true,
-              radiusMinPixels: 2,
-              radiusMaxPixels: 100,
-              getPosition: d => d.position,
-              getRadius: d => Math.max(1, d.value * elevationScale),
-              getFillColor: d => getColor(d.value),
+              extruded: true,
+              opacity: opacity,
+              getHexagon: d => d.hex,
+              getElevation: d => d.value * elevationScale,
+              getFillColor: d => getColor(d.value, scheme),
               getLineColor: [255, 255, 255, 80],
               lineWidthMinPixels: 1
             }));
+
+          } else if (dsType === 'latlon') {
+            const pointData = features.filter(f => f.center).map(f => ({
+              position: f.center,
+              value: getValue(f),
+              properties: f.properties
+            }));
+
+            if (ds.latlonStyle === 'scatter') {
+              layers.push(new deck.ScatterplotLayer({
+                id: 'scatterplot-layer' + idSuffix,
+                data: pointData,
+                pickable: true,
+                opacity: opacity,
+                filled: true,
+                radiusMinPixels: 2,
+                radiusMaxPixels: 100,
+                getPosition: d => d.position,
+                getRadius: d => Math.max(1, d.value * elevationScale),
+                getFillColor: d => getColor(d.value, scheme),
+                getLineColor: [255, 255, 255, 80],
+                lineWidthMinPixels: 1
+              }));
+            } else {
+              layers.push(new deck.ColumnLayer({
+                id: 'column-layer' + idSuffix,
+                data: pointData,
+                pickable: true,
+                opacity: opacity,
+                extruded: true,
+                diskResolution: 12,
+                radius: ds.columnRadius || 100,
+                getPosition: d => d.position,
+                getElevation: d => d.value * elevationScale,
+                getFillColor: d => getColor(d.value, scheme),
+                getLineColor: [255, 255, 255, 80],
+                lineWidthMinPixels: 1
+              }));
+            }
+
           } else {
-            layers.push(new deck.ColumnLayer({
-              id: 'column-layer',
-              data: pointData,
+            // geojson/geohash polygons
+            const geojsonData = {
+              type: 'FeatureCollection',
+              features: features.filter(f => f.geometry).map(f => ({
+                type: 'Feature',
+                geometry: f.geometry,
+                properties: {
+                  ...f.properties,
+                  _value: getValue(f)
+                }
+              }))
+            };
+
+            layers.push(new deck.GeoJsonLayer({
+              id: 'geojson-layer' + idSuffix,
+              data: geojsonData,
               pickable: true,
-              opacity: opacity,
+              filled: true,
               extruded: true,
-              diskResolution: 12,
-              radius: 100,
-              getPosition: d => d.position,
-              getElevation: d => d.value * elevationScale,
-              getFillColor: d => getColor(d.value),
+              wireframe: true,
+              opacity: opacity,
+              getElevation: f => f.properties._value * elevationScale,
+              getFillColor: f => getColor(f.properties._value, scheme),
               getLineColor: [255, 255, 255, 80],
               lineWidthMinPixels: 1
             }));
           }
-
-        } else {
-          // Use GeoJsonLayer for geojson/geohash polygons
-          const geojsonData = {
-            type: 'FeatureCollection',
-            features: parsedData.filter(f => f.geometry).map(f => ({
-              type: 'Feature',
-              geometry: f.geometry,
-              properties: {
-                ...f.properties,
-                _value: getValue(f)
-              }
-            }))
-          };
-
-          layers.push(new deck.GeoJsonLayer({
-            id: 'geojson-layer',
-            data: geojsonData,
-            pickable: true,
-            filled: true,
-            extruded: true,
-            wireframe: true,
-            opacity: opacity,
-            getElevation: f => f.properties._value * elevationScale,
-            getFillColor: f => getColor(f.properties._value),
-            getLineColor: [255, 255, 255, 80],
-            lineWidthMinPixels: 1
-          }));
         }
 
         return layers;
@@ -990,7 +1374,10 @@ method build-html($title, $csv-content, $numeric-cols-json) {
           updateLayers();
         });
 
-        document.getElementById('color-scheme').addEventListener('change', () => {
+        document.getElementById('color-scheme').addEventListener('change', (e) => {
+          if (activeLayerName && datasetLayers[activeLayerName]) {
+            datasetLayers[activeLayerName].colorScheme = e.target.value;
+          }
           updateLegendGradient();
           updateLayers();
         });
@@ -1002,10 +1389,57 @@ method build-html($title, $csv-content, $numeric-cols-json) {
         });
 
         document.getElementById('latlon-style').addEventListener('change', (e) => {
-          latlonStyle = e.target.value;
+          if (activeLayerName && datasetLayers[activeLayerName]) {
+            datasetLayers[activeLayerName].latlonStyle = e.target.value;
+          }
           const label = document.getElementById('elevation-scale-label');
-          label.textContent = latlonStyle === 'scatter' ? 'Radius' : 'Elevation Scale';
+          label.textContent = e.target.value === 'scatter' ? 'Radius' : 'Elevation Scale';
+          document.getElementById('column-radius-group').style.display = e.target.value === 'scatter' ? 'none' : '';
           updateLayers();
+        });
+
+        document.getElementById('column-radius').addEventListener('input', (e) => {
+          const val = parseInt(e.target.value);
+          document.getElementById('column-radius-value').textContent = val;
+          if (activeLayerName && datasetLayers[activeLayerName]) {
+            datasetLayers[activeLayerName].columnRadius = val;
+          }
+          updateLayers();
+        });
+      }
+
+      // Select a layer as active (updates controls to reflect its settings)
+      function selectActiveLayer(name) {
+        activeLayerName = name;
+        const ds = datasetLayers[name];
+
+        // Update latlon style control visibility
+        if (ds && ds.type === 'latlon') {
+          document.getElementById('latlon-style-group').style.display = '';
+          document.getElementById('latlon-style').value = ds.latlonStyle || 'column';
+          const label = document.getElementById('elevation-scale-label');
+          label.textContent = ds.latlonStyle === 'scatter' ? 'Radius' : 'Elevation Scale';
+
+          // Show column radius control when in column mode
+          const showRadius = ds.latlonStyle !== 'scatter';
+          document.getElementById('column-radius-group').style.display = showRadius ? '' : 'none';
+          document.getElementById('column-radius').value = ds.columnRadius || 100;
+          document.getElementById('column-radius-value').textContent = ds.columnRadius || 100;
+        } else {
+          document.getElementById('latlon-style-group').style.display = 'none';
+          document.getElementById('column-radius-group').style.display = 'none';
+          document.getElementById('elevation-scale-label').textContent = 'Elevation Scale';
+        }
+
+        // Update color scheme selector to active layer's scheme
+        if (ds) {
+          document.getElementById('color-scheme').value = ds.colorScheme || 'viridis';
+          updateLegendGradient();
+        }
+
+        // Highlight active layer in list
+        document.querySelectorAll('.layer-item').forEach(el => {
+          el.style.borderColor = el.dataset.layerName === name ? '#8be9fd' : 'transparent';
         });
       }
 
@@ -1013,8 +1447,11 @@ method build-html($title, $csv-content, $numeric-cols-json) {
       document.addEventListener('DOMContentLoaded', () => {
         parseData();
 
-        // Show latlon style toggle if applicable
-        if (binType === 'latlon') {
+        // Select first layer as active
+        const names = Object.keys(datasetLayers);
+        if (names.length > 0) {
+          selectActiveLayer(names[0]);
+        } else if (binType === 'latlon') {
           document.getElementById('latlon-style-group').style.display = '';
         }
 
@@ -1029,8 +1466,7 @@ method build-html($title, $csv-content, $numeric-cols-json) {
 
   # Replace placeholders
   $html = $html.subst('TITLE_PLACEHOLDER', $title, :g);
-  $html = $html.subst('CSV_CONTENT_PLACEHOLDER', $csv-escaped);
-  $html = $html.subst('NUMERIC_COLS_PLACEHOLDER', $numeric-cols-json);
+  $html = $html.subst('SCRIPT_TAGS_PLACEHOLDER', $script-tags);
 
   return $html;
 }
