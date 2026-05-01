@@ -1,6 +1,6 @@
 use Samaki::Plugout;
 use Samaki::Utils;
-use Duck::CSV;
+use Duckie;
 use JSON::Fast;
 use Log::Async;
 
@@ -19,25 +19,23 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   my $is-geojson = $path ~~ /\. [geojson|json] $/;
   my $file-type = $is-geojson ?? 'geojson' !! 'csv';
 
-  my ($content, $numeric-cols-json);
+  my $numeric-cols-json;
 
   if $is-geojson {
-    $content = slurp $path;
     $numeric-cols-json = to-json([]);
     info "Processing GeoJSON file";
   } else {
-    # Read CSV
-    my @rows = read-csv("$path");
-    return unless @rows;
+    # Detect numeric columns using a small sample (avoid reading all rows)
+    info "Detecting numeric columns from sample...";
+    my $db = Duckie.new;
+    my $sample-res = $db.query: "select * from read_csv('$path') limit 10";
+    my @sample-rows = $sample-res.rows;
+    return unless @sample-rows;
 
-    # Get column names
-    my @columns = @rows[0].keys.sort;
-
-    # Detect numeric columns (potential value columns for height)
-    my @numeric-cols = self.detect-numeric-columns(@rows, @columns);
+    my @columns = @sample-rows[0].keys.sort;
+    my @numeric-cols = self.detect-numeric-columns(@sample-rows, @columns);
     info "Detected numeric columns: {@numeric-cols.join(', ')}" if @numeric-cols;
 
-    $content = slurp $path;
     $numeric-cols-json = to-json(@numeric-cols);
   }
 
@@ -46,9 +44,13 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   $out-dir.mkdir unless $out-dir.e;
 
   # Generate file paths
-  my $js-file = $out-dir.child("{$file-basename}-deckgl-data.js");
   my $html-file = $out-dir.child("{$file-basename}-deckgl-bin.html");
   my $title = html-escape($data-dir.basename ~ " : " ~ $file-basename);
+
+  # Write JS data file using fast streaming escape (avoids slow .trans on large strings)
+  my $js-file = $out-dir.child("{$file-basename}-deckgl-data.js");
+  info "Writing data file ({($path.s / 1024 / 1024).fmt('%.1f')} MB)...";
+  self.write-js-data-fast($js-file, $file-basename, $path, $numeric-cols-json, $file-type);
 
   # Find all existing deckgl-data.js files in the out directory
   my @all-data-files;
@@ -81,14 +83,9 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
 
   info "Found {@all-data-files.elems} data file(s): {@all-data-files.join(', ')}";
 
-  # Build JavaScript data file
-  my $js-content = self.build-js-data($file-basename, $content, $numeric-cols-json, $file-type);
-
   # Build HTML content with all data files
   my $html = self.build-html($title, @dataset-info);
 
-  # Write both files
-  spurt $js-file, $js-content;
   spurt $html-file, $html;
   info "opening $html-file";
   shell-open $html-file;
@@ -115,27 +112,44 @@ method detect-numeric-columns(@rows, @columns) {
   return @numeric;
 }
 
-method build-js-data($dataset-name, $content, $numeric-cols-json, $file-type) {
-  my $escaped = $content.trans(['\\', '"', "\n", "\r"] => ['\\\\', '\\"', '\\n', '']);
+method write-js-data-fast(IO::Path $js-file, $dataset-name, IO::Path $source, $numeric-cols-json, $file-type) {
+  # Write raw content using JS template literal (backticks) — no escaping needed.
+  # Backticks and ${ are escaped in the browser on load (extremely rare in CSV/GeoJSON).
+  my $data-key = $file-type eq 'geojson' ?? 'geojsonContent' !! 'csvContent';
 
-  my $data-field;
-  if $file-type eq 'geojson' {
-    $data-field = qq[geojsonContent: "$escaped"];
-  } else {
-    $data-field = qq[csvContent: "$escaped"];
-  }
-
-  return qq:to/JS/;
+  my $header = qq:to/JS/;
   // Data and metadata for dataset: $dataset-name (type: $file-type)
   if (typeof window.datasets === 'undefined') \{
     window.datasets = \{\};
   \}
   window.datasets['$dataset-name'] = \{
     type: '$file-type',
-    $data-field,
+    $data-key: `
+  JS
+
+  my $footer = qq:to/JS/;
+  `,
     numericColumns: $numeric-cols-json
   \};
   JS
+
+  my $fh = open $js-file, :w;
+  $fh.print: $header.chomp;
+
+  # Stream raw file content directly — no escaping needed with template literals
+  my $src-fh = open $source, :r, :bin;
+  my $bytes = 0;
+  loop {
+    my $buf = $src-fh.read(65536);
+    last unless $buf.elems;
+    $fh.write: $buf;
+    $bytes += $buf.elems;
+  }
+  $src-fh.close;
+
+  $fh.print: $footer;
+  $fh.close;
+  info "Wrote {($bytes / 1024 / 1024).fmt('%.1f')} MB data file";
 }
 
 method build-html($title, @dataset-info) {
@@ -376,13 +390,13 @@ method build-html($title, @dataset-info) {
 
         <div class="control-group" id="column-radius-group" style="display:none">
           <label>Column Radius</label>
-          <input type="range" id="column-radius" min="10" max="2000" step="10" value="100">
+          <input type="range" id="column-radius" min="1" max="2000" step="1" value="100">
           <div class="range-value" id="column-radius-value">100</div>
         </div>
 
         <div class="control-group">
           <label id="elevation-scale-label">Elevation Scale</label>
-          <input type="range" id="elevation-scale" min="1" max="500" step="1" value="10">
+          <input type="range" id="elevation-scale" min="0.1" max="500" step="0.1" value="10">
           <div class="range-value" id="elevation-scale-value">10</div>
         </div>
 
