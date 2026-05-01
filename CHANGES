@@ -1,3 +1,13 @@
+0.0.33 2026-05-01
+  - improve deckglbin for large files
+  - and more layers, controls, color schems
+  - and scatter vs 3D-column
+  - and lat/lon handling
+  - improve csvgeo layer hiding
+  - and support 'icon' column to display a divicon
+  - use Timezone::Simple for displaying dates
+  - and support geometrycollections
+
 0.0.32 2026-03-22
   - reuse tmux windows
   - default tiles are light osm for csvgeo
