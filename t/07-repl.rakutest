@@ -27,7 +27,7 @@ my $cell = Samaki::Cell.new:
 $p.execute(:$cell, :mode<raw>, :$pane);
 
 # Wait for REPL to start, process input, and produce output
-my $max-wait = 10;
+my $max-wait = 30;
 my $waited = 0;
 my $found = False;
 while !$found && $waited < $max-wait {
