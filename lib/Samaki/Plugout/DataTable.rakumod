@@ -145,7 +145,7 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
           <table id="dataTable" class="display">
   HTML
 
-  my @hdr = @rows[0].keys.sort;
+  my @hdr = read-column-names($path);
 
   $fh.print: "<thead><tr><th style='width:30px'>#</th>";
   for @hdr -> $col {
