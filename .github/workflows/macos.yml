@@ -9,7 +9,7 @@ jobs:
   raku:
     strategy:
       matrix:
-        raku-version: ['2025.12', 'latest']
+        raku-version: ['2026.06', 'latest']
         duckdb-version: ['1.1.1']
     runs-on: macos-latest
     
