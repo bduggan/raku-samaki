@@ -1,3 +1,11 @@
+0.0.34 2026-08-07
+   - update versions in CI
+   - fix stream-output, do not override an attribute (broke on latest raku)
+   - pin CodeUnit because of context bug
+   - preserve column order in outputs
+   - update plugin list and improve process error handling
+   - increase wait time in repl test
+
 0.0.33 2026-05-01
   - improve deckglbin for large files
   - and more layers, controls, color schems
