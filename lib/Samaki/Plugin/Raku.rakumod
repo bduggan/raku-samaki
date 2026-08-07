@@ -8,7 +8,7 @@ unit class Samaki::Plugin::Raku does Samaki::Plugin::Process[
 
 has $.description = 'Run Raku in another process';
 
-method stream-output { True };
+method default-stream-output(:$cell) { True }
 
 =begin pod
 

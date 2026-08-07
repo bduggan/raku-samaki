@@ -22,6 +22,9 @@ method add-env { %() }
 
 method wrap { 'word' }
 
+#| Stream output as it is produced, when the cell has no `stream` conf?
+method default-stream-output(Samaki::Cell :$cell) { $cell.ext ne 'csv' }
+
 method use-stdin { $use-stdin }
 
 method build-command(Samaki::Cell :$cell) {
@@ -110,12 +113,10 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
   $.errors = Nil;
   @!stderr-lines = ();
   self.clear-output;
-  if $cell.get-conf('stream') {
-    $.stream-output = $cell.get-conf('stream') eq 'none' ?? False !! True;
+  with $cell.get-conf('stream') -> $stream {
+    $.stream-output = $stream ne 'none';
   } else {
-    my $default-stream-output = True;
-    $default-stream-output = False if $cell.ext eq 'csv';
-    $.stream-output = False;
+    $.stream-output = self.default-stream-output(:$cell);
   }
 
   info "using " ~ (self.use-stdin ?? "stdin" !! "a temp file") ~ " for input";
