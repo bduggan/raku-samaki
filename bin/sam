@@ -21,6 +21,7 @@ class MockPane {
   method put(*@args, *%opts) { }
   method clear() { }
   method lines() { [] }
+  has $.auto-scroll is rw;
 }
 
 sub edit(IO::Path $path) {

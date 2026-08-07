@@ -12,6 +12,7 @@ unit role Samaki::Plugin::Process[
 ] does Samaki::Plugin;
 
 has $.start-time;
+has @.stderr-lines;
 
 method name { $name }
 
@@ -44,9 +45,21 @@ method do-ready($pid, $proc, $timeout = Nil) {
 
 method do-done($res) {
   self.info: "-- done in " ~ duration( (DateTime.now - $!start-time).Int ) ~ ' --';
+  my $failure;
   given $res {
-    if .signal { self.warn: "Process terminated with signal $^code" }
-    if .exitcode { self.warn: "Process exited with code $^code" }
+    if .signal {
+      self.warn: "Process terminated with signal $^code";
+      $failure = "Process terminated with signal $^code";
+    }
+    if .exitcode {
+      self.warn: "Process exited with code $^code";
+      $failure = "Process exited with code $^code";
+    }
+  }
+  with $failure {
+    my $msg = $_;
+    $msg ~= "\n" ~ @!stderr-lines.join("\n") if @!stderr-lines;
+    $.errors = ($.errors // '') ~ $msg;
   }
 }
 
@@ -62,7 +75,7 @@ method do-react-loop($proc, :$cell, :$out, :$input, :$timeout) {
       $out.put($_) if $out;
       sleep 0.01;
     }
-    whenever $proc.stderr.lines { self.warn: "$_"; sleep 0.01;}
+    whenever $proc.stderr.lines { self.warn: "$_"; @!stderr-lines.push: $_; sleep 0.01;}
     whenever $proc.start(:$cwd,:$env) { info "proc is done"; self.do-done($_); done; }
     if $input {
       whenever $proc.print($input) {
@@ -95,6 +108,7 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
   }
   my $input = $cell.get-content(:$mode, :$page);
   $.errors = Nil;
+  @!stderr-lines = ();
   self.clear-output;
   if $cell.get-conf('stream') {
     $.stream-output = $cell.get-conf('stream') eq 'none' ?? False !! True;
@@ -114,11 +128,26 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
       self.do-react-loop($proc, :$cell, :$out, :$input, :$timeout);
       CATCH { default { self.error("Execution failed: $_"); } }
     }
-    if $cell.output-file.IO andthen !(.e && (.s > 0)) {
+    $out.close;
+    if $.errors {
+      return;
+    }
+    # A command may exit 0 yet have failed (e.g. snowsql prints SQL errors to
+    # stderr and still exits 0). Treat "no real output + stderr" as a failure.
+    my $out-io = $cell.output-file.IO;
+    my $out-size = $out-io.e ?? $out-io.s !! 0;
+    # A "real" result needs more than a lone trailing newline. Some tools exit 0
+    # yet only write diagnostics to stderr (e.g. snowsql on a SQL error), leaving
+    # an empty or newline-only output file. Treat that as a failure and surface
+    # the captured stderr.
+    if $out-size <= 1 && @!stderr-lines {
+        $.errors = @!stderr-lines.join("\n");
+        return;
+    }
+    if $out-size == 0 {
         $.errors = "No output generated";
         return;
     }
-    $out.close;
     if $cell.ext eq 'csv' {
       self.set-output(self.output-duckie($cell.output-file));
     }
