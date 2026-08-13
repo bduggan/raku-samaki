@@ -109,12 +109,14 @@ $pane.clear;
 $p.execute(:cell($cell5), :mode<raw>, :$pane);
 
 $waited = 0;
-while $pane.output.elems < 1 && $waited < $max-wait {
+$found = False;
+while !$found && $waited < $max-wait {
   sleep 0.5;
   $waited += 0.5;
+  $found = $pane.output.join.contains('4');
 }
 
-$found = $pane.output.join.contains('4');
+diag "Output 5: " ~ $pane.output.join.raku if %*ENV<TEST_VERBOSE>;
 ok $found, 'expression evaluation works';
 
 $p.shutdown;
