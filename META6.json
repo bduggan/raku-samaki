@@ -1,6 +1,6 @@
 {
   "name" : "App::samaki",
-  "description" : "Simple Arrangements of Modules with Any Kind of Items",
+  "description" : "Console-based data notebooks",
   "authors" : [
     "Brian Duggan"
   ],

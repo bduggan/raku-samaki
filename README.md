@@ -4,7 +4,7 @@
 NAME
 ====
 
-Samaki -- Stich Associated Modes of Accessing and Keeping Information
+Samaki -- Console-based data notebooks
 
 SYNOPSIS
 ========

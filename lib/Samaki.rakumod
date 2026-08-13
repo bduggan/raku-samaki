@@ -294,7 +294,7 @@ method pages-exist {
 
 =head1 NAME
 
-Samaki -- Stich Associated Modes of Accessing and Keeping Information
+Samaki -- Console-based data notebooks
 
 =head1 SYNOPSIS
 

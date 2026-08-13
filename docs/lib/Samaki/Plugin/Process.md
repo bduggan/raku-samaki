@@ -1,3 +1,13 @@
+### method default-stream-output
+
+```raku
+method default-stream-output(
+    Samaki::Cell :$cell
+) returns Mu
+```
+
+Stream output as it is produced, when the cell has no `stream` conf?
+
 NAME
 ====
 
