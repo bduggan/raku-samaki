@@ -6,9 +6,53 @@ use Log::Async;
 
 unit class Samaki::Plugout::CSVGeo does Samaki::Plugout;
 
+# Sample config file
+#   Samaki::Plugout::CSVGeo.new(tile-providers => %(
+#     light => %( label => 'Light (CARTO Positron)',
+#                 url => 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+#                 attribution => '© OpenStreetMap contributors © CARTO',
+#                 max-zoom => 19 ),
+#     'mapbox-streets' => %( label => 'Mapbox Streets',
+#                 url => 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}{r}',
+#                 attribution => '© Mapbox © OpenStreetMap contributors',
+#                 tile-size => 512, zoom-offset => -1,
+#                 token => %*ENV<MAPBOX_TOKEN>,
+#                 token-url-param => 'access_token', token-required => True ),
+#   ))
+#
+# See "CONFIGURING TILE PROVIDERS" in the pod for a fuller example.
+#
+# Provider keys:  label        - text shown in the tile selector
+#                 url          - raster tile URL template (L.tileLayer)
+#                 style        - MapLibre style URL (vector tiles)
+#                 attribution  - attribution string
+#                 max-zoom     - maximum zoom (default 19)
+#                 tile-size / zoom-offset - extra L.tileLayer options
+#                 token        - access token value
+#                 token-url-param - query parameter the token is appended
+#                                to the URL with (e.g. access_token)
+#                 token-required - prompt for a token at view time when
+#                                none is available
+our %DEFAULT-TILE-PROVIDERS =
+<positron bright liberty dark fiord>.map:
+ -> $style {
+   $style => %(
+     label => $style.tc,
+     style => "https://tiles.openfreemap.org/styles/$style",
+     attribution => '© OpenFreeMap © OpenMapTiles © OpenStreetMap contributors',
+     max-zoom => 19,
+   )
+ }
+ ;
+
+# Menu order for the built-in providers (hashes do not preserve order);
+# the first entry is the default
+my @DEFAULT-TILE-PROVIDER-KEYS = <positron bright liberty dark fiord>;
+
 has $.name = 'csv-geo';
 has $.description = 'View CSV data with GeoJSON/WKT/polyline columns or GeoJSON files on an interactive map';
 has $.clear-before = False;
+has %.tile-providers = %DEFAULT-TILE-PROVIDERS;
 
 method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   info "executing CSVGeo with $path";
@@ -96,8 +140,34 @@ method execute(IO::Path :$path!, IO::Path :$data-dir!, Str :$name!) {
   # Write both files
   spurt $js-file, $js-content;
   spurt $html-file, $html;
+  self.write-tile-tokens($out-dir);
   info "opening $html-file";
   shell-open $html-file;
+}
+
+# Keep provider access tokens out of the generated HTML files.  Every
+# configured provider that declares a token (typically
+# token => %*ENV<MAPBOX_TOKEN> in the samaki config file) has it written
+# to a single sidecar file in the out directory (loaded by every
+# generated page), keyed by the provider's token-url-param.  The sidecar
+# is removed when no tokens are configured.
+method write-tile-tokens(IO::Path $out-dir) {
+  my $token-file = $out-dir.child('tile-tokens.js');
+  my %tokens;
+  for %.tile-providers.values -> %p {
+    with %p<token> {
+      my $param = %p<token-url-param> // 'token';
+      %tokens{$param} = $_;
+    }
+  }
+  if %tokens.keys.elems {
+    spurt $token-file,
+      '// Tile access tokens, configured in the samaki config file.' ~ "\n" ~
+      '// Do not commit or share this file.' ~ "\n" ~
+      'window.TILE_TOKENS = ' ~ to-json(%tokens) ~ ";\n";
+  } elsif $token-file.e {
+    unlink $token-file;
+  }
 }
 
 
@@ -190,7 +260,57 @@ method build-js-data($dataset-name, $content, $latlon-pairs-json, $type) {
   JS
 }
 
-method build-html($title, @dataset-info) {
+  # The configured providers as an ordered list of Pairs.  Built-in
+  # providers keep the catalog order; any extra (custom) entries follow,
+  # sorted by key so the menu order is stable.
+  method resolved-tile-providers() {
+    my %configured = %.tile-providers;
+    my @keys = @DEFAULT-TILE-PROVIDER-KEYS.grep({ %configured{$_}:exists });
+    my %ordered = @keys.map({ $_ => True }).Map;
+    @keys.append: %configured.keys.grep({ !%ordered{$_} && !( %DEFAULT-TILE-PROVIDERS{$_}:exists ) }).sort;
+    return @keys.map({ $_ => %configured{$_} });
+  }
+
+  # <option> list for the tile selector (first provider pre-selected)
+  method tile-options-html() {
+    my @options;
+    for self.resolved-tile-providers.kv -> $i, $pair {
+      my $key = $pair.key;
+      my %p := $pair.value;
+      my $label = html-escape(%p<label> // $key);
+      my $selected = ($i == 0) ?? ' selected' !! '';
+      # NB: $label</option> would parse as a subscript interpolation in qq,
+      # so the label goes in via a code block instead
+      @options.push(qq[        <option value="$key"$selected>{$label}</option>]);
+    }
+    return @options.join("\n");
+  }
+
+  method tile-providers-json() {
+    my @parts;
+    for self.resolved-tile-providers -> $pair {
+      my $key = $pair.key;
+      my %p := $pair.value;
+      my %entry = (
+        label => (%p<label> // $key),
+        attribution => (%p<attribution> // ''),
+        maxZoom => (%p<max-zoom> // 19),
+      );
+      with %p<url>          { %entry<url> = $_ }
+      with %p<style>        { %entry<style> = $_ }
+      with %p<tile-size>    { %entry<tileSize> = $_ }
+      with %p<zoom-offset>  { %entry<zoomOffset> = $_ }
+      with %p<token-url-param> { %entry<tokenUrlParam> = $_ }
+      if %p<token-required> { %entry<tokenRequired> = True }
+      # NB: %p<token> is deliberately NOT serialized -- the token value
+      # travels via the tile-tokens.js sidecar or the browser, never the
+      # generated HTML
+      @parts.push: to-json($key) ~ ':' ~ to-json(%entry);
+    }
+    return '{' ~ @parts.join(',') ~ '}';
+  }
+
+  method build-html($title, @dataset-info) {
   # Build script tags for all datasets
   my $script-tags = @dataset-info.map(-> $ds {
     qq[    <script src="{$ds<filename>}"></script>]
@@ -207,6 +327,15 @@ method build-html($title, @dataset-info) {
     <!-- Leaflet CSS/JS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
+    <!-- MapLibre GL for vector-tile styles (OpenFreeMap) -->
+    <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css" />
+    <script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+    <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.4/leaflet-maplibre-gl.js"></script>
+
+    <!-- Tile access token sidecar (written by samaki when a configured
+         provider has a token); a missing file is harmless -->
+    <script src="tile-tokens.js"></script>
 
     <!-- jQuery + DataTables -->
     <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
@@ -695,11 +824,7 @@ method build-html($title, @dataset-info) {
       <div id="controls">
         <button id="show-all-btn">Show All</button>
         <select id="tile-selector">
-          <option value="light" selected>Light (Positron)</option>
-          <option value="dark">Dark (Dark Matter)</option>
-          <option value="satellite">Satellite</option>
-          <option value="topo">Topographic</option>
-          <option value="osm">OpenStreetMap</option>
+        TILE_OPTIONS_PLACEHOLDER
         </select>
         <select id="palette-selector">
           <option value="muted" selected>Muted</option>
@@ -1301,6 +1426,7 @@ method build-html($title, @dataset-info) {
       let allLayerGroups = {}; // Key format: "datasetName::rowIndex"
       let currentSelection = null;
       let currentTileLayer;
+      let currentTileKey = 'light';
       let currentPalette = localStorage.getItem('samaki-palette') || 'muted';
       let currentKey = 'none';
       let keyColorMap = {};
@@ -1403,34 +1529,49 @@ method build-html($title, @dataset-info) {
         }
       }
 
-      // Tile provider configurations
-      const tileProviders = {
-        osm: {
-          url: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
-          attribution: '© OpenStreetMap contributors',
-          maxZoom: 19
-        },
-        light: {
-          url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-          attribution: '© OpenStreetMap contributors © CARTO',
-          maxZoom: 19
-        },
-        dark: {
-          url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-          attribution: '© OpenStreetMap contributors © CARTO',
-          maxZoom: 19
-        },
-        satellite: {
-          url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
-          attribution: '© Esri',
-          maxZoom: 18
-        },
-        topo: {
-          url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-          attribution: '© OpenStreetMap contributors © OpenTopoMap',
-          maxZoom: 17
+      // Tile provider configurations (injected from %.tile-providers)
+      const tileProviders = TILE_PROVIDERS_JSON;
+
+      // Resolve provider access tokens at view time from tile-token.js
+      function getToken(provider) {
+        const paramName = provider.tokenUrlParam;
+        if (!paramName) return '';
+        if (window.TILE_TOKENS && window.TILE_TOKENS[paramName]) return window.TILE_TOKENS[paramName];
+        return localStorage.getItem('samaki-tile-token-' + paramName) || '';
+      }
+
+      // Build a URL, appending the access token parameter
+      // when the provider declares one and a token is available
+      function providerUrl(provider) {
+        let url = provider.url;
+        if (url && provider.tokenUrlParam) {
+          const token = getToken(provider);
+          if (token) {
+            url += (url.indexOf('?') >= 0 ? '&' : '?') +
+                   provider.tokenUrlParam + '=' + encodeURIComponent(token);
+          }
         }
-      };
+        return url;
+      }
+
+      // Create a tile layer from a provider config. Providers with a `style`
+      // (vector tiles, e.g. OpenFreeMap) use the MapLibre GL Leaflet plugin;
+      // the rest are standard raster tile layers.
+      function createTileLayer(provider) {
+        if (provider.style) {
+          return L.maplibreGL({
+            style: provider.style,
+            attribution: provider.attribution
+          });
+        }
+        const opts = {
+          maxZoom: provider.maxZoom,
+          attribution: provider.attribution
+        };
+        if (provider.tileSize) opts.tileSize = provider.tileSize;
+        if (provider.zoomOffset !== undefined) opts.zoomOffset = provider.zoomOffset;
+        return L.tileLayer(providerUrl(provider), opts);
+      }
 
       // Build key color map when key changes (across all datasets)
       function buildKeyColorMap() {
@@ -1580,20 +1721,32 @@ method build-html($title, @dataset-info) {
 
         featureCyclers = {};
 
-        // Restore tile and palette from localStorage (or use defaults)
-        const savedTile = localStorage.getItem('samaki-tile') || 'light';
+        // Restore tile and palette from localStorage (or use defaults).
+        // Ignore stale saved values that no longer match a provider, and
+        // prefer a fallback that works without a token.
+        const providerKeys = Object.keys(tileProviders);
+        const fallbackKey = providerKeys.find(function(k) {
+          return !(tileProviders[k].tokenRequired && !getToken(tileProviders[k]));
+        }) || providerKeys[0];
+        let savedTile = localStorage.getItem('samaki-tile') || fallbackKey;
+        if (!tileProviders[savedTile]) {
+          savedTile = fallbackKey;
+          localStorage.setItem('samaki-tile', savedTile);
+        }
+        // Don't start on a provider that requires a token when this
+        // browser has none; selecting one interactively prompts for it.
+        if (tileProviders[savedTile].tokenRequired && !getToken(tileProviders[savedTile])) {
+          savedTile = fallbackKey;
+        }
         const savedPalette = localStorage.getItem('samaki-palette') || 'muted';
         const tileSelector = document.getElementById('tile-selector');
         const paletteSelector = document.getElementById('palette-selector');
+        currentTileKey = savedTile;
         if (tileSelector) tileSelector.value = savedTile;
         if (paletteSelector) paletteSelector.value = savedPalette;
 
         // Add initial tile layer
-        const initProvider = tileProviders[savedTile] || tileProviders.osm;
-        currentTileLayer = L.tileLayer(initProvider.url, {
-          maxZoom: initProvider.maxZoom,
-          attribution: initProvider.attribution
-        }).addTo(map);
+        currentTileLayer = createTileLayer(tileProviders[savedTile]).addTo(map);
 
         // Create layer groups for each row in each dataset
         Object.values(allDatasets).forEach(function(dataset) {
@@ -2372,19 +2525,40 @@ method build-html($title, @dataset-info) {
         const provider = tileProviders[providerKey];
         if (!provider) return;
 
+        // Providers with required tokens: sidecar file, previously
+        // entered, or ask once
+        if (provider.tokenUrlParam && provider.tokenRequired && !getToken(provider)) {
+          const entered = window.prompt('Enter the access token (' + provider.tokenUrlParam +
+                                        ') for ' + (provider.label || providerKey) + ':');
+          if (!entered) {
+            const sel = document.getElementById('tile-selector');
+            if (sel) sel.value = currentTileKey;
+            return;
+          }
+          const token = entered.trim();
+          if (!window.TILE_TOKENS) window.TILE_TOKENS = {};
+          window.TILE_TOKENS[provider.tokenUrlParam] = token;
+          localStorage.setItem('samaki-tile-token-' + provider.tokenUrlParam, token);
+        }
+
         // Remove current tile layer
         if (currentTileLayer) {
           map.removeLayer(currentTileLayer);
         }
 
+        currentTileKey = providerKey;
+
         // Add new tile layer
-        currentTileLayer = L.tileLayer(provider.url, {
-          maxZoom: provider.maxZoom,
-          attribution: provider.attribution
-        }).addTo(map);
+        currentTileLayer = createTileLayer(provider).addTo(map);
 
         // Move tile layer to back so features are on top
-        currentTileLayer.bringToBack();
+        if (currentTileLayer.bringToBack) {
+          try {
+            currentTileLayer.bringToBack();
+          } catch (e) {
+            // Vector (MapLibre) layers manage their own pane order
+          }
+        }
       }
 
       // Helper function to update layer colors (polygons, lines - NOT markers)
@@ -2977,6 +3151,8 @@ method build-html($title, @dataset-info) {
   # Replace placeholders with actual values
   $html = $html.subst('TITLE_PLACEHOLDER', $title, :g);
   $html = $html.subst('SCRIPT_TAGS_PLACEHOLDER', $script-tags);
+  $html = $html.subst('TILE_OPTIONS_PLACEHOLDER', { self.tile-options-html });
+  $html = $html.subst('TILE_PROVIDERS_JSON', { self.tile-providers-json });
 
   return $html;
 }
@@ -2996,5 +3172,41 @@ For CSV files: displays with a synchronized data table. Auto-detects lat/lon pai
 For GeoJSON files: displays with a collapsible JSON tree viewer for exploring the structure.
 
 Includes map tile options, color palettes, and linked selection between map features and table rows. Multiple datasets can be loaded simultaneously with tabbed navigation.
+
+=head1 CONFIGURING TILE PROVIDERS
+
+A configuration for tile provideres can be added in the config file
+like so:
+
+    use Samaki::Plugout::CSVGeo;
+
+    %*samaki-conf =
+      ...
+      plugouts => [
+        / csv|geojson / => Samaki::Plugout::CSVGeo.new(
+          tile-providers => %(
+            positron => %(
+              label => 'Positron',
+              style => 'https://tiles.openfreemap.org/styles/positron',
+              attribution => '© OpenFreeMap © OpenMapTiles © OpenStreetMap contributors',
+            ),
+            ...
+            'mapbox-streets' => %(
+              label => 'Mapbox Streets',
+              url => 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}{r}',
+              attribution => '© Mapbox © OpenStreetMap contributors',
+              max-zoom => 19, tile-size => 512, zoom-offset => -1,
+              token => %*ENV<MAPBOX_TOKEN>,
+              token-url-param => 'access_token',
+              token-required => True,
+            ),
+          )
+        ),
+        ...
+      ]
+    ;
+
+The built-in default is available as
+C<%Samaki::Plugout::CSVGeo::DEFAULT-TILE-PROVIDERS>.
 
 =end pod

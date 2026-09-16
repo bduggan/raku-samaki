@@ -33,6 +33,18 @@ use Samaki::Plugin::Process;
     / csv  /   => 'Samaki::Plugout::DataTable',
     / csv  /   => 'Samaki::Plugout::ChartJS',
     / csv  /   => 'Samaki::Plugout::D3',
+    # CSVGeo's tile menu defaults to the OpenFreeMap styles (positron,
+    # bright, liberty, dark, fiord).  Add others via
+    #   / csv / => Samaki::Plugout::CSVGeo.new(
+    #     tile-providers => %( positron => %( ... ),
+    #       light => %( label => 'Light (CARTO Positron)',
+    #         url => 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+    #         attribution => '© OpenStreetMap contributors © CARTO', max-zoom => 19 ),
+    #       'mapbox-streets' => %(
+    #         url => 'https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}{r}',
+    #         token => %*ENV<MAPBOX_TOKEN>, token-url-param => 'access_token',
+    #         token-required => True, tile-size => 512, zoom-offset => -1 ) ) )
+    # See "CONFIGURING TILE PROVIDERS" in the CSVGeo docs.
     / csv  /   => 'Samaki::Plugout::CSVGeo',
     / csv /    => 'Samaki::Plugout::DeckGLBin',
     / html /   => 'Samaki::Plugout::HTML',
