@@ -2983,7 +2983,7 @@ method build-js-data($dataset-name, $content, $latlon-pairs-json, $type) {
             bounds.slice(1).forEach(function(b) {
               combinedBounds.extend(b);
             });
-            map.fitBounds(combinedBounds, { padding: [50, 50] });
+            map.fitBounds(combinedBounds, { padding: [50, 50], maxZoom: 16 });
           }
         }
 
@@ -3069,7 +3069,7 @@ method build-js-data($dataset-name, $content, $latlon-pairs-json, $type) {
             bounds.slice(1).forEach(function(b) {
               combinedBounds.extend(b);
             });
-            map.fitBounds(combinedBounds, { padding: [50, 50] });
+            map.fitBounds(combinedBounds, { padding: [50, 50], maxZoom: 16 });
           }
         }
 
