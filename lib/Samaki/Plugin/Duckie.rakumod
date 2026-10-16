@@ -20,6 +20,8 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
    $duck.register-raku-sub($udf);
  }
 
+ $duck.query("install spatial");
+ $duck.query("load spatial");
  $!res = $duck.query($content);
  unless $!res {
    $!errors = $!res.Str;
