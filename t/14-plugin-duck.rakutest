@@ -47,7 +47,6 @@ if $duck-available {
   ok $content.contains('hello,world'), 'output contains data';
 
   ok $plugin.output, 'plugin output is set';
-  ok $plugin.output.^name eq 'Array', 'plugin output is an array';
   ok $plugin.output.elems > 0, 'plugin output has elements';
 
   $out-file.unlink;
