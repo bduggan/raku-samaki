@@ -1,9 +1,9 @@
--- duck:hello.txt
-select 'hello' as world;
-
--- duck:earth.csv
+-- duck:earth
 select 'earth' as planet;
 
--- llm:planet.txt
-Which planet from the sun is 〈 cells(1).rows[0]<planet> 〉?
+-- bash:vogon
+echo "We regret to inform you that we are"
+echo "constructing a hyperspace bypass that"
+echo "goes through planet 〈 cells('earth').rows[0]<planet> 〉"
+
 
