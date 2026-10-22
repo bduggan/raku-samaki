@@ -389,11 +389,11 @@ class Samaki::Page {
       btm.put([ t.red => $_ ] ) for .lines;
     }
     with $cell.output {
-      given $cell.output.^name {
-        when 'Str' {
+      given $cell.output {
+        when Str {
           btm.put( $_, wrap => $cell.wrap ) for $cell.output.lines;
         }
-        when 'Array' {
+        when Array {
           for $cell.output<> -> $line {
             if $line.isa(Hash) {
               btm.put: $line<txt>, meta => $line<meta>;
@@ -403,6 +403,7 @@ class Samaki::Page {
           }
         }
         default {
+          warning "new cell type { $cell.output.^name }";
           btm.put( $cell.output, wrap => $cell.wrap );
         }
       }

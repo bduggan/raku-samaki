@@ -26,7 +26,7 @@ class MockPane {
 
 sub edit(IO::Path $path) {
   put t.text-reset;
-  shell <<$editor $path>>;
+  shell <<$editor $path >>;
   exit note "no page" unless $path.IO.e;
 }
 
@@ -93,7 +93,7 @@ multi MAIN('conf') {
   my $q = Samaki.new(:$wkdir, :$editor);
   my $path = $q.config-file;
   $path.IO.e or exit note "No config file at $path";
-  shell <<$editor $path>>;
+  shell <<$editor $path >>;
   note "Done editing config file at $path";
 }
 
