@@ -5,7 +5,7 @@ use Samaki::Plugin::Repl;
   plugins => [
     /^ duckie $/      => 'Samaki::Plugin::Duckie',
     /^ duck $/        => 'Samaki::Plugin::Duck',
-    / llm  /          => 'Samaki::Plugin::LLM',
+    # / llm  /          => 'Samaki::Plugin::LLM', # requires LLM::DWIM
     / text /          => 'Samaki::Plugin::Text',
 
     / 'tmux-bash' /   => 'Samaki::Plugin::Tmux::Bash',

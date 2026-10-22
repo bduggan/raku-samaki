@@ -9,7 +9,7 @@ use Samaki::Plugin::Process;
   plugins => [
     / duckie / => 'Samaki::Plugin::Duckie',
     / duck /   => 'Samaki::Plugin::Duck',
-    / llm  /   => 'Samaki::Plugin::LLM',
+    # / llm  /   => 'Samaki::Plugin::LLM', # install LLM::DWIM to use this
     / text /   => 'Samaki::Plugin::Text',
     / bash /   => 'Samaki::Plugin::Bash',
     / html /   => 'Samaki::Plugin::HTML',

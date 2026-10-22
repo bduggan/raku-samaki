@@ -1,8 +1,16 @@
 use Test;
-use Samaki::Plugin::LLM;
-use LLM::DWIM;
+use Samaki::Cell;
+use Samaki::Page;
 
-my $plugin = Samaki::Plugin::LLM.new;
+unless (try { require ::('LLM::DWIM'); True } // False) {
+  plan :skip-all<LLM::DWIM not installed>;
+  exit;
+}
+
+require ::('Samaki::Plugin::LLM');
+require ::('LLM::DWIM') <&dwim>;
+
+my $plugin = ::('Samaki::Plugin::LLM').new;
 
 my $cell = Samaki::Cell.new:
   page-name => 'test',

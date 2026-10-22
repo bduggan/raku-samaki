@@ -25,7 +25,11 @@ use-ok 'Samaki::Plugin::Duck';
 use-ok 'Samaki::Plugin::Duckie';
 use-ok 'Samaki::Plugin::File';
 use-ok 'Samaki::Plugin::HTML';
-use-ok 'Samaki::Plugin::LLM';
+if (try { require ::('LLM::DWIM'); True } // False) {
+  use-ok 'Samaki::Plugin::LLM';
+} else {
+  skip "Samaki::Plugin::LLM not installed", 1;
+}
 use-ok 'Samaki::Plugin::Markdown';
 use-ok 'Samaki::Plugin::Postgres';
 use-ok 'Samaki::Plugin::Process';
