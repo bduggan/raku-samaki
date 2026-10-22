@@ -13,10 +13,10 @@ sub shell-open(IO::Path(Str) $rel) is export {
   my $proc;
   given $*DISTRO {
     when /macos/ {
-      $proc = shell <<open $file>>, :err, :out;
+      $proc = shell <<open $file >>, :err, :out;
     }
     default {
-      $proc = shell <<xdg-open $file>>, :err, :out;
+      $proc = shell <<xdg-open $file >>, :err, :out;
     }
   }
   if $proc.err.slurp -> $err {

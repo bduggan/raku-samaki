@@ -270,7 +270,8 @@ method show-dir(IO::Path $dir, :$suffix = 'samaki', :$pane = top, Bool :$header 
       pane.put: [ color($color-name) => pad-width($path.basename, $name-width),
                   color('info') => " " ~ human-size($path.IO.s).fmt("%{$size-width}s"),
                   color('date') => " " ~ ago( (DateTime.now - $path.accessed).Int, 1).fmt("%{$date-width}s") ],
-                  meta => %( :$path, action => "do_output", dir => $dir) :!scroll-ok;
+                  meta => %( :$path, action => "do_output", dir => $dir),
+                  :!scroll-ok;
     }
   }
 
