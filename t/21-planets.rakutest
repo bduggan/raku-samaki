@@ -23,34 +23,30 @@ $plugins.configure($conf);
 
 ok $page.load($content, :$plugins), 'loaded planets page';
 nok $page.errors, 'no errors loading planets';
-is $page.cells.elems, 3, 'has three cells';
+is $page.cells.elems, 2, 'has two cells';
 
 # Check cell types
 is $page.cells[0].cell-type, 'duck', 'first cell is duck';
-is $page.cells[1].cell-type, 'duck', 'second cell is duck';
-is $page.cells[2].cell-type, 'llm', 'third cell is llm';
+is $page.cells[1].cell-type, 'bash', 'second cell is bash';
 
 # Check cell names
-is $page.cells[0].name, 'hello', 'first cell named hello';
-is $page.cells[1].name, 'earth', 'second cell named earth';
-is $page.cells[2].name, 'planet', 'third cell named planet';
+is $page.cells[0].name, 'earth', 'first cell named earth';
+is $page.cells[1].name, 'vogon', 'second cell named vogon';
 
 # Check cell extensions
-is $page.cells[0].ext, 'txt', 'first cell ext is txt';
-is $page.cells[1].ext, 'csv', 'second cell ext is csv';
-is $page.cells[2].ext, 'txt', 'third cell ext is txt';
+is $page.cells[0].ext, 'csv', 'first cell ext is csv';
+is $page.cells[1].ext, 'txt', 'second cell ext is txt';
 
 # Check cell contents
-ok $page.cells[0].content.contains('hello'), 'first cell contains hello query';
-ok $page.cells[1].content.contains('earth'), 'second cell contains earth query';
-ok $page.cells[2].content.contains('Which planet'), 'third cell contains LLM prompt';
+ok $page.cells[0].content.contains('earth'), 'first cell contains earth query';
+ok $page.cells[1].content.contains('hyperspace bypass'), 'second cell contains vogon announcement';
 
 # Test raw mode - should show the eval snippet markers
 $page.mode = 'raw';
-my $raw-llm = $page.cells[2].get-content(:mode<raw>, :$page);
-ok $raw-llm.contains('〈'), 'raw mode shows eval snippet markers';
-ok $raw-llm.contains('cells(1)'), 'raw mode shows cell reference';
-ok $raw-llm.contains('<planet>'), 'raw mode shows column reference';
+my $raw-bash = $page.cells[1].get-content(:mode<raw>, :$page);
+ok $raw-bash.contains('〈'), 'raw mode shows eval snippet markers';
+ok $raw-bash.contains("cells('earth')"), 'raw mode shows cell reference';
+ok $raw-bash.contains('<planet>'), 'raw mode shows column reference';
 
 # Check if duckdb is available to test actual execution
 my $duck-available = try {
@@ -59,33 +55,31 @@ my $duck-available = try {
 }
 
 if $duck-available {
-  # Execute the second cell (earth query) to generate output
-  my $duck-plugin = $page.cells[1].plugin;
+  # Execute the first cell (earth query) to generate output
+  my $duck-plugin = $page.cells[0].plugin;
   if $duck-plugin {
-    my $out-file = $page.cells[1].output-file(:create);
+    my $out-file = $page.cells[0].output-file(:create);
     my $out = $out-file.open(:w);
     lives-ok {
-      $duck-plugin.execute(:cell($page.cells[1]), :$page, :mode<eval>, :$out);
+      $duck-plugin.execute(:cell($page.cells[0]), :$page, :mode<eval>, :$out);
       $out.close;
     }, 'executed earth cell';
 
     # Check that output file was created
     ok $out-file.e, 'earth cell created output file';
 
-    # Now try to get the evaluated content of the LLM cell
-    my $eval-result = $page.cells[2].get-content(:mode<eval>, :$page);
+    # Now try to get the evaluated content of the bash cell
+    my $eval-result = $page.cells[1].get-content(:mode<eval>, :$page);
     ok $eval-result.contains('earth'), 'eval mode interpolated earth value';
-    ok $eval-result.contains('Which planet from the sun is earth'),
-       'eval mode shows fully interpolated question';
     nok $eval-result.contains('〈'), 'eval mode does not show snippet markers';
 
     # Clean up
     $out-file.unlink if $out-file.e;
   } else {
-    skip 'duck plugin not available', 6;
+    skip 'duck plugin not available', 4;
   }
 } else {
-  skip 'duckdb not available', 6;
+  skip 'duckdb not available', 4;
 }
 
 done-testing;
