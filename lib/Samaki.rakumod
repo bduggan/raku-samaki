@@ -335,14 +335,13 @@ Here's an example:
 
 =begin code
 
--- duck:hello
-select 'hello' as world;
-
 -- duck:earth
 select 'earth' as planet;
 
--- llm:planet.txt
-Which planet from the sun is 〈 cells('earth').rows[0]<planet> 〉?
+-- bash:vogon
+echo "We regret to inform you that we are"
+echo "constructing a hyperspace bypass that"
+echo "goes through planet 〈 cells('earth').rows[0]<planet> 〉"
 
 =end code
 
@@ -350,42 +349,40 @@ To use this:
 
 1. save it as a file, e.g. "planets.samaki"
 
-2. run `sam planets'
+2. run `sam planets`
 
 3. press 'm' to toggle between raw mode and rendered mode
 
-4. highlight the second cell and press enter to run the query
+4. highlight the first cell and press enter to run the query
 
-5. press r to refresh the page, also press m to change the mode, and notice that it has changed to
+5. press r to refresh the page, and notice that the second cell's text now reads
+   "goes through planet earth"
 
-    "Which planet from the sun is earth?"
-
-6. highlight the third cell and press enter to run the LLM query
+6. highlight the second cell and press enter to run it, which creates vogon.txt
 
 For more examples, check out the
 L<eg/|https://github.com/bduggan/raku-samaki/tree/main/eg> directory.
 
-Below is what the screen looks like during this interactive session before earth.csv
-is created, when the cell is in raw mode:
+Below is what the screen looks like during this interactive session, after both
+cells have been run, when the cells are in raw mode:
 
 =begin code
 
 ╔═════════════════════════════════════════════════════════════════════╗
 ╢                           -- planets --                             ║
-║    ┌── duck (txt)           [run] ➞  hello.txt                      ║
-║  0 │ select 'hello' as world;                                       ║
-║  1 └                                                                ║
 ║    ┌── duck (csv)           [run] ➞  earth.csv                      ║
 ║  0 │ select 'earth' as planet;                                      ║
 ║  1 └                                                                ║
-║    ┌── llm (txt)            [run] ➞  planet.txt                     ║
-║  0 │ Which planet from the sun is 〈 cells(1).rows[0]<planet> 〉?   ║
-║  1 └                                                                ║
+║    ┌── bash (txt)           [run] ➞  vogon.txt                      ║
+║  0 │ echo "We regret to inform you that we are"                     ║
+║  1 │ echo "constructing a hyperspace bypass that"                   ║
+║  2 │ echo "goes through planet 〈 cells('earth').rows[0]<planet> 〉"║
+║  3 └                                                                ║
 ║                                                                     ║
 ╟─────────────────────────────────────────────────────────────────────╢
 ║                       planets/                                      ║
-║ planet.txt                 45 b         9 hours and 52 minutes ago  ║
-║ hello.csv                  12 b            7 days and 18 hours ago  ║
+║ vogon.txt                  45 b         9 hours and 52 minutes ago  ║
+║ earth.csv                  12 b            7 days and 18 hours ago  ║
 ║                                                                     ║
 ╚═════════════════════════════════════════════════════════════════════╝
 
@@ -404,9 +401,8 @@ will be created if it doesn't exist.  e.g.
 
     planets.samaki
     planets/
-       hello.txt
        earth.csv
-       planet.txt
+       vogon.txt
 
 The samaki file is a text file divided into cells, each of which looks like this:
 
