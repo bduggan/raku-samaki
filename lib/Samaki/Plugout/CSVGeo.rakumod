@@ -851,6 +851,7 @@ method build-js-data($dataset-name, $content, $latlon-pairs-json, $type) {
         </select>
         <select id="marker-color-selector">
           <option value="row" selected>By Row</option>
+          <option value="column">By Column</option>
           <option value="alternate">Alternate</option>
           <option value="red">Red</option>
           <option value="blue">Blue</option>
@@ -1501,9 +1502,35 @@ method build-js-data($dataset-name, $content, $latlon-pairs-json, $type) {
         return markerSizes[currentMarkerSize] || markerSizes.medium;
       }
 
+      // Get color for a feature based on the geo column it came from
+      // (By Column mode).  Each geo column gets its own palette slot;
+      // lat/lon-pair points are keyed by their lat column.
+      function getColumnColor(datasetName, feature) {
+        const dataset = allDatasets[datasetName];
+        const palette = colorPalettes[currentPalette];
+        if (!dataset) return palette[0];
+
+        const props = (feature && feature.properties) || {};
+        const col = props._sourceCol || props.lat_col;
+        if (!col) return getColorForRow(datasetName, 0);
+
+        let idx = dataset.geoColumns.indexOf(col);
+        if (idx < 0) {
+          idx = dataset.geoColumns.length +
+                dataset.latlonPairs.findIndex(function(p) { return p.lat === col; });
+        }
+        if (idx < 0) return getColorForRow(datasetName, 0);
+
+        const colorOffsetAdjustment = dataset.colorOffsetAdjustment || 0;
+        return palette[(dataset.colorOffset + idx + colorOffsetAdjustment) % palette.length];
+      }
+
       // Get marker color based on settings
-      function getMarkerColor(datasetName, rowIndex) {
-        if (currentMarkerColor === 'row') {
+      function getMarkerColor(datasetName, rowIndex, feature) {
+        if (currentMarkerColor === 'column' && feature) {
+          // Color by the geo column the feature came from
+          return getColumnColor(datasetName, feature);
+        } else if (currentMarkerColor === 'row') {
           // Use row-based color (original behavior)
           return getColorForRow(datasetName, rowIndex);
         } else if (currentMarkerColor === 'alternate') {
@@ -1754,14 +1781,16 @@ method build-js-data($dataset-name, $content, $latlon-pairs-json, $type) {
             const layerGroup = L.layerGroup();
 
             row.features.forEach(function(feature) {
-              const color = getColorForRow(dataset.name, row.index);
-              const markerColor = getMarkerColor(dataset.name, row.index);
+              const color = (currentMarkerColor === 'column')
+                ? getColumnColor(dataset.name, feature)
+                : getColorForRow(dataset.name, row.index);
+              const markerColor = getMarkerColor(dataset.name, row.index, feature);
 
               const geoLayer = L.geoJSON(feature, {
                 pointToLayer: function(feature, latlng) {
                   const size = getMarkerSize();
                   // Recalculate color inside pointToLayer to ensure fresh value
-                  const actualMarkerColor = getMarkerColor(dataset.name, row.index);
+                  const actualMarkerColor = getMarkerColor(dataset.name, row.index, feature);
 
                   if (row.index === 0) {
                     console.log('pointToLayer: dataset=', dataset.name, 'row=', row.index, 'color=', actualMarkerColor, 'scaled=', markerScaleWithZoom, 'size=', size);
@@ -2561,10 +2590,20 @@ method build-js-data($dataset-name, $content, $latlon-pairs-json, $type) {
         }
       }
 
-      // Helper function to update layer colors (polygons, lines - NOT markers)
-      function updateLayerColors(layerGroup, newColor) {
+      // Helper function to update layer colors (polygons, lines - NOT markers).
+      // In By Column mode, datasetName is required and each feature keeps its
+      // own column color instead of taking the row color.
+      function updateLayerColors(layerGroup, newColor, datasetName) {
         const isBorderPalette = !!borderPalettes[currentPalette];
         const borderStyle = borderPalettes[currentPalette];
+        const byColumn = currentMarkerColor === 'column' && datasetName;
+
+        function colorFor(layer) {
+          if (byColumn && layer.feature) {
+            return getColumnColor(datasetName, layer.feature);
+          }
+          return newColor;
+        }
 
         layerGroup.eachLayer(function(layer) {
           // For geoJSON layers that contain multiple sub-layers, iterate through them
@@ -2582,17 +2621,18 @@ method build-js-data($dataset-name, $content, $latlon-pairs-json, $type) {
 
               // Update sublayer style for polygons, lines, etc.
               if (subLayer.setStyle) {
+                const c = colorFor(subLayer);
                 if (isBorderPalette) {
                   subLayer.setStyle({
                     color: borderStyle.borderColor,
-                    fillColor: newColor,
+                    fillColor: c,
                     weight: borderStyle.borderWidth,
                     fillOpacity: 0.6
                   });
                 } else {
                   subLayer.setStyle({
-                    color: newColor,
-                    fillColor: newColor,
+                    color: c,
+                    fillColor: c,
                     weight: 2,
                     fillOpacity: 0.3
                   });
@@ -2610,17 +2650,18 @@ method build-js-data($dataset-name, $content, $latlon-pairs-json, $type) {
           }
           // Update the layer's style for direct polygons, lines, etc.
           else if (layer.setStyle) {
+            const c = colorFor(layer);
             if (isBorderPalette) {
               layer.setStyle({
                 color: borderStyle.borderColor,
-                fillColor: newColor,
+                fillColor: c,
                 weight: borderStyle.borderWidth,
                 fillOpacity: 0.6
               });
             } else {
               layer.setStyle({
-                color: newColor,
-                fillColor: newColor,
+                color: c,
+                fillColor: c,
                 weight: 2,
                 fillOpacity: 0.3
               });
@@ -2644,7 +2685,7 @@ method build-js-data($dataset-name, $content, $latlon-pairs-json, $type) {
           const layerGroup = allLayerGroups[layerKey];
           const newColor = getColorForRow(datasetName, parseInt(rowIndex));
 
-          updateLayerColors(layerGroup, newColor);
+          updateLayerColors(layerGroup, newColor, datasetName);
         });
 
         // Update table color indicators for all datasets
@@ -2705,13 +2746,15 @@ method build-js-data($dataset-name, $content, $latlon-pairs-json, $type) {
             const newLayerGroup = L.layerGroup();
 
             row.features.forEach(function(feature) {
-              const color = getColorForRow(dataset.name, row.index);
+              const color = (currentMarkerColor === 'column')
+                ? getColumnColor(dataset.name, feature)
+                : getColorForRow(dataset.name, row.index);
 
               const geoLayer = L.geoJSON(feature, {
                 pointToLayer: function(feature, latlng) {
                   const size = getMarkerSize();
                   // Recalculate color inside pointToLayer to ensure fresh value
-                  const actualMarkerColor = getMarkerColor(dataset.name, row.index);
+                  const actualMarkerColor = getMarkerColor(dataset.name, row.index, feature);
 
                   if (row.index === 0) {
                     console.log('recreateAllMarkers pointToLayer: dataset=', dataset.name, 'row=', row.index, 'color=', actualMarkerColor, 'scaled=', markerScaleWithZoom, 'size=', size);
@@ -2849,7 +2892,7 @@ method build-js-data($dataset-name, $content, $latlon-pairs-json, $type) {
           const layerGroup = allLayerGroups[layerKey];
           const newColor = getColorForRow(datasetName, parseInt(rowIndex));
 
-          updateLayerColors(layerGroup, newColor);
+          updateLayerColors(layerGroup, newColor, datasetName);
         });
 
         // Update table color indicators for all datasets
@@ -3139,7 +3182,7 @@ method build-js-data($dataset-name, $content, $latlon-pairs-json, $type) {
 
           if (layerGroup) {
             const newColor = getColorForRow(datasetName, row.index);
-            updateLayerColors(layerGroup, newColor);
+            updateLayerColors(layerGroup, newColor, datasetName);
           }
         });
       }
