@@ -1,3 +1,12 @@
+0.0.35 2026-10-22
+  - updates for ast release of raku
+  - make LLM::DWIM optional
+  - unpin CodeUnit and Duckie
+  - fix latlng click
+  - install spatial by default in duckie
+  - tile providers
+  - testing fixes
+
 0.0.34 2026-08-07
    - update versions in CI
    - fix stream-output, do not override an attribute (broke on latest raku)
