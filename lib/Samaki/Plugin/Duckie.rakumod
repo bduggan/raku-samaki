@@ -14,10 +14,28 @@ method execute(Samaki::Cell :$cell, Samaki::Page :$page, Str :$mode, IO::Handle 
  my $db = $cell.get-conf('db');
  self.info: "Executing duckie cell with db { $db // '<memory>' }";
  my $content = $cell.get-content(:$mode, :$page);
- my $duck = $db ?? Duckie.new(file => $db) !! Duckie.new;
+
+ # UDF callbacks run Raku code, which crashes MoarVM if duckdb calls them from
+ # one of its worker threads.  So only queries that mention a UDF are limited to
+ # one thread; everything else keeps duckdb's default.
+ my $uses-udf = so @.udfs.first: -> $udf { my $n = $udf.name; $content ~~ / :i << $n >> / };
+ self.info: "Query calls a UDF, limiting duckdb to 1 thread" if $uses-udf;
+ my $duck = $db
+   ?? Duckie.new(file => $db, single-threaded => $uses-udf)
+   !! Duckie.new(single-threaded => $uses-udf);
 
  for @.udfs -> $udf {
    $duck.register-raku-sub($udf);
+ }
+
+ # explicit override; don't raise this for cells that call a UDF
+ if $cell.get-conf('threads') -> $threads {
+   unless $threads ~~ /^ \d+ $/ && $threads > 0 {
+     $!errors = "threads must be a positive integer, got '$threads'";
+     return;
+   }
+   self.info: "Setting threads to $threads";
+   $duck.query("set threads=$threads");
  }
 
  $duck.query("install spatial");
@@ -63,6 +81,7 @@ converts a polyline string to GeoJSON:
 =head1 OPTIONS
 
 * `db` -- path to a duckdb database file. If not specified, an in-memory database is used.
+* `threads` -- number of threads DuckDB may use. By default DuckDB's own default is used, except that a query which mentions a UDF is limited to a single thread, because UDF callbacks must run on the thread that issued the query (otherwise MoarVM aborts the whole process). Set this to override that. Don't raise it for queries that call a UDF.
 
 =head1 EXAMPLE
 

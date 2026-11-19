@@ -28,6 +28,7 @@ OPTIONS
 =======
 
 * `db` -- path to a duckdb database file. If not specified, an in-memory database is used.
+* `threads` -- number of threads DuckDB may use. By default DuckDB's own default is used, except that a query which mentions a UDF is limited to a single thread, because UDF callbacks must run on the thread that issued the query (otherwise MoarVM aborts the whole process). Set this to override that. Don't raise it for queries that call a UDF.
 
 EXAMPLE
 =======
